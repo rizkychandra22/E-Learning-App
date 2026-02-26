@@ -65,13 +65,13 @@ const Register = () => {
 
                                         {/* Email */}
                                         <div className="mb-3">
-                                            <label className="form-label fw-semibold">Email Institusi</label>
+                                            <label className="form-label fw-semibold">Email</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-envelope text-muted"></i></span>
                                                 <input 
                                                     type="email" 
                                                     className={`form-control bg-light border-start-0 ${errors.email ? 'is-invalid' : ''}`}
-                                                    placeholder="nama@kampus.ac.id"
+                                                    placeholder="nama@gmail.com"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
                                                 />
@@ -79,7 +79,7 @@ const Register = () => {
                                             {errors.email && <small className="text-danger">{errors.email}</small>}
                                         </div>
 
-                                        {/* Password saja (Tanpa Konfirmasi) */}
+                                        {/* Password */}
                                         <div className="mb-4">
                                             <label className="form-label fw-semibold">Password</label>
                                             <div className="input-group">

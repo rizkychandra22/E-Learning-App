@@ -32,7 +32,7 @@ class JurusanSeeder extends Seeder
             'code' => 33
         ]);
         
-        // Jurusan dari fakultas Teknik
+        // Jurusan dari fakultas Sains dan Teknologi
         Jurusan::create([
             'fakultas_id' => 2,
             'name' => 'Teknik Elektro',

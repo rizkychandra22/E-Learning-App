@@ -1,16 +1,21 @@
 import React from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 const Login = () => {
+    const { props } = usePage(); 
     const { data, setData, post, processing, errors } = useForm({
-        email: '',
+        account: '',
         password: '',
         remember: false,
     });
 
+    const allErrors = { ...errors, ...props.errors };
     const handleSubmit = (e) => {
         e.preventDefault();
-        post('/login');
+        post('/login', {
+            onSuccess: () => console.log('Login Berhasil'),
+            onError: (err) => console.log('Login Gagal:', err),
+        });
     };
 
     return (
@@ -21,6 +26,7 @@ const Login = () => {
                     <div className="col-md-10 col-lg-8">
                         <div className="card border-0 shadow-lg overflow-hidden" style={{ borderRadius: '20px' }}>
                             <div className="row g-0">
+
                                 {/* Sisi Kiri: Visual/Informasi */}
                                 <div className="col-md-6 bg-primary d-none d-md-flex align-items-center justify-content-center text-white p-5">
                                     <div className="text-center">
@@ -36,18 +42,35 @@ const Login = () => {
                                     <p className="text-muted mb-4">Silakan masuk ke akun Anda</p>
 
                                     <form onSubmit={handleSubmit} className="text-start">
+
+                                        {/* Alert dari Middleware (Akses Ilegal) */}
+                                        {allErrors.loginAkses && (
+                                            <div className="alert alert-danger py-2 small border-0 shadow-sm mb-3" role="alert">
+                                                <i className="bi bi-shield-lock-fill me-2"></i>
+                                                {allErrors.loginAkses}
+                                            </div>
+                                        )}
+
+                                        {/* Alert dari Controller (Kredensial Salah) */}
+                                        {allErrors.loginError && (
+                                            <div className="alert alert-warning py-2 small border-0 shadow-sm mb-3" role="alert">
+                                                <i className="bi bi-exclamation-circle-fill me-2"></i>
+                                                {allErrors.loginError}
+                                            </div>
+                                        )}
+
                                         <div className="mb-3">
-                                            <label className="form-label fw-semibold">Email / NIM</label>
+                                            <label className="form-label fw-semibold">Username atau (NIM / NIDN)</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-person text-muted"></i></span>
                                                 <input 
-                                                    type="email" 
-                                                    className={`form-control bg-light border-start-0 ${errors.email ? 'is-invalid' : ''}`}
-                                                    placeholder="nama@kampus.ac.id"
-                                                    value={data.email}
-                                                    onChange={e => setData('email', e.target.value)}
+                                                    type="text" 
+                                                    className={`form-control bg-light border-start-0 ${errors.account ? 'is-invalid' : ''}`}
+                                                    placeholder="Username, NIM atau NIDN"
+                                                    value={data.account}
+                                                    onChange={e => setData('account', e.target.value)}
                                                 />
-                                                {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                                                {errors.account && <div className="invalid-feedback">{errors.account}</div>}
                                             </div>
                                         </div>
 
@@ -58,7 +81,7 @@ const Login = () => {
                                                 <input 
                                                     type="password" 
                                                     className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
-                                                    placeholder="••••••••"
+                                                    placeholder="Masukan password anda"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
                                                 />
@@ -68,7 +91,13 @@ const Login = () => {
 
                                         <div className="d-flex justify-content-between mb-4">
                                             <div className="form-check">
-                                                <input className="form-check-input" type="checkbox" id="remember" />
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id="remember"
+                                                    checked={data.remember}
+                                                    onChange={e => setData('remember', e.target.checked)}
+                                                />
                                                 <label className="form-check-label small" htmlFor="remember">Ingat Saya</label>
                                             </div>
                                             <Link href="#" className="small text-decoration-none">Lupa Password?</Link>
@@ -79,7 +108,7 @@ const Login = () => {
                                             className="btn btn-primary w-100 py-2 fw-bold shadow-sm"
                                             disabled={processing}
                                         >
-                                            {processing ? 'Logging in...' : 'Masuk'}
+                                            {processing ? 'Login in progress...' : 'Login'}
                                         </button>
                                     </form>
 
