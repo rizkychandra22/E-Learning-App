@@ -1,8 +1,8 @@
-import React from 'react';
+import { React, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 const Register = () => {
-    // Menghapus password_confirmation dan menambahkan username
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         username: '', 
@@ -85,12 +85,19 @@ const Register = () => {
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-shield-lock text-muted"></i></span>
                                                 <input 
-                                                    type="password" 
+                                                    type={showPassword ? "text" : "password"} 
                                                     className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
                                                 />
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-secondary password-toggle"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                >
+                                                    <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"} />
+                                                </button>
                                             </div>
                                             {errors.password && <small className="text-danger">{errors.password}</small>}
                                         </div>

@@ -2,10 +2,12 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "concurrently \"php artisan serve\" \"npm run dev:vite\"",
+        "dev:vite": "vite",
         "build": "vite build"
     },
     "devDependencies": {
+        "concurrently": "^9.2.1",
         "@vitejs/plugin-react": "^5.1.4",
         "axios": "^1.6.4",
         "laravel-vite-plugin": "^1.0",

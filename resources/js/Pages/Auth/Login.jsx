@@ -1,7 +1,8 @@
-import React from 'react';
+import { React, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 const Login = () => {
+    const [showPassword, setShowPassword] = useState(false);
     const { props } = usePage(); 
     const { data, setData, post, processing, errors } = useForm({
         account: '',
@@ -79,12 +80,19 @@ const Login = () => {
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-lock text-muted"></i></span>
                                                 <input 
-                                                    type="password" 
-                                                    className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
+                                                    type={showPassword ? "text" : "password"}
+                                                    className={`form-control modern-input bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="Masukan password anda"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
                                                 />
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-secondary password-toggle"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                >
+                                                    <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"} />
+                                                </button>
                                                 {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                                             </div>
                                         </div>
@@ -100,7 +108,7 @@ const Login = () => {
                                                 />
                                                 <label className="form-check-label small" htmlFor="remember">Ingat Saya</label>
                                             </div>
-                                            <Link href="#" className="small text-decoration-none">Lupa Password?</Link>
+                                            {/* <Link href="" className="small text-decoration-none">Lupa Password?</Link> */}
                                         </div>
 
                                         <button 
