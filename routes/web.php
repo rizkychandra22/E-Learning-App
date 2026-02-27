@@ -11,7 +11,7 @@ Route::redirect('/', '/login');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [ViewFormController::class, 'login'])->name('login');
     Route::post('/login', [ViewFormController::class, 'authenticate'])->name('login.post');
-    Route::get('/register', [ViewFormController::class, 'register'])->name('register');
+    // Route::get('/register', [ViewFormController::class, 'register'])->name('register');
 });
 
 Route::get('/logout', [ViewFormController::class, 'logout'])->name('logout');

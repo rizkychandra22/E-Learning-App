@@ -22,10 +22,10 @@ class ViewFormController extends Controller
         return inertia('Auth/Login');
     }
 
-    public function register()
-    {
-        return inertia('Auth/Register');
-    }
+    // public function register()
+    // {
+    //     return inertia('Auth/Register');
+    // }
 
     public function authenticate(Request $request)
     {
