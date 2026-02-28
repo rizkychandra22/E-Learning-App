@@ -2,7 +2,7 @@ import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 const Login = () => {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, setError, clearErrors } = useForm({
         email: '',
         password: '',
         remember: false,
@@ -10,6 +10,24 @@ const Login = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        clearErrors();
+
+        let hasError = false;
+        if (!data.email.trim()) {
+            setError('email', 'Email / NIM wajib diisi.');
+            hasError = true;
+        }
+
+        if (!data.password) {
+            setError('password', 'Password wajib diisi.');
+            hasError = true;
+        }
+
+        if (hasError) {
+            return;
+        }
+
         post('/login');
     };
 
@@ -21,7 +39,6 @@ const Login = () => {
                     <div className="col-md-10 col-lg-8">
                         <div className="card border-0 shadow-lg overflow-hidden" style={{ borderRadius: '20px' }}>
                             <div className="row g-0">
-                                {/* Sisi Kiri: Visual/Informasi */}
                                 <div className="col-md-6 bg-primary d-none d-md-flex align-items-center justify-content-center text-white p-5">
                                     <div className="text-center">
                                         <i className="bi bi-mortarboard-fill" style={{ fontSize: '5rem' }}></i>
@@ -30,7 +47,6 @@ const Login = () => {
                                     </div>
                                 </div>
 
-                                {/* Sisi Kanan: Form */}
                                 <div className="col-md-6 bg-white p-4 p-lg-5">
                                     <h3 className="fw-bold text-dark mb-2">Selamat Datang</h3>
                                     <p className="text-muted mb-4">Silakan masuk ke akun Anda</p>
@@ -40,8 +56,8 @@ const Login = () => {
                                             <label className="form-label fw-semibold">Email / NIM</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-person text-muted"></i></span>
-                                                <input 
-                                                    type="email" 
+                                                <input
+                                                    type="text"
                                                     className={`form-control bg-light border-start-0 ${errors.email ? 'is-invalid' : ''}`}
                                                     placeholder="nama@kampus.ac.id"
                                                     value={data.email}
@@ -55,8 +71,8 @@ const Login = () => {
                                             <label className="form-label fw-semibold">Password</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-lock text-muted"></i></span>
-                                                <input 
-                                                    type="password" 
+                                                <input
+                                                    type="password"
                                                     className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
@@ -68,14 +84,20 @@ const Login = () => {
 
                                         <div className="d-flex justify-content-between mb-4">
                                             <div className="form-check">
-                                                <input className="form-check-input" type="checkbox" id="remember" />
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id="remember"
+                                                    checked={data.remember}
+                                                    onChange={e => setData('remember', e.target.checked)}
+                                                />
                                                 <label className="form-check-label small" htmlFor="remember">Ingat Saya</label>
                                             </div>
                                             <Link href="#" className="small text-decoration-none">Lupa Password?</Link>
                                         </div>
 
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             className="btn btn-primary w-100 py-2 fw-bold shadow-sm"
                                             disabled={processing}
                                         >
@@ -83,9 +105,6 @@ const Login = () => {
                                         </button>
                                     </form>
 
-                                    <div className="text-center mt-4 text-muted small">
-                                        Belum punya akun? <Link href="/register" className="fw-bold text-primary text-decoration-none">Daftar Akun</Link>
-                                    </div>
                                 </div>
                             </div>
                         </div>
