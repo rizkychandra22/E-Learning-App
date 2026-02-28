@@ -1,11 +1,10 @@
-import { React, useState } from 'react';
+import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 const Register = () => {
-    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors } = useForm({
         name: '',
-        username: '', 
+        username: '',
         email: '',
         password: '',
         role: 'student',
@@ -24,20 +23,17 @@ const Register = () => {
                     <div className="col-md-10 col-lg-9">
                         <div className="card border-0 shadow-lg overflow-hidden" style={{ borderRadius: '20px' }}>
                             <div className="row g-0">
-                                
-                                {/* SISI KIRI: FORM DAFTAR */}
                                 <div className="col-md-6 bg-white p-4 p-lg-5">
                                     <h3 className="fw-bold text-dark mb-2 text-start">Mulai Belajar</h3>
                                     <p className="text-muted mb-4 text-start">Lengkapi data diri untuk membuat akun baru.</p>
 
                                     <form onSubmit={handleSubmit} className="text-start">
-                                        {/* Nama Lengkap */}
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">Nama Lengkap</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-person-badge text-muted"></i></span>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     className={`form-control bg-light border-start-0 ${errors.name ? 'is-invalid' : ''}`}
                                                     placeholder="Nama sesuai identitas"
                                                     value={data.name}
@@ -47,13 +43,12 @@ const Register = () => {
                                             {errors.name && <small className="text-danger">{errors.name}</small>}
                                         </div>
 
-                                        {/* Username */}
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">Username</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-at text-muted"></i></span>
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     className={`form-control bg-light border-start-0 ${errors.username ? 'is-invalid' : ''}`}
                                                     placeholder="username_anda"
                                                     value={data.username}
@@ -63,15 +58,14 @@ const Register = () => {
                                             {errors.username && <small className="text-danger">{errors.username}</small>}
                                         </div>
 
-                                        {/* Email */}
                                         <div className="mb-3">
-                                            <label className="form-label fw-semibold">Email</label>
+                                            <label className="form-label fw-semibold">Email Institusi</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-envelope text-muted"></i></span>
-                                                <input 
-                                                    type="email" 
+                                                <input
+                                                    type="email"
                                                     className={`form-control bg-light border-start-0 ${errors.email ? 'is-invalid' : ''}`}
-                                                    placeholder="nama@gmail.com"
+                                                    placeholder="nama@kampus.ac.id"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
                                                 />
@@ -79,31 +73,23 @@ const Register = () => {
                                             {errors.email && <small className="text-danger">{errors.email}</small>}
                                         </div>
 
-                                        {/* Password */}
                                         <div className="mb-4">
                                             <label className="form-label fw-semibold">Password</label>
                                             <div className="input-group">
                                                 <span className="input-group-text bg-light border-end-0"><i className="bi bi-shield-lock text-muted"></i></span>
-                                                <input 
-                                                    type={showPassword ? "text" : "password"} 
+                                                <input
+                                                    type="password"
                                                     className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
                                                 />
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-secondary password-toggle"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                >
-                                                    <i className={showPassword ? "bi bi-eye-slash" : "bi bi-eye"} />
-                                                </button>
                                             </div>
                                             {errors.password && <small className="text-danger">{errors.password}</small>}
                                         </div>
 
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             className="btn btn-success w-100 py-2 fw-bold shadow-sm mt-2"
                                             disabled={processing}
                                         >
@@ -116,7 +102,6 @@ const Register = () => {
                                     </div>
                                 </div>
 
-                                {/* SISI KANAN: VISUAL */}
                                 <div className="col-md-6 bg-success d-none d-md-flex align-items-center justify-content-center text-white p-5 text-center">
                                     <div>
                                         <i className="bi bi-journal-check" style={{ fontSize: '5rem' }}></i>

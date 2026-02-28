@@ -35,28 +35,30 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
-            
-
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'username' => $request->user()->username,
-                    'code' => $request->user()->code,
-                    'email' => $request->user()->email,
-                    'role' => $request->user()->role,
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'username' => $user->username,
+                    'role' => $user->role,
+                    'dashboard_role' => $this->mapDashboardRole($user->role),
                 ] : null,
             ],
-
-            'flash' => [
-                'message' => fn () => $request->session()->get('message'),
-                'error' => fn () => $request->session()->get('error'),
-                'success' => fn () => $request->session()->get('success'),
-                'warning' => fn () => $request->session()->get('warning'),
-                'info' => fn () => $request->session()->get('info'),
-            ]
         ];
+    }
+
+    private function mapDashboardRole(string $backendRole): string
+    {
+        return match ($backendRole) {
+            'root' => 'super_admin',
+            'teacher' => 'dosen',
+            'student' => 'mahasiswa',
+            default => 'admin',
+        };
     }
 }
