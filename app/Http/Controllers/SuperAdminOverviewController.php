@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -169,6 +170,12 @@ class SuperAdminOverviewController extends Controller
 
     public function updateSettings(Request $request): RedirectResponse
     {
+        if (!Schema::hasTable('system_settings')) {
+            return back()->withErrors([
+                'settings' => 'Tabel system_settings belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ]);
+        }
+
         $validated = $request->validate([
             'platform_name' => ['required', 'string', 'max:120'],
             'support_email' => ['required', 'email', 'max:120'],
@@ -203,9 +210,11 @@ class SuperAdminOverviewController extends Controller
             'max_upload_mb' => 20,
         ];
 
-        $stored = SystemSetting::query()
-            ->whereIn('key', array_keys($defaults))
-            ->pluck('value', 'key');
+        if (!Schema::hasTable('system_settings')) {
+            return $defaults;
+        }
+
+        $stored = SystemSetting::query()->pluck('value', 'key');
 
         return [
             'platform_name' => (string) ($stored['platform_name'] ?? $defaults['platform_name']),
