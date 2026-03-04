@@ -1,9 +1,8 @@
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, LogOut, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight
+    BarChart3, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
-import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/cn';
@@ -53,53 +52,80 @@ const roleLabels = {
     mahasiswa: 'Mahasiswa',
 };
 
-export function AppSidebar() {
+export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
     const { user, logout } = useAuth();
     const page = usePage();
-    const [collapsed, setCollapsed] = useState(false);
 
     if (!user) return null;
 
     const navItems = navByRole[user.role] || [];
     const currentPath = page.url.split('?')[0];
+    const showLabel = !collapsed;
 
     return (
-        <aside className={cn('flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 min-h-screen', collapsed ? 'w-16' : 'w-64')}>
-            <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
-                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-                    <GraduationCap className="w-5 h-5 text-primary-foreground" />
-                </div>
-                {!collapsed && <span className="font-bold text-lg text-sidebar-primary-foreground tracking-tight">Smart Learning</span>}
-            </div>
+        <>
+            {mobileOpen && <button type="button" onClick={onCloseMobile} className="fixed inset-0 bg-black/40 z-30 lg:hidden" aria-label="Close sidebar overlay" />}
 
-            <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-                {navItems.map((item) => {
-                    const isActive = currentPath === item.url;
-                    return (
-                        <Link key={item.url} href={item.url} className={cn('flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200', isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground')}>
-                            <item.icon className="w-5 h-5 flex-shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            <div className="border-t border-sidebar-border p-3 space-y-2">
-                {!collapsed && (
-                    <div className="px-2 mb-2">
-                        <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user.name}</p>
-                        <p className="text-xs text-sidebar-muted truncate">{roleLabels[user.role]}</p>
-                    </div>
+            <aside
+                className={cn(
+                    'flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 min-h-screen lg:static lg:translate-x-0 lg:z-auto',
+                    collapsed ? 'lg:w-16' : 'lg:w-64',
+                    'fixed inset-y-0 left-0 z-40 w-72',
+                    mobileOpen ? 'translate-x-0' : '-translate-x-full'
                 )}
-                <button onClick={logout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full">
-                    <LogOut className="w-5 h-5 flex-shrink-0" />
-                    {!collapsed && <span>Keluar</span>}
-                </button>
-            </div>
+            >
+                <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
+                    <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-5 h-5 text-primary-foreground" />
+                    </div>
+                    {showLabel && <span className="font-bold text-lg text-sidebar-primary-foreground tracking-tight">Smart Learning</span>}
+                    <button type="button" onClick={onCloseMobile} className="ml-auto p-1.5 rounded-md hover:bg-sidebar-accent lg:hidden" aria-label="Close sidebar">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
 
-            <button onClick={() => setCollapsed(!collapsed)} className="flex items-center justify-center h-10 border-t border-sidebar-border text-sidebar-muted hover:text-sidebar-foreground transition-colors">
-                {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-            </button>
-        </aside>
+                <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+                    {navItems.map((item) => {
+                        const isActive = currentPath === item.url;
+                        return (
+                            <Link
+                                key={item.url}
+                                href={item.url}
+                                onClick={onCloseMobile}
+                                className={cn(
+                                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                                    isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                )}
+                            >
+                                <item.icon className="w-5 h-5 flex-shrink-0" />
+                                {showLabel && <span>{item.title}</span>}
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                <div className="border-t border-sidebar-border p-3 space-y-2">
+                    {showLabel && (
+                        <div className="px-2 mb-2">
+                            <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user.name}</p>
+                            <p className="text-xs text-sidebar-muted truncate">{roleLabels[user.role]}</p>
+                        </div>
+                    )}
+                    <button onClick={logout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full">
+                        <LogOut className="w-5 h-5 flex-shrink-0" />
+                        {showLabel && <span>Keluar</span>}
+                    </button>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    className="hidden lg:flex items-center justify-center h-10 border-t border-sidebar-border text-sidebar-muted hover:text-sidebar-foreground transition-colors"
+                    aria-label="Toggle sidebar width"
+                >
+                    {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                </button>
+            </aside>
+        </>
     );
 }
