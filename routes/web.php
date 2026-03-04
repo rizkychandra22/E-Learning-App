@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SuperAdminOverviewController;
+use App\Http\Controllers\SuperAdminUserManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -22,6 +24,38 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
+    });
+
+    Route::middleware('role:root')->group(function () {
+        Route::get('/manage-admins', [SuperAdminUserManagementController::class, 'index'])->defaults('target', 'admins');
+        Route::post('/manage-admins', [SuperAdminUserManagementController::class, 'store'])->defaults('target', 'admins');
+        Route::put('/manage-admins/{user}', [SuperAdminUserManagementController::class, 'update'])->defaults('target', 'admins');
+        Route::delete('/manage-admins/{user}', [SuperAdminUserManagementController::class, 'destroy'])->defaults('target', 'admins');
+
+        Route::get('/manage-lecturers', [SuperAdminUserManagementController::class, 'index'])->defaults('target', 'lecturers');
+        Route::post('/manage-lecturers', [SuperAdminUserManagementController::class, 'store'])->defaults('target', 'lecturers');
+        Route::put('/manage-lecturers/{user}', [SuperAdminUserManagementController::class, 'update'])->defaults('target', 'lecturers');
+        Route::delete('/manage-lecturers/{user}', [SuperAdminUserManagementController::class, 'destroy'])->defaults('target', 'lecturers');
+
+        Route::get('/manage-students', [SuperAdminUserManagementController::class, 'index'])->defaults('target', 'students');
+        Route::post('/manage-students', [SuperAdminUserManagementController::class, 'store'])->defaults('target', 'students');
+        Route::put('/manage-students/{user}', [SuperAdminUserManagementController::class, 'update'])->defaults('target', 'students');
+        Route::delete('/manage-students/{user}', [SuperAdminUserManagementController::class, 'destroy'])->defaults('target', 'students');
+
+        Route::get('/statistics', [SuperAdminOverviewController::class, 'statistics']);
+        Route::get('/activity-logs', [SuperAdminOverviewController::class, 'activityLogs']);
+        Route::put('/settings', [SuperAdminOverviewController::class, 'updateSettings']);
+    });
+
+    Route::get('/settings', function () {
+        if (auth()->user()?->role === 'root') {
+            return app(SuperAdminOverviewController::class)->settings();
+        }
+
+        return Inertia::render('Placeholder', [
+            'title' => 'Pengaturan',
+            'description' => 'Halaman pengaturan untuk role ini sedang dalam pengembangan.',
+        ]);
     });
 
     Route::get('/my-courses', function () {
