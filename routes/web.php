@@ -73,15 +73,9 @@ Route::middleware('auth')->group(function () {
         '/grades' => ['title' => 'Nilai', 'description' => 'Lihat rekap nilai dan progress akademik'],
         '/discussions' => ['title' => 'Diskusi', 'description' => 'Forum diskusi antar mahasiswa dan dosen'],
         '/students' => ['title' => 'Mahasiswa', 'description' => 'Daftar mahasiswa yang terdaftar'],
-        '/manage-admins' => ['title' => 'Kelola Admin'],
-        '/manage-lecturers' => ['title' => 'Kelola Dosen'],
-        '/manage-students' => ['title' => 'Kelola Mahasiswa'],
         '/manage-users' => ['title' => 'Kelola User'],
         '/approvals' => ['title' => 'Persetujuan Akun'],
         '/categories' => ['title' => 'Kategori'],
-        '/statistics' => ['title' => 'Statistik Global'],
-        '/activity-logs' => ['title' => 'Log Aktivitas'],
-        '/settings' => ['title' => 'Pengaturan'],
     ];
 
     foreach ($placeholderRoutes as $uri => $props) {
