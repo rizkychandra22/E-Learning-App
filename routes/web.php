@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SuperAdminOverviewController;
 use App\Http\Controllers\SuperAdminUserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -22,9 +23,7 @@ Route::any('/register', function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    });
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     Route::middleware('role:root')->group(function () {
         Route::get('/manage-admins', [SuperAdminUserManagementController::class, 'index'])->defaults('target', 'admins');
