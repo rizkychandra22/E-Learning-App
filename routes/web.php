@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminAcademicController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SuperAdminOverviewController;
 use App\Http\Controllers\SuperAdminUserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -22,9 +24,7 @@ Route::any('/register', function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    });
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     Route::middleware('role:root')->group(function () {
         Route::get('/manage-admins', [SuperAdminUserManagementController::class, 'index'])->defaults('target', 'admins');
@@ -47,9 +47,39 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings', [SuperAdminOverviewController::class, 'updateSettings']);
     });
 
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/manage-users', [AdminAcademicController::class, 'manageUsers']);
+        Route::post('/manage-users', [AdminAcademicController::class, 'storeUser']);
+        Route::put('/manage-users/{user}', [AdminAcademicController::class, 'updateUser']);
+        Route::delete('/manage-users/{user}', [AdminAcademicController::class, 'destroyUser']);
+
+        Route::get('/manage-courses', [AdminAcademicController::class, 'manageCourses']);
+        Route::post('/manage-courses', [AdminAcademicController::class, 'storeCourse']);
+        Route::put('/manage-courses/{course}', [AdminAcademicController::class, 'updateCourse']);
+        Route::delete('/manage-courses/{course}', [AdminAcademicController::class, 'destroyCourse']);
+
+        Route::get('/approvals', [AdminAcademicController::class, 'approvals']);
+        Route::put('/approvals/{user}/approve', [AdminAcademicController::class, 'approve']);
+        Route::delete('/approvals/{user}/reject', [AdminAcademicController::class, 'reject']);
+
+        Route::get('/categories', [AdminAcademicController::class, 'categories']);
+        Route::post('/categories/fakultas', [AdminAcademicController::class, 'storeFakultas']);
+        Route::put('/categories/fakultas/{fakultas}', [AdminAcademicController::class, 'updateFakultas']);
+        Route::delete('/categories/fakultas/{fakultas}', [AdminAcademicController::class, 'destroyFakultas']);
+        Route::post('/categories/jurusan', [AdminAcademicController::class, 'storeJurusan']);
+        Route::put('/categories/jurusan/{jurusan}', [AdminAcademicController::class, 'updateJurusan']);
+        Route::delete('/categories/jurusan/{jurusan}', [AdminAcademicController::class, 'destroyJurusan']);
+
+        Route::put('/settings/admin-academic', [AdminAcademicController::class, 'updateSettings']);
+    });
+
     Route::get('/settings', function () {
         if (auth()->user()?->role === 'root') {
             return app(SuperAdminOverviewController::class)->settings();
+        }
+
+        if (auth()->user()?->role === 'admin') {
+            return app(AdminAcademicController::class)->settings();
         }
 
         return Inertia::render('Placeholder', [
@@ -62,10 +92,6 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Courses');
     });
 
-    Route::get('/manage-courses', function () {
-        return Inertia::render('Courses');
-    });
-
     $placeholderRoutes = [
         '/materials' => ['title' => 'Materi', 'description' => 'Kelola dan akses materi pembelajaran'],
         '/assignments' => ['title' => 'Tugas', 'description' => 'Lihat dan kerjakan tugas yang tersedia'],
@@ -73,9 +99,6 @@ Route::middleware('auth')->group(function () {
         '/grades' => ['title' => 'Nilai', 'description' => 'Lihat rekap nilai dan progress akademik'],
         '/discussions' => ['title' => 'Diskusi', 'description' => 'Forum diskusi antar mahasiswa dan dosen'],
         '/students' => ['title' => 'Mahasiswa', 'description' => 'Daftar mahasiswa yang terdaftar'],
-        '/manage-users' => ['title' => 'Kelola User'],
-        '/approvals' => ['title' => 'Persetujuan Akun'],
-        '/categories' => ['title' => 'Kategori'],
     ];
 
     foreach ($placeholderRoutes as $uri => $props) {
