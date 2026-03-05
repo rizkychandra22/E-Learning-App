@@ -99,9 +99,11 @@ export default function Dashboard() {
     const { props } = usePage();
     if (!user) return null;
     const superAdmin = props.superAdmin;
+    const adminAcademic = props.adminAcademic;
     const roleStats = superAdmin?.role_stats ?? {};
     const monthlyUsers = superAdmin?.monthly_users ?? [];
     const maxMonthly = Math.max(...monthlyUsers.map((item) => item.total), 1);
+    const adminRoleStats = adminAcademic?.role_stats ?? {};
 
     const roleGreeting = {
         super_admin: 'Selamat datang, Super Admin',
@@ -118,7 +120,7 @@ export default function Dashboard() {
                     <h1 className="text-2xl font-bold tracking-tight">{roleGreeting[user.role]}</h1>
                     <p className="text-muted-foreground mt-1">
                         {user.role === 'super_admin' && 'Pantau seluruh aktivitas lintas role dalam sistem E-Learning'}
-                        {user.role === 'admin' && 'Kelola pengguna dan kursus dengan mudah'}
+                        {user.role === 'admin' && 'Pantau operasional akademik, approval akun, dan kategori pembelajaran'}
                         {user.role === 'dosen' && 'Kelola kursus dan pantau progress mahasiswa'}
                         {user.role === 'mahasiswa' && 'Lihat kursus dan progress belajar kamu'}
                     </p>
@@ -148,13 +150,28 @@ export default function Dashboard() {
                         </div>
                     </>
                 )}
-                {user.role === 'admin' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><StatCard title="Total User" value="1,294" change="+127 bulan ini" changeType="up" icon={Users} gradient="primary" delay={0} /><StatCard title="Kursus Aktif" value={52} change="+3 minggu ini" changeType="up" icon={BookOpen} gradient="accent" delay={80} /><StatCard title="Menunggu Persetujuan" value={8} icon={Clock} gradient="warm" delay={160} /><StatCard title="Kategori" value={15} icon={FileText} gradient="success" delay={240} /></div>}
+                {user.role === 'admin' && (
+                    <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <StatCard title="Total User Akademik" value={adminAcademic?.summary?.total_users ?? 0} change={`+${adminAcademic?.summary?.new_users_month ?? 0} bulan ini`} changeType="up" icon={Users} gradient="primary" delay={0} />
+                            <StatCard title="Menunggu Persetujuan" value={adminAcademic?.summary?.pending_approvals ?? 0} icon={Clock} gradient="warm" delay={80} />
+                            <StatCard title="Total Kursus" value={adminAcademic?.summary?.courses_count ?? 0} icon={BookOpen} gradient="accent" delay={160} />
+                            <StatCard title="Kursus Aktif" value={adminAcademic?.summary?.active_courses_count ?? 0} icon={FileText} gradient="success" delay={240} />
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <MiniRoleCard title="Admin" value={adminRoleStats.admin ?? 0} />
+                            <MiniRoleCard title="Finance" value={adminRoleStats.finance ?? 0} />
+                            <MiniRoleCard title="Dosen" value={adminRoleStats.teacher ?? 0} />
+                            <MiniRoleCard title="Mahasiswa" value={adminRoleStats.student ?? 0} />
+                        </div>
+                    </>
+                )}
                 {user.role === 'dosen' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><StatCard title="Kursus Saya" value={6} icon={BookOpen} gradient="primary" delay={0} /><StatCard title="Total Mahasiswa" value={182} change="+12 minggu ini" changeType="up" icon={Users} gradient="accent" delay={80} /><StatCard title="Tugas Belum Dinilai" value={23} icon={ClipboardList} gradient="warm" delay={160} /><StatCard title="Kuis Aktif" value={4} icon={Award} gradient="success" delay={240} /></div>}
                 {user.role === 'mahasiswa' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><StatCard title="Kursus Diikuti" value={5} icon={BookOpen} gradient="primary" delay={0} /><StatCard title="Tugas Pending" value={3} icon={ClipboardList} gradient="warm" delay={80} /><StatCard title="Kuis Mendatang" value={2} icon={Award} gradient="accent" delay={160} /><StatCard title="Rata-rata Nilai" value="85.4" change="+2.1 dari semester lalu" changeType="up" icon={TrendingUp} gradient="success" delay={240} /></div>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        <RecentActivity activities={user.role === 'super_admin' ? superAdmin?.recent_activities ?? [] : []} />
+                        <RecentActivity activities={user.role === 'super_admin' ? superAdmin?.recent_activities ?? [] : user.role === 'admin' ? adminAcademic?.recent_activities ?? [] : []} />
                         {user.role === 'super_admin' && (
                             <div className="bg-card rounded-xl border border-border p-5 shadow-card animate-fade-in">
                                 <h3 className="font-semibold mb-4">Pertumbuhan Akun 6 Bulan</h3>
@@ -178,5 +195,14 @@ export default function Dashboard() {
                 </div>
             </div>
         </ProtectedLayout>
+    );
+}
+
+function MiniRoleCard({ title, value }) {
+    return (
+        <div className="bg-card border border-border rounded-xl p-4 shadow-card">
+            <p className="text-xs uppercase text-muted-foreground font-semibold">{title}</p>
+            <p className="text-2xl font-bold mt-1">{value}</p>
+        </div>
     );
 }

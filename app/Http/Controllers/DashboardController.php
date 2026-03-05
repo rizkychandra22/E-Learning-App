@@ -16,6 +16,7 @@ class DashboardController extends Controller
     {
         $authUser = auth()->user();
         $superAdminData = null;
+        $adminAcademicData = null;
 
         if ($authUser?->role === 'root') {
             $monthlyUsers = collect(range(0, 5))
@@ -102,8 +103,13 @@ class DashboardController extends Controller
             ];
         }
 
+        if ($authUser?->role === 'admin') {
+            $adminAcademicData = app(AdminAcademicController::class)->dashboardData();
+        }
+
         return Inertia::render('Dashboard', [
             'superAdmin' => $superAdminData,
+            'adminAcademic' => $adminAcademicData,
         ]);
     }
 }
