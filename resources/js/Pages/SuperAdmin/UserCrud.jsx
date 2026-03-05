@@ -114,7 +114,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                     />
                                 </div>
                                 <button type="submit" className="px-3 py-2 text-sm rounded-lg gradient-primary text-primary-foreground">Cari</button>
-                                <button type="button" onClick={resetSearch} className="px-3 py-2 text-sm rounded-lg bg-secondary text-secondary-foreground">Reset</button>
+                                <button type="button" onClick={resetSearch} className="px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground hover:bg-secondary/60 transition-colors">Reset</button>
                             </form>
                         </div>
 

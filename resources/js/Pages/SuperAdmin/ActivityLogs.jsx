@@ -75,7 +75,7 @@ export default function ActivityLogs({ logs, filters }) {
                             </select>
                         </div>
                         <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                        <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium">Reset</button>
+                        <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
                     </form>
                 </div>
 
