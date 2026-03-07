@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminAcademicController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\SuperAdminOverviewController;
 use App\Http\Controllers\SuperAdminUserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -73,6 +74,21 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/admin-academic', [AdminAcademicController::class, 'updateSettings']);
     });
 
+    Route::middleware('role:finance')->group(function () {
+        Route::get('/finance-invoices', [FinanceController::class, 'invoices']);
+        Route::post('/finance-invoices', [FinanceController::class, 'storeInvoice']);
+        Route::put('/finance-invoices/{invoice}', [FinanceController::class, 'updateInvoice']);
+        Route::delete('/finance-invoices/{invoice}', [FinanceController::class, 'destroyInvoice']);
+
+        Route::get('/finance-payments', [FinanceController::class, 'payments']);
+        Route::post('/finance-payments', [FinanceController::class, 'storePayment']);
+        Route::put('/finance-payments/{payment}/verify', [FinanceController::class, 'verifyPayment']);
+        Route::put('/finance-payments/{payment}/reject', [FinanceController::class, 'rejectPayment']);
+
+        Route::get('/finance-reports', [FinanceController::class, 'reports']);
+        Route::put('/settings/finance', [FinanceController::class, 'updateSettings']);
+    });
+
     Route::get('/settings', function () {
         if (auth()->user()?->role === 'root') {
             return app(SuperAdminOverviewController::class)->settings();
@@ -80,6 +96,10 @@ Route::middleware('auth')->group(function () {
 
         if (auth()->user()?->role === 'admin') {
             return app(AdminAcademicController::class)->settings();
+        }
+
+        if (auth()->user()?->role === 'finance') {
+            return app(FinanceController::class)->settings();
         }
 
         return Inertia::render('Placeholder', [

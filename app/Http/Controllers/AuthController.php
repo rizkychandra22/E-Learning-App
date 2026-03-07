@@ -2,51 +2,47 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Services\AuthService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly AuthService $authService
+    ) {
+    }
+
     public function showLogin(): Response
     {
         return Inertia::render('Auth/Login');
     }
 
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'string'],
-            'password' => ['required', 'string'],
-            'remember' => ['nullable', 'boolean'],
-        ]);
+        $credentials = $request->validated();
+        $authenticated = $this->authService->login(
+            $credentials['email'],
+            $credentials['password'],
+            (bool) ($credentials['remember'] ?? false)
+        );
 
-        $identity = trim($credentials['email']);
-        $user = User::query()
-            ->where('email', $identity)
-            ->orWhere('username', $identity)
-            ->orWhere('code', $identity)
-            ->first();
-
-        if (!$user || !Auth::attempt(['email' => $user->email, 'password' => $credentials['password']], (bool) ($credentials['remember'] ?? false))) {
+        if (!$authenticated) {
             return back()->withErrors([
                 'email' => 'Kredensial tidak valid.',
             ])->onlyInput('email');
         }
 
-        $request->session()->regenerate();
-        $request->session()->forget('url.intended');
+        $this->authService->finalizeLoginSession($request);
 
         return redirect('/dashboard');
     }
 
     public function logout(Request $request)
     {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $this->authService->logout($request);
 
         return Inertia::location('/login');
     }

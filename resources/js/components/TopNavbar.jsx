@@ -22,6 +22,13 @@ const navByRole = {
         { title: 'Kategori', url: '/categories' },
         { title: 'Pengaturan', url: '/settings' },
     ],
+    finance: [
+        { title: 'Dashboard', url: '/dashboard' },
+        { title: 'Tagihan', url: '/finance-invoices' },
+        { title: 'Pembayaran', url: '/finance-payments' },
+        { title: 'Laporan', url: '/finance-reports' },
+        { title: 'Pengaturan', url: '/settings' },
+    ],
     dosen: [
         { title: 'Dashboard', url: '/dashboard' },
         { title: 'Kursus Saya', url: '/my-courses' },

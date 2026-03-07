@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, LogOut, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight, X
+    BarChart3, ChevronLeft, ChevronRight, X, Wallet
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,13 @@ const navByRole = {
         { title: 'Kelola Kursus', url: '/manage-courses', icon: BookOpen },
         { title: 'Persetujuan Akun', url: '/approvals', icon: UserCheck },
         { title: 'Kategori', url: '/categories', icon: FolderOpen },
+        { title: 'Pengaturan', url: '/settings', icon: Settings },
+    ],
+    finance: [
+        { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+        { title: 'Tagihan', url: '/finance-invoices', icon: FileText },
+        { title: 'Pembayaran', url: '/finance-payments', icon: Wallet },
+        { title: 'Laporan', url: '/finance-reports', icon: BarChart3 },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
     dosen: [
@@ -48,6 +55,7 @@ const navByRole = {
 const roleLabels = {
     super_admin: 'Super Admin',
     admin: 'Admin',
+    finance: 'Finance',
     dosen: 'Dosen',
     mahasiswa: 'Mahasiswa',
 };
