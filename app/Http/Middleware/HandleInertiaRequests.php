@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
     {
         return match ($backendRole) {
             'root' => 'super_admin',
+            'finance' => 'finance',
             'teacher' => 'dosen',
             'student' => 'mahasiswa',
             default => 'admin',
