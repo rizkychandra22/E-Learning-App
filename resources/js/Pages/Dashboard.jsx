@@ -100,6 +100,7 @@ export default function Dashboard() {
     if (!user) return null;
     const superAdmin = props.superAdmin;
     const adminAcademic = props.adminAcademic;
+    const financeData = props.financeData;
     const roleStats = superAdmin?.role_stats ?? {};
     const monthlyUsers = superAdmin?.monthly_users ?? [];
     const maxMonthly = Math.max(...monthlyUsers.map((item) => item.total), 1);
@@ -108,6 +109,7 @@ export default function Dashboard() {
     const roleGreeting = {
         super_admin: 'Selamat datang, Super Admin',
         admin: 'Selamat datang, Admin',
+        finance: 'Selamat datang, Finance',
         dosen: 'Selamat datang, Dosen',
         mahasiswa: 'Selamat datang',
     };
@@ -121,6 +123,7 @@ export default function Dashboard() {
                     <p className="text-muted-foreground mt-1">
                         {user.role === 'super_admin' && 'Pantau seluruh aktivitas lintas role dalam sistem E-Learning'}
                         {user.role === 'admin' && 'Pantau operasional akademik, approval akun, dan kategori pembelajaran'}
+                        {user.role === 'finance' && 'Kelola tagihan, verifikasi pembayaran, dan pantau cashflow'}
                         {user.role === 'dosen' && 'Kelola kursus dan pantau progress mahasiswa'}
                         {user.role === 'mahasiswa' && 'Lihat kursus dan progress belajar kamu'}
                     </p>
@@ -166,12 +169,20 @@ export default function Dashboard() {
                         </div>
                     </>
                 )}
+                {user.role === 'finance' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatCard title="Total Tagihan" value={financeData?.summary?.total_invoices ?? 0} icon={FileText} gradient="primary" delay={0} />
+                        <StatCard title="Pembayaran Pending" value={financeData?.summary?.pending_payments ?? 0} icon={Clock} gradient="warm" delay={80} />
+                        <StatCard title="Pembayaran Terverifikasi" value={financeData?.summary?.verified_payments ?? 0} icon={Shield} gradient="accent" delay={160} />
+                        <StatCard title="Pendapatan Bulan Ini" value={new Intl.NumberFormat('id-ID').format(financeData?.summary?.income_month ?? 0)} icon={TrendingUp} gradient="success" delay={240} />
+                    </div>
+                )}
                 {user.role === 'dosen' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><StatCard title="Kursus Saya" value={6} icon={BookOpen} gradient="primary" delay={0} /><StatCard title="Total Mahasiswa" value={182} change="+12 minggu ini" changeType="up" icon={Users} gradient="accent" delay={80} /><StatCard title="Tugas Belum Dinilai" value={23} icon={ClipboardList} gradient="warm" delay={160} /><StatCard title="Kuis Aktif" value={4} icon={Award} gradient="success" delay={240} /></div>}
                 {user.role === 'mahasiswa' && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><StatCard title="Kursus Diikuti" value={5} icon={BookOpen} gradient="primary" delay={0} /><StatCard title="Tugas Pending" value={3} icon={ClipboardList} gradient="warm" delay={80} /><StatCard title="Kuis Mendatang" value={2} icon={Award} gradient="accent" delay={160} /><StatCard title="Rata-rata Nilai" value="85.4" change="+2.1 dari semester lalu" changeType="up" icon={TrendingUp} gradient="success" delay={240} /></div>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        <RecentActivity activities={user.role === 'super_admin' ? superAdmin?.recent_activities ?? [] : user.role === 'admin' ? adminAcademic?.recent_activities ?? [] : []} />
+                        <RecentActivity activities={user.role === 'super_admin' ? superAdmin?.recent_activities ?? [] : user.role === 'admin' ? adminAcademic?.recent_activities ?? [] : user.role === 'finance' ? financeData?.recent_activities ?? [] : []} />
                         {user.role === 'super_admin' && (
                             <div className="bg-card rounded-xl border border-border p-5 shadow-card animate-fade-in">
                                 <h3 className="font-semibold mb-4">Pertumbuhan Akun 6 Bulan</h3>
@@ -184,6 +195,24 @@ export default function Dashboard() {
                                             </div>
                                             <div className="h-2 rounded-full bg-secondary overflow-hidden">
                                                 <div className="h-full rounded-full gradient-accent" style={{ width: `${Math.max((item.total / maxMonthly) * 100, item.total > 0 ? 8 : 0)}%` }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {user.role === 'finance' && (
+                            <div className="bg-card rounded-xl border border-border p-5 shadow-card animate-fade-in">
+                                <h3 className="font-semibold mb-4">Cashflow 6 Bulan</h3>
+                                <div className="space-y-3">
+                                    {(financeData?.monthly_income ?? []).map((item) => (
+                                        <div key={item.month}>
+                                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                                <span>{item.month}</span>
+                                                <span className="font-medium text-foreground">{new Intl.NumberFormat('id-ID').format(item.total ?? 0)}</span>
+                                            </div>
+                                            <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                                                <div className="h-full rounded-full gradient-success" style={{ width: `${Math.max((item.total / Math.max(...(financeData?.monthly_income ?? []).map((month) => month.total), 1)) * 100, item.total > 0 ? 8 : 0)}%` }} />
                                             </div>
                                         </div>
                                     ))}
