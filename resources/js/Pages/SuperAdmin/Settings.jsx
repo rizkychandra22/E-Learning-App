@@ -22,7 +22,7 @@ export default function Settings({ settings }) {
     return (
         <ProtectedLayout>
             <Head title="Pengaturan" />
-            <div className="space-y-6 max-w-5xl">
+            <div className="space-y-6 w-full max-w-none">
                 <div className="animate-fade-in">
                     <h1 className="text-2xl font-bold tracking-tight">Pengaturan Sistem</h1>
                     <p className="text-muted-foreground mt-1">Konfigurasi utama platform e-learning untuk role Super Admin</p>
@@ -77,7 +77,7 @@ export default function Settings({ settings }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <SwitchCard
                             title="Maintenance Mode"
-                            description="Batasi akses pengguna non-admin saat maintenance aktif."
+                            description="Batasi akses semua pengguna non-Super Admin saat maintenance aktif."
                             checked={form.data.maintenance_mode}
                             onChange={(value) => form.setData('maintenance_mode', value)}
                         />

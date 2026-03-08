@@ -1,7 +1,8 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Search, CheckCircle2, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { toIntlLocale } from '@/lib/locale';
 
 const roleLabels = {
     admin: 'Admin',
@@ -11,6 +12,8 @@ const roleLabels = {
 };
 
 export default function Approvals({ pendingUsers, filters }) {
+    const { props } = usePage();
+    const intlLocale = toIntlLocale(props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
 
     const submitSearch = (event) => {
@@ -35,7 +38,7 @@ export default function Approvals({ pendingUsers, filters }) {
     return (
         <ProtectedLayout>
             <Head title="Persetujuan Akun" />
-            <div className="space-y-6 max-w-7xl">
+            <div className="space-y-6 w-full max-w-none">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Persetujuan Akun</h1>
                     <p className="text-muted-foreground mt-1">Verifikasi akun yang menunggu persetujuan admin akademik</p>
@@ -78,7 +81,7 @@ export default function Approvals({ pendingUsers, filters }) {
                                         <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
                                         <td className="px-4 py-3 text-sm">{roleLabels[user.role] ?? user.role}</td>
                                         <td className="px-4 py-3 text-sm text-muted-foreground">{user.code}</td>
-                                        <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(user.created_at).toLocaleDateString('id-ID')}</td>
+                                        <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(user.created_at).toLocaleDateString(intlLocale)}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex justify-end gap-2">
                                                 <button type="button" onClick={() => approve(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
@@ -108,3 +111,5 @@ export default function Approvals({ pendingUsers, filters }) {
         </ProtectedLayout>
     );
 }
+
+

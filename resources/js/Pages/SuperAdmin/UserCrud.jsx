@@ -90,7 +90,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
         <ProtectedLayout>
             <Head title={title} />
 
-            <div className="space-y-6 max-w-7xl">
+            <div className="space-y-6 w-full max-w-none">
                 <div className="animate-fade-in">
                     <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
                     <p className="text-muted-foreground mt-1">{description}</p>
