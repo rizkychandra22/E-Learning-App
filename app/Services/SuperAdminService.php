@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class SuperAdminService
@@ -46,11 +47,19 @@ class SuperAdminService
     {
         $config = $this->resolveUserConfig($target);
 
-        User::create([
+        $user = User::create([
             ...$payload,
             'role' => $config['role'],
             'type' => $config['type'],
         ]);
+
+        if (app(SystemSettingService::class)->shouldNotifyOnNewUser()) {
+            Log::info('New managed user created by super admin.', [
+                'email' => $user->email,
+                'role' => $user->role,
+                'source' => 'super-admin',
+            ]);
+        }
 
         return $config['singleLabel'];
     }
@@ -360,6 +369,9 @@ class SuperAdminService
                 ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value]
             );
         }
+
+        Cache::forget('dashboard:super-admin');
+        app(SystemSettingService::class)->clearCache();
 
         return true;
     }

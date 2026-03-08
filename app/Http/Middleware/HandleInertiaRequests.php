@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\SystemSettingService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -36,6 +37,8 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $system = app(SystemSettingService::class)->getPublicSettings();
+        $defaultLanguage = $system['default_language'] ?? 'id';
 
         return [
             ...parent::share($request),
@@ -48,6 +51,13 @@ class HandleInertiaRequests extends Middleware
                     'role' => $user->role,
                     'dashboard_role' => $this->mapDashboardRole($user->role),
                 ] : null,
+            ],
+            'system' => [
+                ...$system,
+                'intl_locale' => $defaultLanguage === 'en' ? 'en-US' : 'id-ID',
+            ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
             ],
         ];
     }

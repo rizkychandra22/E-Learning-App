@@ -10,6 +10,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -109,10 +110,18 @@ class AdminAcademicService
 
     public function createUser(array $payload): void
     {
-        User::create([
+        $user = User::create([
             ...$payload,
             'type' => $payload['role'] === 'student' ? 'nim' : 'nidn',
         ]);
+
+        if (app(SystemSettingService::class)->shouldNotifyOnNewUser()) {
+            Log::info('New user created by admin academic.', [
+                'email' => $user->email,
+                'role' => $user->role,
+                'source' => 'admin-academic',
+            ]);
+        }
     }
 
     public function updateUser(User $user, array $payload): void
