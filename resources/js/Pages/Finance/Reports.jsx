@@ -1,9 +1,16 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { FileBarChart2, TriangleAlert } from 'lucide-react';
+import { TriangleAlert, Wallet, Clock3, BadgeAlert, FileText } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { toIntlLocale } from '@/lib/locale';
+import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
 
 export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters }) {
+    const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
+    const cashflowData = cashflow.map((item) => ({
+        label: item.month,
+        value: Number(item.verified) || 0,
+    }));
     const [dateFrom, setDateFrom] = useState(filters?.date_from ?? '');
     const [dateTo, setDateTo] = useState(filters?.date_to ?? '');
 
@@ -15,7 +22,7 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
     return (
         <ProtectedLayout>
             <Head title="Laporan Finance" />
-            <div className="space-y-6 max-w-7xl">
+            <div className="space-y-6 w-full max-w-none">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Laporan Finance</h1>
                     <p className="text-muted-foreground mt-1">Ringkasan pemasukan, piutang, dan cashflow</p>
@@ -46,32 +53,19 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <SummaryCard title="Pemasukan Tervalidasi" value={summary?.verified_income ?? 0} />
-                    <SummaryCard title="Nominal Pending" value={summary?.pending_amount ?? 0} />
-                    <SummaryCard title="Piutang Aktif" value={summary?.receivables ?? 0} />
-                    <SummaryCard title="Total Invoice" value={summary?.total_invoices ?? 0} plain />
+                    <SummaryCard title="Pemasukan Tervalidasi" value={summary?.verified_income ?? 0} icon={Wallet} variant="success" />
+                    <SummaryCard title="Nominal Pending" value={summary?.pending_amount ?? 0} icon={Clock3} variant="warm" />
+                    <SummaryCard title="Piutang Aktif" value={summary?.receivables ?? 0} icon={BadgeAlert} variant="accent" />
+                    <SummaryCard title="Total Invoice" value={summary?.total_invoices ?? 0} plain icon={FileText} variant="primary" />
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <FileBarChart2 className="w-4 h-4 text-primary" />
-                            <h2 className="font-semibold">Cashflow 6 Bulan</h2>
-                        </div>
-                        <div className="space-y-3">
-                            {cashflow.map((item) => (
-                                <div key={item.month}>
-                                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                        <span>{item.month}</span>
-                                        <span className="font-medium text-foreground">In: {new Intl.NumberFormat('id-ID').format(item.verified ?? 0)} | Pending: {new Intl.NumberFormat('id-ID').format(item.pending ?? 0)}</span>
-                                    </div>
-                                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                                        <div className="h-full rounded-full gradient-success" style={{ width: `${Math.max((item.verified / Math.max(...cashflow.map((flow) => flow.verified), 1)) * 100, item.verified > 0 ? 8 : 0)}%` }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <InteractiveTrendChart
+                        title="Cashflow 6 Bulan (Verified)"
+                        data={cashflowData}
+                        tone="success"
+                        valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
+                    />
 
                     <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
@@ -92,7 +86,7 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                                         <tr key={item.id} className="border-t border-border">
                                             <td className="px-4 py-3 text-sm">{item.invoice_no}</td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{item.student?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat('id-ID').format(item.amount ?? 0)}</td>
+                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat(intlLocale).format(item.amount ?? 0)}</td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{item.status}</td>
                                         </tr>
                                     ))}
@@ -113,11 +107,28 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
     );
 }
 
-function SummaryCard({ title, value, plain = false }) {
+function SummaryCard({ title, value, plain = false, icon: Icon, variant = 'primary' }) {
+    const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
+    const variantClass = {
+        primary: 'gradient-primary text-primary-foreground',
+        accent: 'gradient-accent text-accent-foreground',
+        warm: 'gradient-warm text-foreground',
+        success: 'gradient-success text-success-foreground',
+    };
+
     return (
         <div className="bg-card border border-border rounded-xl shadow-card p-4">
-            <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold mt-1">{plain ? value : new Intl.NumberFormat('id-ID').format(value ?? 0)}</p>
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">{title}</p>
+                {Icon && (
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
+                        <Icon className="w-4 h-4" />
+                    </div>
+                )}
+            </div>
+            <p className="text-2xl font-bold mt-1">{plain ? value : new Intl.NumberFormat(intlLocale).format(value ?? 0)}</p>
         </div>
     );
 }
+
+
