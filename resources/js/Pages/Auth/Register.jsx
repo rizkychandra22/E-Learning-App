@@ -1,7 +1,12 @@
 import React from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 const Register = () => {
+    const { props } = usePage();
+    const system = props.system ?? {};
+    const isEnglish = system.default_language === 'en';
+    const platformName = system.platform_name ?? 'Smart Learning';
+
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         username: '',
@@ -17,15 +22,19 @@ const Register = () => {
 
     return (
         <div className="vh-100 d-flex align-items-center bg-light">
-            <Head title="Daftar Akun" />
+            <Head title={isEnglish ? 'Register' : 'Daftar Akun'} />
             <div className="container">
                 <div className="row justify-content-center">
                     <div className="col-md-10 col-lg-9">
                         <div className="card border-0 shadow-lg overflow-hidden" style={{ borderRadius: '20px' }}>
                             <div className="row g-0">
                                 <div className="col-md-6 bg-white p-4 p-lg-5">
-                                    <h3 className="fw-bold text-dark mb-2 text-start">Mulai Belajar</h3>
-                                    <p className="text-muted mb-4 text-start">Lengkapi data diri untuk membuat akun baru.</p>
+                                    <h3 className="fw-bold text-dark mb-2 text-start">{isEnglish ? 'Create Account' : 'Mulai Belajar'}</h3>
+                                    <p className="text-muted mb-4 text-start">
+                                        {isEnglish
+                                            ? 'Complete your profile to create a new account.'
+                                            : 'Lengkapi data diri untuk membuat akun baru.'}
+                                    </p>
 
                                     <form onSubmit={handleSubmit} className="text-start">
                                         <div className="mb-3">
@@ -93,20 +102,27 @@ const Register = () => {
                                             className="btn btn-success w-100 py-2 fw-bold shadow-sm mt-2"
                                             disabled={processing}
                                         >
-                                            {processing ? 'Sedang Memproses...' : 'Daftar Sekarang'}
+                                            {processing ? (isEnglish ? 'Processing...' : 'Sedang Memproses...') : (isEnglish ? 'Register Now' : 'Daftar Sekarang')}
                                         </button>
                                     </form>
 
                                     <div className="text-center mt-4 text-muted small">
-                                        Sudah punya akun? <Link href="/login" className="fw-bold text-success text-decoration-none">Login Masuk</Link>
+                                        {isEnglish ? 'Already have an account?' : 'Sudah punya akun?'}{' '}
+                                        <Link href="/login" className="fw-bold text-success text-decoration-none">
+                                            {isEnglish ? 'Sign In' : 'Login Masuk'}
+                                        </Link>
                                     </div>
                                 </div>
 
                                 <div className="col-md-6 bg-success d-none d-md-flex align-items-center justify-content-center text-white p-5 text-center">
                                     <div>
                                         <i className="bi bi-journal-check" style={{ fontSize: '5rem' }}></i>
-                                        <h2 className="fw-bold mt-3">Bergabung Sekarang</h2>
-                                        <p className="opacity-75">Dapatkan akses ke ribuan materi kuliah dan diskusikan dengan para pakar di bidangnya.</p>
+                                        <h2 className="fw-bold mt-3">{platformName}</h2>
+                                        <p className="opacity-75">
+                                            {isEnglish
+                                                ? 'Join now and get access to thousands of learning resources.'
+                                                : 'Dapatkan akses ke ribuan materi kuliah dan diskusikan dengan para pakar di bidangnya.'}
+                                        </p>
                                     </div>
                                 </div>
 
