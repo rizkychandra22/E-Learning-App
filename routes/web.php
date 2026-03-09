@@ -58,6 +58,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/manage-courses', [AdminAcademicController::class, 'manageCourses']);
         Route::post('/manage-courses', [AdminAcademicController::class, 'storeCourse']);
+        Route::post('/manage-courses/{course}/materials', [AdminAcademicController::class, 'storeCourseMaterial']);
+        Route::get('/manage-courses/{course}/materials/{material}/download', [AdminAcademicController::class, 'downloadCourseMaterial']);
+        Route::delete('/manage-courses/{course}/materials/{material}', [AdminAcademicController::class, 'destroyCourseMaterial']);
         Route::put('/manage-courses/{course}', [AdminAcademicController::class, 'updateCourse']);
         Route::delete('/manage-courses/{course}', [AdminAcademicController::class, 'destroyCourse']);
 
