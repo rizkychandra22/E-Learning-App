@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Search, CheckCircle2, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const roleLabels = {
     admin: 'Admin',
@@ -39,10 +40,7 @@ export default function Approvals({ pendingUsers, filters }) {
         <ProtectedLayout>
             <Head title="Persetujuan Akun" />
             <div className="space-y-6 w-full max-w-none">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Persetujuan Akun</h1>
-                    <p className="text-muted-foreground mt-1">Verifikasi akun yang menunggu persetujuan admin akademik</p>
-                </div>
+                <PageHeroBanner title="Persetujuan Akun" description="Verifikasi akun yang menunggu persetujuan admin akademik" />
 
                 <div className="bg-card border border-border rounded-xl shadow-card p-4">
                     <form onSubmit={submitSearch} className="flex flex-col sm:flex-row gap-2">

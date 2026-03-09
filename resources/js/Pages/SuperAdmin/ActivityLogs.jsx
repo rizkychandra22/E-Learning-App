@@ -3,6 +3,8 @@ import { Search, Filter, Clock3, Activity, PlusCircle, RefreshCw, Trash2 } from 
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
 
 const typeStyles = {
     create: 'bg-success/15 text-success',
@@ -40,10 +42,7 @@ export default function ActivityLogs({ logs, filters }) {
         <ProtectedLayout>
             <Head title="Log Aktivitas" />
             <div className="space-y-6 w-full max-w-none">
-                <div className="animate-fade-in">
-                    <h1 className="text-2xl font-bold tracking-tight">Log Aktivitas</h1>
-                    <p className="text-muted-foreground mt-1">Pantau aktivitas perubahan data terbaru pada sistem</p>
-                </div>
+                <PageHeroBanner title="Log Aktivitas" description="Pantau aktivitas perubahan data terbaru pada sistem" />
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Metric label="Total Log" value={totals.all} icon={Activity} variant="primary" />
@@ -138,9 +137,9 @@ function Metric({ label, value, icon: Icon, variant = 'primary' }) {
     };
 
     return (
-        <div className="bg-card border border-border rounded-xl shadow-card p-4">
+        <div className={`${KPI_CARD_BASE_CLASS} ${KPI_CARD_HEIGHT_CLASS}`}>
             <div className="flex items-center justify-between">
-                <p className="text-xs uppercase font-semibold text-muted-foreground">{label}</p>
+                <p className="text-sm font-semibold text-muted-foreground truncate">{label}</p>
                 {Icon && (
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
                         <Icon className="w-4 h-4" />

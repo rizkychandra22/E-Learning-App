@@ -4,6 +4,8 @@ import { TriangleAlert, Wallet, Clock3, BadgeAlert, FileText } from 'lucide-reac
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
 
 export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
@@ -23,10 +25,7 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
         <ProtectedLayout>
             <Head title="Laporan Finance" />
             <div className="space-y-6 w-full max-w-none">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Laporan Finance</h1>
-                    <p className="text-muted-foreground mt-1">Ringkasan pemasukan, piutang, dan cashflow</p>
-                </div>
+                <PageHeroBanner title="Laporan Finance" description="Ringkasan pemasukan, piutang, dan cashflow" />
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
@@ -117,16 +116,16 @@ function SummaryCard({ title, value, plain = false, icon: Icon, variant = 'prima
     };
 
     return (
-        <div className="bg-card border border-border rounded-xl shadow-card p-4">
+        <div className={`${KPI_CARD_BASE_CLASS} ${KPI_CARD_HEIGHT_CLASS}`}>
             <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{title}</p>
+                <p className="text-sm font-semibold text-muted-foreground truncate">{title}</p>
                 {Icon && (
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
                         <Icon className="w-4 h-4" />
                     </div>
                 )}
             </div>
-            <p className="text-2xl font-bold mt-1">{plain ? value : new Intl.NumberFormat(intlLocale).format(value ?? 0)}</p>
+            <p className="text-[2rem] leading-none font-bold">{plain ? value : new Intl.NumberFormat(intlLocale).format(value ?? 0)}</p>
         </div>
     );
 }

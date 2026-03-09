@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Search, Plus, CheckCircle2, XCircle, TriangleAlert } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const emptyForm = {
     invoice_id: '',
@@ -54,10 +55,7 @@ export default function Payments({ migrationRequired, payments, invoices, studen
         <ProtectedLayout>
             <Head title="Pembayaran" />
             <div className="space-y-6 w-full max-w-none">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Pembayaran</h1>
-                    <p className="text-muted-foreground mt-1">Catat dan verifikasi pembayaran mahasiswa</p>
-                </div>
+                <PageHeroBanner title="Pembayaran" description="Catat dan verifikasi pembayaran mahasiswa" />
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">

@@ -15,7 +15,6 @@ import {
     ListChecks,
     MessageSquare,
     Shield,
-    Sparkles,
     TrendingUp,
     UserCheck,
     Users,
@@ -26,9 +25,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
 import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
 
 const UI = {
-    kpiCardHeight: 'h-[150px]',
+    kpiCardHeight: KPI_CARD_HEIGHT_CLASS,
     panelClass: 'bg-card rounded-xl border border-border p-4 shadow-card',
     kpiGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr',
     miniGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr',
@@ -73,30 +74,19 @@ function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
     );
 
     return (
-        <section className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 md:p-7 shadow-card animate-fade-in">
-            <div className="absolute -top-14 -right-12 w-48 h-48 rounded-full bg-primary/10 blur-3xl" />
-            <div className="absolute -bottom-16 -left-8 w-52 h-52 rounded-full bg-accent/10 blur-3xl" />
-            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border border-border bg-background/70 mb-3">
-                        <Sparkles className="w-3.5 h-3.5 text-primary" />
-                        Dashboard E-Learning Interaktif
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{greeting}</h1>
-                    <p className="text-muted-foreground mt-2 max-w-2xl">{subtitle}</p>
+        <section className="space-y-3 animate-fade-in">
+            <PageHeroBanner title={greeting} description={subtitle} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                    <p className="text-xs text-muted-foreground">Role Aktif</p>
+                    <p className="font-semibold mt-1 capitalize">{String(user.role).replace('_', ' ')}</p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
-                    <div className="rounded-xl border border-border bg-background/60 px-4 py-3">
-                        <p className="text-xs text-muted-foreground">Role Aktif</p>
-                        <p className="font-semibold mt-1 capitalize">{String(user.role).replace('_', ' ')}</p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-background/60 px-4 py-3">
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <CalendarDays className="w-3.5 h-3.5" />
-                            Hari Ini
-                        </p>
-                        <p className="font-semibold mt-1">{today}</p>
-                    </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        Hari Ini
+                    </p>
+                    <p className="font-semibold mt-1">{today}</p>
                 </div>
             </div>
         </section>
@@ -347,7 +337,7 @@ function CompactStatCard({ title, value, change, changeType = 'up', icon: Icon, 
     const changeTone = changeType === 'down' ? 'text-destructive' : 'text-success';
 
     return (
-        <div className="h-full rounded-xl border border-border bg-card p-3.5 shadow-card hover:-translate-y-0.5 transition-transform animate-fade-in flex flex-col justify-between" style={{ animationDelay: `${delay}ms` }}>
+        <div className={cn('h-full hover:-translate-y-0.5 transition-transform animate-fade-in', KPI_CARD_BASE_CLASS)} style={{ animationDelay: `${delay}ms` }}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-muted-foreground truncate">{title}</p>
@@ -364,9 +354,9 @@ function CompactStatCard({ title, value, change, changeType = 'up', icon: Icon, 
 
 function MiniRoleCard({ title, value, icon: Icon, iconVariant = 'primary' }) {
     return (
-        <div className="h-full bg-card border border-border rounded-xl p-3.5 shadow-card hover:-translate-y-0.5 transition-transform flex flex-col justify-between">
+        <div className={cn('h-full hover:-translate-y-0.5 transition-transform', KPI_CARD_BASE_CLASS)}>
             <div className="flex items-center justify-between">
-                <p className="text-xs uppercase text-muted-foreground font-semibold">{title}</p>
+                <p className="text-sm font-semibold text-muted-foreground truncate">{title}</p>
                 {Icon && <DashboardIcon icon={Icon} variant={iconVariant} />}
             </div>
             <p className="text-[2rem] leading-none font-bold">{value}</p>

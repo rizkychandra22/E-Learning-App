@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { Users, Star } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const courses = [
     { id: 1, title: 'Algoritma & Pemrograman', instructor: 'Dr. Budi Santoso', students: 45, rating: 4.8, category: 'Informatika', progress: 85 },
@@ -19,10 +20,7 @@ export default function Courses() {
         <ProtectedLayout>
             <Head title="Kursus" />
             <div className="space-y-6 max-w-7xl">
-                <div className="animate-fade-in">
-                    <h1 className="text-2xl font-bold tracking-tight">Kursus</h1>
-                    <p className="text-muted-foreground mt-1">Jelajahi dan kelola kursus yang tersedia</p>
-                </div>
+                <PageHeroBanner title="Kursus" description="Jelajahi dan kelola kursus yang tersedia" />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {courses.map((course, index) => (

@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, FolderTree } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const fakultasDefault = { name: '', code: '' };
 const jurusanDefault = { fakultas_id: '', name: '', code: '' };
@@ -71,10 +72,7 @@ export default function Categories({ fakultas }) {
         <ProtectedLayout>
             <Head title="Kategori" />
             <div className="space-y-6 w-full max-w-none">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Kategori Akademik</h1>
-                    <p className="text-muted-foreground mt-1">Kelola struktur Fakultas dan Jurusan untuk sistem e-learning</p>
-                </div>
+                <PageHeroBanner title="Kategori Akademik" description="Kelola struktur Fakultas dan Jurusan untuk sistem e-learning" />
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     <div className="bg-card border border-border rounded-xl shadow-card p-4">

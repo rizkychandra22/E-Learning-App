@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Save, TriangleAlert } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 export default function Settings({ settings, migrationRequired }) {
     const form = useForm({
@@ -18,10 +19,7 @@ export default function Settings({ settings, migrationRequired }) {
         <ProtectedLayout>
             <Head title="Pengaturan Finance" />
             <div className="space-y-6 w-full max-w-none">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Pengaturan Finance</h1>
-                    <p className="text-muted-foreground mt-1">Konfigurasi operasional finance dashboard</p>
-                </div>
+                <PageHeroBanner title="Pengaturan Finance" description="Konfigurasi operasional finance dashboard" />
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">

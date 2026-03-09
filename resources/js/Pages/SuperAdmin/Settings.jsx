@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Save, Settings2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 export default function Settings({ settings }) {
     const form = useForm({
@@ -23,10 +24,7 @@ export default function Settings({ settings }) {
         <ProtectedLayout>
             <Head title="Pengaturan" />
             <div className="space-y-6 w-full max-w-none">
-                <div className="animate-fade-in">
-                    <h1 className="text-2xl font-bold tracking-tight">Pengaturan Sistem</h1>
-                    <p className="text-muted-foreground mt-1">Konfigurasi utama platform e-learning untuk role Super Admin</p>
-                </div>
+                <PageHeroBanner title="Pengaturan Sistem" description="Konfigurasi utama platform e-learning untuk role Super Admin" />
 
                 <form onSubmit={submit} className="bg-card border border-border rounded-xl shadow-card p-5 space-y-5">
                     <div className="flex items-center gap-2 text-sm font-semibold">
