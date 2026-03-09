@@ -1,7 +1,9 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { Search, Plus, CheckCircle2, XCircle, TriangleAlert } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const emptyForm = {
     invoice_id: '',
@@ -20,6 +22,7 @@ const statusBadge = {
 };
 
 export default function Payments({ migrationRequired, payments, invoices, students, filters }) {
+    const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const form = useForm(emptyForm);
@@ -51,11 +54,8 @@ export default function Payments({ migrationRequired, payments, invoices, studen
     return (
         <ProtectedLayout>
             <Head title="Pembayaran" />
-            <div className="space-y-6 max-w-7xl">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Pembayaran</h1>
-                    <p className="text-muted-foreground mt-1">Catat dan verifikasi pembayaran mahasiswa</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Pembayaran" description="Catat dan verifikasi pembayaran mahasiswa" />
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
@@ -67,7 +67,7 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
@@ -114,11 +114,11 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                                         <tr key={payment.id} className="border-t border-border">
                                             <td className="px-4 py-3">
                                                 <p className="text-sm font-medium">{payment.payment_no}</p>
-                                                <p className="text-xs text-muted-foreground">{payment.paid_at ? new Date(payment.paid_at).toLocaleString('id-ID') : '-'}</p>
+                                                <p className="text-xs text-muted-foreground">{payment.paid_at ? new Date(payment.paid_at).toLocaleString(intlLocale) : '-'}</p>
                                             </td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{payment.invoice?.invoice_no ?? '-'}</td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{payment.student?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat('id-ID').format(payment.amount ?? 0)}</td>
+                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat(intlLocale).format(payment.amount ?? 0)}</td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{payment.method}</td>
                                             <td className="px-4 py-3 text-sm">
                                                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge[payment.status] ?? 'bg-secondary text-secondary-foreground'}`}>
@@ -155,7 +155,7 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                         <h2 className="font-semibold mb-4">Input Pembayaran</h2>
                         <form onSubmit={submitForm} className="space-y-3">
                             <SelectField label="Invoice" value={form.data.invoice_id} error={form.errors.invoice_id} onChange={(value) => form.setData('invoice_id', value)}>
@@ -240,3 +240,5 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+
+

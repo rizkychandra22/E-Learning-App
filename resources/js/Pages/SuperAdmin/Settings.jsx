@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Save, Settings2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 export default function Settings({ settings }) {
     const form = useForm({
@@ -22,11 +23,8 @@ export default function Settings({ settings }) {
     return (
         <ProtectedLayout>
             <Head title="Pengaturan" />
-            <div className="space-y-6 max-w-5xl">
-                <div className="animate-fade-in">
-                    <h1 className="text-2xl font-bold tracking-tight">Pengaturan Sistem</h1>
-                    <p className="text-muted-foreground mt-1">Konfigurasi utama platform e-learning untuk role Super Admin</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Pengaturan Sistem" description="Konfigurasi utama platform e-learning untuk role Super Admin" />
 
                 <form onSubmit={submit} className="bg-card border border-border rounded-xl shadow-card p-5 space-y-5">
                     <div className="flex items-center gap-2 text-sm font-semibold">
@@ -77,7 +75,7 @@ export default function Settings({ settings }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <SwitchCard
                             title="Maintenance Mode"
-                            description="Batasi akses pengguna non-admin saat maintenance aktif."
+                            description="Batasi akses semua pengguna non-Super Admin saat maintenance aktif."
                             checked={form.data.maintenance_mode}
                             onChange={(value) => form.setData('maintenance_mode', value)}
                         />

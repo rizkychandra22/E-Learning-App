@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { Search, Pencil, Trash2, Plus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const emptyForm = {
     name: '',
@@ -90,11 +91,8 @@ export default function UserCrud({ title, description, target, endpoint, users, 
         <ProtectedLayout>
             <Head title={title} />
 
-            <div className="space-y-6 max-w-7xl">
-                <div className="animate-fade-in">
-                    <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                    <p className="text-muted-foreground mt-1">{description}</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title={title} description={description} />
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">

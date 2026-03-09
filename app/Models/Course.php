@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Course extends Model
 {
@@ -11,12 +12,18 @@ class Course extends Model
         'title',
         'code',
         'description',
+        'category',
+        'tags',
         'jurusan_id',
         'lecturer_id',
         'level',
         'semester',
         'credit_hours',
         'status',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
     ];
 
     public function jurusan(): BelongsTo
@@ -27,5 +34,10 @@ class Course extends Model
     public function lecturer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'lecturer_id');
+    }
+
+    public function materials(): HasMany
+    {
+        return $this->hasMany(CourseMaterial::class);
     }
 }

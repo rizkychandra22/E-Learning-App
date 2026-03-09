@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AdminAcademic\StoreCourseRequest;
+use App\Http\Requests\AdminAcademic\StoreCourseMaterialRequest;
 use App\Http\Requests\AdminAcademic\StoreFakultasRequest;
 use App\Http\Requests\AdminAcademic\StoreJurusanRequest;
 use App\Http\Requests\AdminAcademic\StoreUserRequest;
@@ -12,6 +13,7 @@ use App\Http\Requests\AdminAcademic\UpdateJurusanRequest;
 use App\Http\Requests\AdminAcademic\UpdateSettingsRequest;
 use App\Http\Requests\AdminAcademic\UpdateUserRequest;
 use App\Models\Course;
+use App\Models\CourseMaterial;
 use App\Models\Fakultas;
 use App\Models\Jurusan;
 use App\Models\User;
@@ -20,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminAcademicController extends Controller
 {
@@ -32,8 +35,9 @@ class AdminAcademicController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
         $status = trim((string) $request->query('status', 'all'));
+        $category = trim((string) $request->query('category', 'all'));
 
-        return Inertia::render('AdminAcademic/ManageCourses', $this->service->getManageCoursesData($search, $status));
+        return Inertia::render('AdminAcademic/ManageCourses', $this->service->getManageCoursesData($search, $status, $category));
     }
 
     public function storeCourse(StoreCourseRequest $request): RedirectResponse
@@ -73,6 +77,41 @@ class AdminAcademicController extends Controller
         $this->service->deleteCourse($course);
 
         return back()->with('success', 'Kursus berhasil dihapus.');
+    }
+
+    public function storeCourseMaterial(StoreCourseMaterialRequest $request, Course $course): RedirectResponse
+    {
+        if (!$this->service->canManageCourseMaterials()) {
+            return back()->withErrors([
+                'materials' => 'Tabel course_materials belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ]);
+        }
+
+        $this->service->storeCourseMaterial($course, $request->validated(), (int) auth()->id());
+
+        return back()->with('success', 'Materi kursus berhasil diunggah.');
+    }
+
+    public function destroyCourseMaterial(Course $course, CourseMaterial $material): RedirectResponse
+    {
+        if (!$this->service->canManageCourseMaterials()) {
+            return back()->withErrors([
+                'materials' => 'Tabel course_materials belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ]);
+        }
+
+        $this->service->deleteCourseMaterial($course, $material);
+
+        return back()->with('success', 'Materi kursus berhasil dihapus.');
+    }
+
+    public function downloadCourseMaterial(Course $course, CourseMaterial $material): StreamedResponse
+    {
+        if (!$this->service->canManageCourseMaterials()) {
+            abort(404);
+        }
+
+        return $this->service->downloadCourseMaterial($course, $material);
     }
 
     public function manageUsers(Request $request): Response

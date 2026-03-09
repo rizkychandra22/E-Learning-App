@@ -1,7 +1,10 @@
-import { Head, router } from '@inertiajs/react';
-import { Search, Filter, Clock3 } from 'lucide-react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { Search, Filter, Clock3, Activity, PlusCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
 
 const typeStyles = {
     create: 'bg-success/15 text-success',
@@ -10,6 +13,8 @@ const typeStyles = {
 };
 
 export default function ActivityLogs({ logs, filters }) {
+    const { props } = usePage();
+    const intlLocale = toIntlLocale(props?.system?.default_language);
     const [query, setQuery] = useState(filters?.q ?? '');
     const [type, setType] = useState(filters?.type ?? 'all');
 
@@ -36,17 +41,14 @@ export default function ActivityLogs({ logs, filters }) {
     return (
         <ProtectedLayout>
             <Head title="Log Aktivitas" />
-            <div className="space-y-6 max-w-7xl">
-                <div className="animate-fade-in">
-                    <h1 className="text-2xl font-bold tracking-tight">Log Aktivitas</h1>
-                    <p className="text-muted-foreground mt-1">Pantau aktivitas perubahan data terbaru pada sistem</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Log Aktivitas" description="Pantau aktivitas perubahan data terbaru pada sistem" />
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Metric label="Total Log" value={totals.all} />
-                    <Metric label="Create" value={totals.create} />
-                    <Metric label="Update" value={totals.update} />
-                    <Metric label="Delete" value={totals.delete} />
+                    <Metric label="Total Log" value={totals.all} icon={Activity} variant="primary" />
+                    <Metric label="Create" value={totals.create} icon={PlusCircle} variant="success" />
+                    <Metric label="Update" value={totals.update} icon={RefreshCw} variant="accent" />
+                    <Metric label="Delete" value={totals.delete} icon={Trash2} variant="warm" />
                 </div>
 
                 <div className="bg-card border border-border rounded-xl shadow-card p-4">
@@ -97,7 +99,7 @@ export default function ActivityLogs({ logs, filters }) {
                                         <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                                             <div className="inline-flex items-center gap-2">
                                                 <Clock3 className="w-3.5 h-3.5" />
-                                                {new Date(item.time).toLocaleString('id-ID')}
+                                                {new Date(item.time).toLocaleString(intlLocale)}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-sm">{item.module}</td>
@@ -126,11 +128,25 @@ export default function ActivityLogs({ logs, filters }) {
     );
 }
 
-function Metric({ label, value }) {
+function Metric({ label, value, icon: Icon, variant = 'primary' }) {
+    const variantClass = {
+        primary: 'gradient-primary text-primary-foreground',
+        accent: 'gradient-accent text-accent-foreground',
+        warm: 'gradient-warm text-foreground',
+        success: 'gradient-success text-success-foreground',
+    };
+
     return (
-        <div className="bg-card border border-border rounded-xl shadow-card p-4">
-            <p className="text-xs uppercase font-semibold text-muted-foreground">{label}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
+        <div className={`${KPI_CARD_BASE_CLASS} ${KPI_CARD_HEIGHT_CLASS}`}>
+            <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-muted-foreground truncate">{label}</p>
+                {Icon && (
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
+                        <Icon className="w-4 h-4" />
+                    </div>
+                )}
+            </div>
+            <p className="text-2xl font-bold mt-2">{value}</p>
         </div>
     );
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\CourseMaterial;
 use App\Models\Fakultas;
 use App\Models\Jurusan;
 use App\Models\SystemSetting;
@@ -10,21 +11,38 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminAcademicService
 {
-    public function getManageCoursesData(string $search, string $status): array
+    public function getManageCoursesData(string $search, string $status, string $category = 'all'): array
     {
         $normalizedStatus = in_array($status, ['all', 'draft', 'active', 'archived'], true) ? $status : 'all';
+        $normalizedCategory = trim($category) === '' ? 'all' : trim($category);
         $migrationRequired = !Schema::hasTable('courses');
+        $materialsMigrationRequired = !Schema::hasTable('course_materials');
 
         $courses = collect();
+        $availableCategories = collect();
         if (!$migrationRequired) {
+            $relations = [
+                'jurusan:id,name,fakultas_id',
+                'jurusan.fakultas:id,name',
+                'lecturer:id,name',
+            ];
+
+            if (!$materialsMigrationRequired) {
+                $relations[] = 'materials:id,course_id,title,file_name,file_path,mime_type,file_size,uploaded_by,created_at';
+            }
+
             $courses = Course::query()
-                ->with(['jurusan:id,name,fakultas_id', 'jurusan.fakultas:id,name', 'lecturer:id,name'])
+                ->with($relations)
                 ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
+                ->when($normalizedCategory !== 'all', fn ($query) => $query->where('category', $normalizedCategory))
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($subQuery) use ($search) {
                         $subQuery
@@ -34,6 +52,15 @@ class AdminAcademicService
                 })
                 ->latest('id')
                 ->get();
+
+            $availableCategories = Course::query()
+                ->whereNotNull('category')
+                ->where('category', '!=', '')
+                ->select('category')
+                ->distinct()
+                ->orderBy('category')
+                ->pluck('category')
+                ->values();
         }
 
         $jurusans = Jurusan::query()
@@ -51,9 +78,12 @@ class AdminAcademicService
             'jurusans' => $jurusans,
             'lecturers' => $lecturers,
             'migrationRequired' => $migrationRequired,
+            'materialsMigrationRequired' => $materialsMigrationRequired,
+            'categories' => $availableCategories,
             'filters' => [
                 'search' => $search,
                 'status' => $normalizedStatus,
+                'category' => $normalizedCategory,
             ],
         ];
     }
@@ -65,17 +95,63 @@ class AdminAcademicService
 
     public function createCourse(array $payload): void
     {
-        Course::create($payload);
+        Course::create($this->normalizeCoursePayload($payload));
     }
 
     public function updateCourse(Course $course, array $payload): void
     {
-        $course->update($payload);
+        $course->update($this->normalizeCoursePayload($payload));
     }
 
     public function deleteCourse(Course $course): void
     {
+        if (Schema::hasTable('course_materials')) {
+            foreach ($course->materials as $material) {
+                if (!empty($material->file_path)) {
+                    Storage::disk('public')->delete($material->file_path);
+                }
+            }
+        }
+
         $course->delete();
+    }
+
+    public function canManageCourseMaterials(): bool
+    {
+        return $this->canManageCourses() && Schema::hasTable('course_materials');
+    }
+
+    public function storeCourseMaterial(Course $course, array $payload, int $uploaderId): void
+    {
+        $file = $payload['file'];
+        $storedPath = $file->store('course-materials/' . $course->id, 'public');
+
+        $course->materials()->create([
+            'uploaded_by' => $uploaderId,
+            'title' => trim((string) $payload['title']),
+            'file_name' => $file->getClientOriginalName(),
+            'file_path' => $storedPath,
+            'mime_type' => $file->getClientMimeType(),
+            'file_size' => $file->getSize() ?? 0,
+        ]);
+    }
+
+    public function deleteCourseMaterial(Course $course, CourseMaterial $material): void
+    {
+        abort_if($material->course_id !== $course->id, 404);
+
+        if (!empty($material->file_path)) {
+            Storage::disk('public')->delete($material->file_path);
+        }
+
+        $material->delete();
+    }
+
+    public function downloadCourseMaterial(Course $course, CourseMaterial $material): StreamedResponse
+    {
+        abort_if($material->course_id !== $course->id, 404);
+
+        return Storage::disk('public')->download($material->file_path, $material->file_name);
     }
 
     public function getManageUsersData(string $search, string $role): array
@@ -109,10 +185,18 @@ class AdminAcademicService
 
     public function createUser(array $payload): void
     {
-        User::create([
+        $user = User::create([
             ...$payload,
             'type' => $payload['role'] === 'student' ? 'nim' : 'nidn',
         ]);
+
+        if (app(SystemSettingService::class)->shouldNotifyOnNewUser()) {
+            Log::info('New user created by admin academic.', [
+                'email' => $user->email,
+                'role' => $user->role,
+                'source' => 'admin-academic',
+            ]);
+        }
     }
 
     public function updateUser(User $user, array $payload): void
@@ -335,5 +419,23 @@ class AdminAcademicService
     private function settingsPrefix(int $adminId): string
     {
         return 'admin_' . $adminId . '_';
+    }
+
+    private function normalizeCoursePayload(array $payload): array
+    {
+        $normalizedTags = collect($payload['tags'] ?? [])
+            ->map(fn ($tag) => Str::squish((string) $tag))
+            ->filter(fn ($tag) => $tag !== '')
+            ->unique(fn ($tag) => Str::lower($tag))
+            ->take(10)
+            ->values()
+            ->all();
+
+        $payload['category'] = isset($payload['category']) && trim((string) $payload['category']) !== ''
+            ? trim((string) $payload['category'])
+            : null;
+        $payload['tags'] = $normalizedTags === [] ? null : $normalizedTags;
+
+        return $payload;
     }
 }

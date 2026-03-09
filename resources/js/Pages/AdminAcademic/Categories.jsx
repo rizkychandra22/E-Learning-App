@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, FolderTree } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const fakultasDefault = { name: '', code: '' };
 const jurusanDefault = { fakultas_id: '', name: '', code: '' };
@@ -70,14 +71,11 @@ export default function Categories({ fakultas }) {
     return (
         <ProtectedLayout>
             <Head title="Kategori" />
-            <div className="space-y-6 max-w-7xl">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Kategori Akademik</h1>
-                    <p className="text-muted-foreground mt-1">Kelola struktur Fakultas dan Jurusan untuk sistem e-learning</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Kategori Akademik" description="Kelola struktur Fakultas dan Jurusan untuk sistem e-learning" />
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4">
                         <h2 className="font-semibold mb-4">{editingFakultasId ? 'Edit Fakultas' : 'Tambah Fakultas'}</h2>
                         <form onSubmit={saveFakultas} className="space-y-3">
                             <Field label="Nama Fakultas" value={fakultasForm.data.name} error={fakultasForm.errors.name} onChange={(value) => fakultasForm.setData('name', value)} />
@@ -96,7 +94,7 @@ export default function Categories({ fakultas }) {
                         </form>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4">
                         <h2 className="font-semibold mb-4">{editingJurusanId ? 'Edit Jurusan' : 'Tambah Jurusan'}</h2>
                         <form onSubmit={saveJurusan} className="space-y-3">
                             <label className="block">
@@ -202,3 +200,5 @@ function Field({ label, value, onChange, error }) {
         </label>
     );
 }
+
+

@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { Search, Pencil, Trash2, Plus, X } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const emptyForm = {
     name: '',
@@ -87,13 +88,10 @@ export default function ManageUsers({ users, filters }) {
     return (
         <ProtectedLayout>
             <Head title="Kelola User" />
-            <div className="space-y-6 max-w-7xl">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Kelola User</h1>
-                    <p className="text-muted-foreground mt-1">Kelola data admin, finance, dosen, dan mahasiswa</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Kelola User" description="Kelola data admin, finance, dosen, dan mahasiswa" />
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
@@ -173,7 +171,7 @@ export default function ManageUsers({ users, filters }) {
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? 'Edit User' : 'Tambah User'}</h2>
                             {isEditing && (
@@ -242,3 +240,5 @@ function Field({ label, value, onChange, error, type = 'text' }) {
         </label>
     );
 }
+
+

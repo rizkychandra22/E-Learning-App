@@ -1,7 +1,9 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { Search, Plus, Pencil, Trash2, X, TriangleAlert } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const emptyForm = {
     student_id: '',
@@ -22,6 +24,7 @@ const statusBadge = {
 };
 
 export default function Invoices({ migrationRequired, invoices, students, feeComponents, filters }) {
+    const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const [editingId, setEditingId] = useState(null);
@@ -78,11 +81,8 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
     return (
         <ProtectedLayout>
             <Head title="Tagihan" />
-            <div className="space-y-6 max-w-7xl">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Tagihan</h1>
-                    <p className="text-muted-foreground mt-1">Kelola invoice/tagihan mahasiswa</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Tagihan" description="Kelola invoice/tagihan mahasiswa" />
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
@@ -94,7 +94,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
@@ -148,7 +148,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.student?.name ?? '-'}</td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.fee_component?.name ?? '-'}</td>
                                             <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.due_date ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat('id-ID').format(invoice.amount ?? 0)}</td>
+                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat(intlLocale).format(invoice.amount ?? 0)}</td>
                                             <td className="px-4 py-3 text-sm">
                                                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge[invoice.status] ?? 'bg-secondary text-secondary-foreground'}`}>
                                                     {invoice.status}
@@ -180,7 +180,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? 'Edit Tagihan' : 'Buat Tagihan'}</h2>
                             {isEditing && (
@@ -209,7 +209,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                                 <option value="">Pilih Komponen</option>
                                 {feeComponents.map((component) => (
                                     <option key={component.id} value={component.id}>
-                                        {component.name} ({new Intl.NumberFormat('id-ID').format(component.amount)})
+                                        {component.name} ({new Intl.NumberFormat(intlLocale).format(component.amount)})
                                     </option>
                                 ))}
                             </SelectField>
@@ -276,3 +276,5 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+
+

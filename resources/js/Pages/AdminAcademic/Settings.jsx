@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Save, SlidersHorizontal } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 export default function Settings({ settings }) {
     const form = useForm({
@@ -18,13 +19,10 @@ export default function Settings({ settings }) {
     return (
         <ProtectedLayout>
             <Head title="Pengaturan Admin Akademik" />
-            <div className="space-y-6 max-w-4xl">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Pengaturan Admin Akademik</h1>
-                    <p className="text-muted-foreground mt-1">Atur preferensi kerja untuk dashboard dan manajemen data akademik</p>
-                </div>
+            <div className="space-y-6 w-full max-w-none">
+                <PageHeroBanner title="Pengaturan Admin Akademik" description="Atur preferensi kerja untuk dashboard dan manajemen data akademik" />
 
-                <form onSubmit={submit} className="bg-card border border-border rounded-xl shadow-card p-5 space-y-5">
+                <form onSubmit={submit} className="bg-card border border-border rounded-xl shadow-card p-4 space-y-5">
                     <div className="flex items-center gap-2 text-sm font-semibold">
                         <SlidersHorizontal className="w-4 h-4 text-primary" />
                         Preferensi Dashboard
@@ -86,3 +84,5 @@ function SwitchField({ title, checked, onChange }) {
         </label>
     );
 }
+
+

@@ -13,13 +13,15 @@ Route::get('/', function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
 
+Route::get('/maintenance', function () {
+    return Inertia::render('MaintenanceNotice');
+})->name('maintenance.notice');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
-});
-
-Route::any('/register', function () {
-    abort(404);
+    Route::get('/register', [AuthController::class, 'showRegister']);
+    Route::post('/register', [AuthController::class, 'register']);
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
@@ -56,6 +58,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/manage-courses', [AdminAcademicController::class, 'manageCourses']);
         Route::post('/manage-courses', [AdminAcademicController::class, 'storeCourse']);
+        Route::post('/manage-courses/{course}/materials', [AdminAcademicController::class, 'storeCourseMaterial']);
+        Route::get('/manage-courses/{course}/materials/{material}/download', [AdminAcademicController::class, 'downloadCourseMaterial']);
+        Route::delete('/manage-courses/{course}/materials/{material}', [AdminAcademicController::class, 'destroyCourseMaterial']);
         Route::put('/manage-courses/{course}', [AdminAcademicController::class, 'updateCourse']);
         Route::delete('/manage-courses/{course}', [AdminAcademicController::class, 'destroyCourse']);
 
