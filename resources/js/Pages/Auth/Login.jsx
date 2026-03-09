@@ -40,14 +40,20 @@ const Login = () => {
     };
 
     return (
-        <div className="vh-100 d-flex align-items-center bg-light">
+        <div className="min-h-screen d-flex align-items-center position-relative overflow-hidden bg-gradient-to-br from-primary/15 via-background to-accent/20">
             <Head title="Login" />
+            <div className="position-absolute top-0 start-0 w-100 h-100 pointer-events-none">
+                <div className="position-absolute top-0 start-0 rounded-circle" style={{ width: '22rem', height: '22rem', background: 'hsl(var(--primary) / 0.12)', filter: 'blur(70px)', transform: 'translate(-30%, -35%)' }} />
+                <div className="position-absolute bottom-0 end-0 rounded-circle" style={{ width: '24rem', height: '24rem', background: 'hsl(var(--accent-foreground) / 0.10)', filter: 'blur(80px)', transform: 'translate(32%, 28%)' }} />
+            </div>
             <div className="container">
                 <div className="row justify-content-center">
                     <div className="col-md-10 col-lg-8">
-                        <div className="card border-0 shadow-lg overflow-hidden" style={{ borderRadius: '20px' }}>
+                        <div className="card border-0 shadow-lg overflow-hidden position-relative" style={{ borderRadius: '20px', background: 'hsl(var(--card) / 0.94)', backdropFilter: 'blur(6px)' }}>
                             <div className="row g-0">
-                                <div className="col-md-6 bg-primary d-none d-md-flex align-items-center justify-content-center text-white p-5">
+                                <div className="col-md-6 gradient-primary d-none d-md-flex align-items-center justify-content-center text-white p-5 position-relative">
+                                    <div className="position-absolute top-0 end-0 rounded-circle" style={{ width: '11rem', height: '11rem', background: 'hsl(var(--warning) / 0.25)', filter: 'blur(36px)', transform: 'translate(20%, -20%)' }} />
+                                    <div className="position-absolute bottom-0 start-0 rounded-circle" style={{ width: '10rem', height: '10rem', background: 'hsl(var(--info) / 0.3)', filter: 'blur(34px)', transform: 'translate(-20%, 24%)' }} />
                                     <div className="text-center">
                                         <i className="bi bi-mortarboard-fill" style={{ fontSize: '5rem' }}></i>
                                         <h2 className="fw-bold mt-3">{platformName}</h2>
@@ -128,7 +134,8 @@ const Login = () => {
 
                                         <button
                                             type="submit"
-                                            className="btn btn-primary w-100 py-2 fw-bold shadow-sm"
+                                            className="btn w-100 py-2 fw-bold text-white shadow-sm border-0 gradient-primary"
+                                            style={{ borderRadius: '10px' }}
                                             disabled={processing}
                                         >
                                             {processing ? (isEnglish ? 'Signing in...' : 'Logging in...') : (isEnglish ? 'Sign In' : 'Masuk')}
