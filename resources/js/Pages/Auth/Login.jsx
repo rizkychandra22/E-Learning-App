@@ -1,5 +1,4 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import { Loader2 } from 'lucide-react';
 
 const Login = () => {
     const { props } = usePage();
@@ -138,7 +137,7 @@ const Login = () => {
                                             style={{ borderRadius: '10px' }}
                                             disabled={processing}
                                         >
-                                            {processing && <Loader2 className="w-4 h-4 animate-spin" />}
+                                            {processing && <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>}
                                             {processing ? (isEnglish ? 'Signing in...' : 'Logging in...') : (isEnglish ? 'Sign In' : 'Masuk')}
                                         </button>
                                     </form>
