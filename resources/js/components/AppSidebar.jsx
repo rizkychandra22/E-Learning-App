@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, LogOut, GraduationCap, Shield, UserCheck, FolderOpen,
@@ -63,6 +64,12 @@ const roleLabels = {
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
     const { user, logout } = useAuth();
     const page = usePage();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = () => {
+        setIsLoggingOut(true);
+        logout();
+    };
 
     if (!user) return null;
 
@@ -119,9 +126,9 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                             <p className="text-xs text-sidebar-muted truncate">{roleLabels[user.role]}</p>
                         </div>
                     )}
-                    <button onClick={logout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full">
-                        <LogOut className="w-5 h-5 flex-shrink-0" />
-                        {showLabel && <span>Keluar</span>}
+                    <button onClick={handleLogout} disabled={isLoggingOut} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full disabled:opacity-70">
+                        {isLoggingOut ? <span className="w-5 h-5 flex items-center justify-center"><span className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" /></span> : <LogOut className="w-5 h-5 flex-shrink-0" />}
+                        {showLabel && <span>{isLoggingOut ? 'Keluar...' : 'Keluar'}</span>}
                     </button>
                 </div>
 
