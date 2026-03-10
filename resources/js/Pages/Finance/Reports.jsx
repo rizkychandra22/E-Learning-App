@@ -6,6 +6,7 @@ import { toIntlLocale } from '@/lib/locale';
 import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
+import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
@@ -70,34 +71,29 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                         <div className="p-4 border-b border-border">
                             <h2 className="font-semibold">Top Piutang</h2>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[540px]">
-                                <thead className="bg-secondary/50 text-left">
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Invoice</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Mahasiswa</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Amount</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {top_unpaid.map((item) => (
-                                        <tr key={item.id} className="border-t border-border">
-                                            <td className="px-4 py-3 text-sm">{item.invoice_no}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{item.student?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat(intlLocale).format(item.amount ?? 0)}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{item.status}</td>
-                                        </tr>
-                                    ))}
-                                    {top_unpaid.length === 0 && (
-                                        <tr>
-                                            <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                                                Tidak ada data piutang.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="p-4">
+                            <DataCardList
+                                items={top_unpaid}
+                                emptyText="Tidak ada data piutang."
+                                renderCard={(item) => (
+                                    <DataCard key={item.id} accentColor="hsl(var(--destructive))">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-semibold">{item.invoice_no}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-xs text-muted-foreground">{item.student?.name ?? '-'}</span>
+                                                    <CardBadge className="bg-destructive/15 text-destructive scale-90 origin-left">{item.status}</CardBadge>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className="text-sm font-bold text-destructive">
+                                                    Rp {new Intl.NumberFormat(intlLocale).format(item.amount ?? 0)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </DataCard>
+                                )}
+                            />
                         </div>
                     </div>
                 </div>

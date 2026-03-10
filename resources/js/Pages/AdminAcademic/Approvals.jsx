@@ -4,6 +4,7 @@ import { Search, CheckCircle2, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { DataCardList, DataCard, CardBadge, CardField, CardActions } from '@/components/DataCardList';
 
 const roleLabels = {
     admin: 'Admin',
@@ -59,52 +60,35 @@ export default function Approvals({ pendingUsers, filters }) {
                     </form>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[760px]">
-                            <thead className="bg-secondary/50 text-left">
-                                <tr>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Nama</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Email</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Role</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Kode</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Daftar</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pendingUsers.map((user) => (
-                                    <tr key={user.id} className="border-t border-border">
-                                        <td className="px-4 py-3 text-sm font-medium">{user.name}</td>
-                                        <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
-                                        <td className="px-4 py-3 text-sm">{roleLabels[user.role] ?? user.role}</td>
-                                        <td className="px-4 py-3 text-sm text-muted-foreground">{user.code}</td>
-                                        <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(user.created_at).toLocaleDateString(intlLocale)}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex justify-end gap-2">
-                                                <button type="button" onClick={() => approve(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    Setujui
-                                                </button>
-                                                <button type="button" onClick={() => reject(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
-                                                    <XCircle className="w-3.5 h-3.5" />
-                                                    Tolak
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {pendingUsers.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                            Tidak ada akun yang menunggu persetujuan.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <DataCardList
+                    items={pendingUsers}
+                    emptyText="Tidak ada akun yang menunggu persetujuan."
+                    renderCard={(user) => (
+                        <DataCard key={user.id} accentColor="hsl(var(--warning))">
+                            <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                                <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
+                                    <CardField label="Nama" value={user.name} />
+                                    <CardField label="Email" value={user.email} />
+                                    <CardField label="Kode" value={user.code} />
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <CardBadge className="bg-primary/15 text-primary">{roleLabels[user.role] ?? user.role}</CardBadge>
+                                    <span className="text-xs text-muted-foreground">{new Date(user.created_at).toLocaleDateString(intlLocale)}</span>
+                                </div>
+                            </div>
+                            <CardActions>
+                                <button type="button" onClick={() => approve(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    Setujui
+                                </button>
+                                <button type="button" onClick={() => reject(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    Tolak
+                                </button>
+                            </CardActions>
+                        </DataCard>
+                    )}
+                />
             </div>
         </ProtectedLayout>
     );
