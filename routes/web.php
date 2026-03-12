@@ -4,18 +4,25 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminAcademicController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\PerformanceLogController;
 use App\Http\Controllers\SuperAdminOverviewController;
 use App\Http\Controllers\SuperAdminUserManagementController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return auth()->check() ? redirect('/dashboard') : redirect('/login');
+    return auth()->check() ? redirect('/dashboard') : app(LandingController::class)->index();
 });
 
 Route::get('/maintenance', function () {
     return Inertia::render('MaintenanceNotice');
 })->name('maintenance.notice');
+
+Route::post('/perf/vitals', [PerformanceController::class, 'store'])
+    ->middleware('throttle:60,1')
+    ->name('perf.vitals');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -47,6 +54,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/statistics', [SuperAdminOverviewController::class, 'statistics']);
         Route::get('/activity-logs', [SuperAdminOverviewController::class, 'activityLogs']);
+        Route::get('/perf-logs', [PerformanceLogController::class, 'index']);
+        Route::get('/perf-logs/download', [PerformanceLogController::class, 'download']);
         Route::put('/settings', [SuperAdminOverviewController::class, 'updateSettings']);
     });
 
