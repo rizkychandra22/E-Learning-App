@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, LogOut, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight, X, Wallet
+    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ const navByRole = {
         { title: 'Kelola Mahasiswa', url: '/manage-students', icon: Users },
         { title: 'Statistik Global', url: '/statistics', icon: BarChart3 },
         { title: 'Log Aktivitas', url: '/activity-logs', icon: FileText },
+        { title: 'Performance Logs', url: '/perf-logs', icon: Activity },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
     admin: [
