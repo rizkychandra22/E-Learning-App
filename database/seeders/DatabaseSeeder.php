@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             FakultasSeeder::class,
             JurusanSeeder::class,
+            FinanceDemoSeeder::class,
         ]);
     }
 }
