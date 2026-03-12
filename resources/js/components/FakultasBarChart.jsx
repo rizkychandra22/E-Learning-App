@@ -19,12 +19,12 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
     const totalJurusan = data.reduce((sum, d) => sum + (d.jurusan_count || 0), 0);
     const avgJurusan = data.length ? (totalJurusan / data.length).toFixed(1) : 0;
 
-    const barHeight = 24;
-    const barGap = 8;
-    const labelWidth = 160;
-    const valueWidth = 40;
+    const barHeight = 18;
+    const barGap = 6;
+    const labelWidth = 120;
+    const valueWidth = 28;
     const paddingY = 10;
-    const chartAreaWidth = 500;
+    const chartAreaWidth = 260;
     const svgWidth = labelWidth + chartAreaWidth + valueWidth + 20;
     const svgHeight = paddingY * 2 + data.length * (barHeight + barGap) - barGap;
 
@@ -42,8 +42,12 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
             </div>
 
             <div className="rounded-xl border border-border bg-background/55 p-4">
-                <div className="w-full overflow-x-auto">
-                    <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full" style={{ minWidth: 480, minHeight: Math.max(svgHeight, 120) }}>
+                <div className="w-full max-h-[320px] overflow-x-auto overflow-y-auto">
+                    <svg
+                        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                        className="w-full max-w-[680px] mx-auto"
+                        style={{ minWidth: 300, minHeight: Math.max(svgHeight, 120) }}
+                    >
                         <defs>
                             {data.map((_, i) => {
                                 const color = BAR_COLORS[i % BAR_COLORS.length];
@@ -138,16 +142,18 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
                 </div>
 
                 {/* Tooltip / detail card */}
-                {activeIndex !== null && data[activeIndex] && (
-                    <div className="mt-3 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary/60 animate-fade-in text-sm">
-                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BAR_COLORS[activeIndex % BAR_COLORS.length].gradient }} />
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                            <span className="font-semibold">{data[activeIndex].name}</span>
-                            <span className="text-muted-foreground">Kode: <span className="font-medium text-foreground">{data[activeIndex].code}</span></span>
-                            <span className="text-muted-foreground">Jurusan: <span className="font-medium text-foreground">{data[activeIndex].jurusan_count}</span></span>
+                <div className="mt-3 min-h-[44px]">
+                    {activeIndex !== null && data[activeIndex] && (
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-secondary/60 animate-fade-in text-sm">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: BAR_COLORS[activeIndex % BAR_COLORS.length].gradient }} />
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                <span className="font-semibold">{data[activeIndex].name}</span>
+                                <span className="text-muted-foreground">Kode: <span className="font-medium text-foreground">{data[activeIndex].code}</span></span>
+                                <span className="text-muted-foreground">Jurusan: <span className="font-medium text-foreground">{data[activeIndex].jurusan_count}</span></span>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Summary cards */}
