@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
+import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 const typeStyles = {
     create: 'bg-success/15 text-success',
@@ -81,48 +82,32 @@ export default function ActivityLogs({ logs, filters }) {
                     </form>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[760px]">
-                            <thead className="bg-secondary/50 text-left">
-                                <tr>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Waktu</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Modul</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Aksi</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Aktor</th>
-                                    <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Deskripsi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logs.map((item) => (
-                                    <tr key={item.id} className="border-t border-border">
-                                        <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                                            <div className="inline-flex items-center gap-2">
-                                                <Clock3 className="w-3.5 h-3.5" />
-                                                {new Date(item.time).toLocaleString(intlLocale)}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm">{item.module}</td>
-                                        <td className="px-4 py-3 text-sm">
-                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeStyles[item.type] ?? 'bg-secondary text-secondary-foreground'}`}>
-                                                {item.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm">{item.actor}</td>
-                                        <td className="px-4 py-3 text-sm text-muted-foreground">{item.message}</td>
-                                    </tr>
-                                ))}
-                                {logs.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                            Tidak ada aktivitas yang sesuai filter.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <DataCardList
+                    items={logs}
+                    emptyText="Tidak ada aktivitas yang sesuai filter."
+                    renderCard={(item) => {
+                        const accentColors = { create: 'hsl(var(--success))', update: 'hsl(var(--info))', delete: 'hsl(var(--destructive))' };
+                        return (
+                            <DataCard key={item.id} accentColor={accentColors[item.type] ?? 'hsl(var(--muted-foreground))'}>
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 sm:w-44">
+                                        <Clock3 className="w-3.5 h-3.5" />
+                                        {new Date(item.time).toLocaleString(intlLocale)}
+                                    </div>
+                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 min-w-0">
+                                        <CardField label="Modul" value={item.module} />
+                                        <CardField label="Aktor" value={item.actor} />
+                                        <div className="min-w-0">
+                                            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Aksi</p>
+                                            <CardBadge className={typeStyles[item.type] ?? 'bg-secondary text-secondary-foreground'}>{item.type}</CardBadge>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-2">{item.message}</p>
+                            </DataCard>
+                        );
+                    }}
+                />
             </div>
         </ProtectedLayout>
     );

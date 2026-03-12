@@ -12,6 +12,7 @@ const navByRole = {
         { title: 'Kelola Mahasiswa', url: '/manage-students' },
         { title: 'Statistik Global', url: '/statistics' },
         { title: 'Log Aktivitas', url: '/activity-logs' },
+        { title: 'Performance Logs', url: '/perf-logs' },
         { title: 'Pengaturan', url: '/settings' },
     ],
     admin: [

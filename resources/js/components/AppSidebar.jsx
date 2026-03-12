@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, LogOut, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight, X, Wallet
+    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +16,7 @@ const navByRole = {
         { title: 'Kelola Mahasiswa', url: '/manage-students', icon: Users },
         { title: 'Statistik Global', url: '/statistics', icon: BarChart3 },
         { title: 'Log Aktivitas', url: '/activity-logs', icon: FileText },
+        { title: 'Performance Logs', url: '/perf-logs', icon: Activity },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
     admin: [
@@ -63,6 +65,12 @@ const roleLabels = {
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
     const { user, logout } = useAuth();
     const page = usePage();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    const handleLogout = () => {
+        setIsLoggingOut(true);
+        logout();
+    };
 
     if (!user) return null;
 
@@ -119,9 +127,9 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                             <p className="text-xs text-sidebar-muted truncate">{roleLabels[user.role]}</p>
                         </div>
                     )}
-                    <button onClick={logout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full">
-                        <LogOut className="w-5 h-5 flex-shrink-0" />
-                        {showLabel && <span>Keluar</span>}
+                    <button onClick={handleLogout} disabled={isLoggingOut} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full disabled:opacity-70">
+                        {isLoggingOut ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <LogOut className="w-5 h-5 flex-shrink-0" />}
+                        {showLabel && <span>{isLoggingOut ? 'Keluar...' : 'Keluar'}</span>}
                     </button>
                 </div>
 

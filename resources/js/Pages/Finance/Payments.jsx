@@ -4,6 +4,7 @@ import { Search, Plus, CheckCircle2, XCircle, TriangleAlert } from 'lucide-react
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { DataCardList, DataCard, CardBadge, CardField, CardActions } from '@/components/DataCardList';
 
 const emptyForm = {
     invoice_id: '',
@@ -96,62 +97,47 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                             </form>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[860px]">
-                                <thead className="bg-secondary/50 text-left">
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Pembayaran</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Invoice</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Mahasiswa</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Amount</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Metode</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {payments.map((payment) => (
-                                        <tr key={payment.id} className="border-t border-border">
-                                            <td className="px-4 py-3">
-                                                <p className="text-sm font-medium">{payment.payment_no}</p>
-                                                <p className="text-xs text-muted-foreground">{payment.paid_at ? new Date(payment.paid_at).toLocaleString(intlLocale) : '-'}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{payment.invoice?.invoice_no ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{payment.student?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat(intlLocale).format(payment.amount ?? 0)}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{payment.method}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge[payment.status] ?? 'bg-secondary text-secondary-foreground'}`}>
-                                                    {payment.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-2">
-                                                    {payment.status !== 'verified' && (
-                                                        <button type="button" onClick={() => verifyPayment(payment)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
-                                                            <CheckCircle2 className="w-3.5 h-3.5" />
-                                                            Verify
-                                                        </button>
-                                                    )}
-                                                    {payment.status !== 'rejected' && (
-                                                        <button type="button" onClick={() => rejectPayment(payment)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
-                                                            <XCircle className="w-3.5 h-3.5" />
-                                                            Reject
-                                                        </button>
-                                                    )}
+                        <div className="p-4">
+                            <DataCardList
+                                items={payments}
+                                emptyText="Belum ada data pembayaran."
+                                renderCard={(payment) => {
+                                    const accentColors = { pending: 'hsl(var(--warning))', verified: 'hsl(var(--success))', rejected: 'hsl(var(--destructive))' };
+                                    return (
+                                        <DataCard key={payment.id} accentColor={accentColors[payment.status] ?? 'hsl(var(--primary))'}>
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold">{payment.payment_no}</p>
+                                                        <p className="text-xs text-muted-foreground">{payment.paid_at ? new Date(payment.paid_at).toLocaleString(intlLocale) : '-'}</p>
+                                                    </div>
+                                                    <CardBadge className={statusBadge[payment.status] ?? 'bg-secondary text-secondary-foreground'}>{payment.status}</CardBadge>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {payments.length === 0 && (
-                                        <tr>
-                                            <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                Belum ada data pembayaran.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                    <CardField label="Invoice" value={payment.invoice?.invoice_no ?? '-'} />
+                                                    <CardField label="Mahasiswa" value={payment.student?.name ?? '-'} />
+                                                    <CardField label="Amount" value={new Intl.NumberFormat(intlLocale).format(payment.amount ?? 0)} />
+                                                    <CardField label="Metode" value={payment.method} />
+                                                </div>
+                                            </div>
+                                            <CardActions>
+                                                {payment.status !== 'verified' && (
+                                                    <button type="button" onClick={() => verifyPayment(payment)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                        Verify
+                                                    </button>
+                                                )}
+                                                {payment.status !== 'rejected' && (
+                                                    <button type="button" onClick={() => rejectPayment(payment)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                                        <XCircle className="w-3.5 h-3.5" />
+                                                        Reject
+                                                    </button>
+                                                )}
+                                            </CardActions>
+                                        </DataCard>
+                                    );
+                                }}
+                            />
                         </div>
                     </div>
 

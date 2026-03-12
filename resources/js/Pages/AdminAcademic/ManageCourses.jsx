@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Search, Plus, Pencil, Trash2, X, TriangleAlert, Tags, Upload, Download, FolderOpen } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { DataCardList, DataCard, CardBadge, CardField, CardActions } from '@/components/DataCardList';
 
 const emptyForm = {
     title: '',
@@ -177,75 +178,52 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                             </form>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1100px]">
-                                <thead className="bg-secondary/50 text-left">
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Kursus</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Kategori & Tag</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Dosen</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Semester</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">SKS</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Materi</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {courses.map((course) => (
-                                        <tr key={course.id} className="border-t border-border">
-                                            <td className="px-4 py-3">
-                                                <p className="text-sm font-medium">{course.title}</p>
-                                                <p className="text-xs text-muted-foreground">{course.code}</p>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="space-y-1.5">
-                                                    <p className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary">
-                                                        <FolderOpen className="w-3 h-3" />
-                                                        {course.category || '-'}
-                                                    </p>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {(course.tags ?? []).length > 0 ? (course.tags ?? []).map((tag) => (
-                                                            <span key={`${course.id}-${tag}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground">
-                                                                <Tags className="w-3 h-3" />
-                                                                {tag}
-                                                            </span>
-                                                        )) : <span className="text-xs text-muted-foreground">Tanpa tag</span>}
-                                                    </div>
+                        <div className="p-4">
+                            <DataCardList
+                                items={courses}
+                                emptyText="Belum ada data kursus."
+                                renderCard={(course) => (
+                                    <DataCard key={course.id} accentColor={`hsl(var(--primary))`}>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold">{course.title}</p>
+                                                    <p className="text-xs text-muted-foreground">{course.code}</p>
                                                 </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{course.lecturer?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{course.semester ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{course.credit_hours}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{(course.materials ?? []).length}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge[course.status] ?? 'bg-secondary text-secondary-foreground'}`}>
-                                                    {course.status}
+                                                <CardBadge className={statusBadge[course.status] ?? 'bg-secondary text-secondary-foreground'}>{course.status}</CardBadge>
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <CardField label="Dosen" value={course.lecturer?.name ?? '-'} />
+                                                <CardField label="Semester" value={course.semester ?? '-'} />
+                                                <CardField label="SKS" value={course.credit_hours} />
+                                                <CardField label="Materi" value={`${(course.materials ?? []).length} file`} />
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary">
+                                                    <FolderOpen className="w-3 h-3" />
+                                                    {course.category || '-'}
                                                 </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-2">
-                                                    <button type="button" onClick={() => beginEdit(course)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
-                                                        <Pencil className="w-3.5 h-3.5" />
-                                                        Edit
-                                                    </button>
-                                                    <button type="button" onClick={() => destroyCourse(course)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                        Hapus
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {courses.length === 0 && (
-                                        <tr>
-                                            <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                Belum ada data kursus.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                                {(course.tags ?? []).length > 0 ? (course.tags ?? []).map((tag) => (
+                                                    <span key={`${course.id}-${tag}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground">
+                                                        <Tags className="w-3 h-3" />
+                                                        {tag}
+                                                    </span>
+                                                )) : <span className="text-xs text-muted-foreground">Tanpa tag</span>}
+                                            </div>
+                                        </div>
+                                        <CardActions>
+                                            <button type="button" onClick={() => beginEdit(course)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+                                                <Pencil className="w-3.5 h-3.5" />
+                                                Edit
+                                            </button>
+                                            <button type="button" onClick={() => destroyCourse(course)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Hapus
+                                            </button>
+                                        </CardActions>
+                                    </DataCard>
+                                )}
+                            />
                         </div>
                     </div>
 

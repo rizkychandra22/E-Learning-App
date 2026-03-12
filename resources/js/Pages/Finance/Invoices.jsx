@@ -4,6 +4,7 @@ import { Search, Plus, Pencil, Trash2, X, TriangleAlert } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { DataCardList, DataCard, CardBadge, CardField, CardActions } from '@/components/DataCardList';
 
 const emptyForm = {
     student_id: '',
@@ -125,58 +126,40 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                             </form>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[860px]">
-                                <thead className="bg-secondary/50 text-left">
-                                    <tr>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Invoice</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Mahasiswa</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Komponen</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Jatuh Tempo</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Amount</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground">Status</th>
-                                        <th className="px-4 py-3 text-xs font-semibold uppercase text-muted-foreground text-right">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {invoices.map((invoice) => (
-                                        <tr key={invoice.id} className="border-t border-border">
-                                            <td className="px-4 py-3">
-                                                <p className="text-sm font-medium">{invoice.title}</p>
-                                                <p className="text-xs text-muted-foreground">{invoice.invoice_no}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.student?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.fee_component?.name ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm text-muted-foreground">{invoice.due_date ?? '-'}</td>
-                                            <td className="px-4 py-3 text-sm font-medium">{new Intl.NumberFormat(intlLocale).format(invoice.amount ?? 0)}</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusBadge[invoice.status] ?? 'bg-secondary text-secondary-foreground'}`}>
-                                                    {invoice.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex justify-end gap-2">
-                                                    <button type="button" onClick={() => beginEdit(invoice)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
-                                                        <Pencil className="w-3.5 h-3.5" />
-                                                        Edit
-                                                    </button>
-                                                    <button type="button" onClick={() => destroyInvoice(invoice)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                        Hapus
-                                                    </button>
+                        <div className="p-4">
+                            <DataCardList
+                                items={invoices}
+                                emptyText="Belum ada data tagihan."
+                                renderCard={(invoice) => (
+                                    <DataCard key={invoice.id} accentColor={`hsl(var(--primary))`}>
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold">{invoice.title}</p>
+                                                    <p className="text-xs text-muted-foreground">{invoice.invoice_no}</p>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {invoices.length === 0 && (
-                                        <tr>
-                                            <td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                                                Belum ada data tagihan.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                                <CardBadge className={statusBadge[invoice.status] ?? 'bg-secondary text-secondary-foreground'}>{invoice.status}</CardBadge>
+                                            </div>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                <CardField label="Mahasiswa" value={invoice.student?.name ?? '-'} />
+                                                <CardField label="Komponen" value={invoice.fee_component?.name ?? '-'} />
+                                                <CardField label="Jatuh Tempo" value={invoice.due_date ?? '-'} />
+                                                <CardField label="Amount" value={new Intl.NumberFormat(intlLocale).format(invoice.amount ?? 0)} />
+                                            </div>
+                                        </div>
+                                        <CardActions>
+                                            <button type="button" onClick={() => beginEdit(invoice)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+                                                <Pencil className="w-3.5 h-3.5" />
+                                                Edit
+                                            </button>
+                                            <button type="button" onClick={() => destroyInvoice(invoice)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Hapus
+                                            </button>
+                                        </CardActions>
+                                    </DataCard>
+                                )}
+                            />
                         </div>
                     </div>
 

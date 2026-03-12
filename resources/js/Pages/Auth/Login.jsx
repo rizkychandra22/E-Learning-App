@@ -1,4 +1,3 @@
-import React from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 
 const Login = () => {
@@ -134,10 +133,11 @@ const Login = () => {
 
                                         <button
                                             type="submit"
-                                            className="btn w-100 py-2 fw-bold text-white shadow-sm border-0 gradient-primary"
+                                            className="btn w-100 py-2 fw-bold text-white shadow-sm border-0 gradient-primary d-flex align-items-center justify-content-center gap-2"
                                             style={{ borderRadius: '10px' }}
                                             disabled={processing}
                                         >
+                                            {processing && <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>}
                                             {processing ? (isEnglish ? 'Signing in...' : 'Logging in...') : (isEnglish ? 'Sign In' : 'Masuk')}
                                         </button>
                                     </form>
