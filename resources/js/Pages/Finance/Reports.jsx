@@ -68,7 +68,8 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                     />
 
                     <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
-                        <div className="p-4 border-b border-border">
+                        <div className="p-4 border-b border-border flex items-center gap-2">
+                            <BadgeAlert className="w-4 h-4 text-primary" />
                             <h2 className="font-semibold">Top Piutang</h2>
                         </div>
                         <div className="p-4">
@@ -125,5 +126,3 @@ function SummaryCard({ title, value, plain = false, icon: Icon, variant = 'prima
         </div>
     );
 }
-
-
