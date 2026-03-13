@@ -20,6 +20,14 @@ class PerformanceLogController extends Controller
             $entries = $this->readPerfEntries($logDirectory . DIRECTORY_SEPARATOR . $selectedFile);
         }
 
+        $mocked = false;
+        if (empty($files)) {
+            $mocked = true;
+            $files = $this->mockPerfFiles();
+            $selectedFile = $files[0]['file'] ?? null;
+            $entries = $this->mockPerfEntries();
+        }
+
         $metrics = array_filter(array_map(fn ($entry) => $entry['metric'] ?? null, $entries));
         $byMetric = [];
         foreach ($metrics as $metric) {
@@ -30,6 +38,7 @@ class PerformanceLogController extends Controller
             'files' => $files,
             'selected_file' => $selectedFile,
             'entries' => $entries,
+            'mocked' => $mocked,
             'summary' => [
                 'total' => count($entries),
                 'by_metric' => $byMetric,
@@ -130,5 +139,74 @@ class PerformanceLogController extends Controller
         }
 
         return array_reverse($entries);
+    }
+
+    private function mockPerfFiles(): array
+    {
+        return [
+            ['file' => 'perf-vitals-2026-03-12.log', 'date' => '2026-03-12'],
+            ['file' => 'perf-vitals-2026-03-11.log', 'date' => '2026-03-11'],
+        ];
+    }
+
+    private function mockPerfEntries(): array
+    {
+        return [
+            [
+                'timestamp' => now()->subMinutes(8)->toISOString(),
+                'metric' => 'LCP',
+                'value' => 2.1,
+                'unit' => 's',
+                'path' => '/dashboard',
+                'user_id' => 1201,
+                'ip' => '192.168.1.12',
+                'ua' => 'Chrome 122',
+                'raw' => 'mock',
+            ],
+            [
+                'timestamp' => now()->subMinutes(12)->toISOString(),
+                'metric' => 'CLS',
+                'value' => 0.08,
+                'unit' => 'score',
+                'path' => '/courses',
+                'user_id' => 1202,
+                'ip' => '192.168.1.18',
+                'ua' => 'Edge 122',
+                'raw' => 'mock',
+            ],
+            [
+                'timestamp' => now()->subMinutes(16)->toISOString(),
+                'metric' => 'TBT',
+                'value' => 180,
+                'unit' => 'ms',
+                'path' => '/my-courses',
+                'user_id' => 1203,
+                'ip' => '192.168.1.20',
+                'ua' => 'Firefox 123',
+                'raw' => 'mock',
+            ],
+            [
+                'timestamp' => now()->subMinutes(22)->toISOString(),
+                'metric' => 'FCP',
+                'value' => 1.2,
+                'unit' => 's',
+                'path' => '/materials',
+                'user_id' => 1204,
+                'ip' => '192.168.1.35',
+                'ua' => 'Chrome 122',
+                'raw' => 'mock',
+            ],
+            [
+                'timestamp' => now()->subMinutes(30)->toISOString(),
+                'metric' => 'LCP',
+                'value' => 2.7,
+                'unit' => 's',
+                'path' => '/assignments',
+                'user_id' => 1205,
+                'ip' => '192.168.1.44',
+                'ua' => 'Safari 17',
+                'raw' => 'mock',
+            ],
+        ];
     }
 }

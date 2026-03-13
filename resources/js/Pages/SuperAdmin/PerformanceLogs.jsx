@@ -18,7 +18,7 @@ const formatValue = (value, unit) => {
     return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(Number(value));
 };
 
-export default function PerformanceLogs({ files = [], selected_file, entries = [], summary }) {
+export default function PerformanceLogs({ files = [], selected_file, entries = [], summary, mocked }) {
     const handleFileChange = (event) => {
         const file = event.target.value;
         router.visit(`/perf-logs?file=${encodeURIComponent(file)}`, {
@@ -37,6 +37,16 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                     title="Performance Logs"
                     description="Monitoring metrik LCP, CLS, dan TBT dari sisi pengguna secara real-time."
                 />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <Activity className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan.</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_2fr] gap-4">
                     <div className="rounded-xl border border-border bg-card p-4 shadow-card">
@@ -75,7 +85,7 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                             {summary?.latest ? `Terakhir: ${summary.latest}` : 'Belum ada data'}
                         </div>
 
-                        {selected_file && (
+                        {selected_file && !mocked && (
                             <a
                                 href={`/perf-logs/download?file=${encodeURIComponent(selected_file)}`}
                                 className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition"
@@ -83,6 +93,16 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                                 <Download className="w-4 h-4" />
                                 Unduh Log
                             </a>
+                        )}
+                        {selected_file && mocked && (
+                            <button
+                                type="button"
+                                disabled
+                                className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/60 text-primary-foreground text-sm font-medium opacity-60 cursor-not-allowed"
+                            >
+                                <Download className="w-4 h-4" />
+                                Unduh Log
+                            </button>
                         )}
                     </div>
 
