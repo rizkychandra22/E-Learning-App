@@ -73,6 +73,16 @@ class AdminAcademicService
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
+        $mocked = false;
+        $shouldMock = $search === '' && $normalizedStatus === 'all' && $normalizedCategory === 'all';
+        if ($courses->isEmpty() && $shouldMock) {
+            $mocked = true;
+            $lecturers = collect($this->mockLecturers());
+            $jurusans = collect($this->mockJurusans());
+            $courses = collect($this->mockCourses($lecturers->all(), $jurusans->all()));
+            $availableCategories = collect(array_values(array_unique(array_filter(array_map(fn ($item) => $item['category'] ?? null, $courses->all())))));
+        }
+
         return [
             'courses' => $courses,
             'jurusans' => $jurusans,
@@ -80,6 +90,7 @@ class AdminAcademicService
             'migrationRequired' => $migrationRequired,
             'materialsMigrationRequired' => $materialsMigrationRequired,
             'categories' => $availableCategories,
+            'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
                 'status' => $normalizedStatus,
@@ -174,8 +185,15 @@ class AdminAcademicService
             ->latest('id')
             ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'email_verified_at', 'created_at']);
 
+        $mocked = false;
+        if ($search === '' && $selectedRole === 'all' && $users->isEmpty()) {
+            $mocked = true;
+            $users = collect($this->mockUsers());
+        }
+
         return [
             'users' => $users,
+            'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
                 'role' => $selectedRole,
@@ -238,8 +256,15 @@ class AdminAcademicService
             ->latest('id')
             ->get(['id', 'name', 'email', 'username', 'role', 'code', 'created_at']);
 
+        $mocked = false;
+        if ($search === '' && $pendingUsers->isEmpty()) {
+            $mocked = true;
+            $pendingUsers = collect($this->mockPendingUsers());
+        }
+
         return [
             'pendingUsers' => $pendingUsers,
+            'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
             ],
@@ -258,11 +283,20 @@ class AdminAcademicService
 
     public function getCategoriesData(): array
     {
+        $fakultas = Fakultas::query()
+            ->with(['jurusans' => fn ($query) => $query->orderBy('name')])
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'slug']);
+
+        $mocked = false;
+        if ($fakultas->isEmpty()) {
+            $mocked = true;
+            $fakultas = collect($this->mockFakultas());
+        }
+
         return [
-            'fakultas' => Fakultas::query()
-                ->with(['jurusans' => fn ($query) => $query->orderBy('name')])
-                ->orderBy('name')
-                ->get(['id', 'name', 'code', 'slug']),
+            'fakultas' => $fakultas,
+            'mocked' => $mocked,
         ];
     }
 
@@ -437,5 +471,154 @@ class AdminAcademicService
         $payload['tags'] = $normalizedTags === [] ? null : $normalizedTags;
 
         return $payload;
+    }
+
+    private function mockLecturers(): array
+    {
+        return [
+            ['id' => 8001, 'name' => 'Dr. Maya Dewi', 'code' => 'NIDN202405', 'is_mock' => true],
+            ['id' => 8002, 'name' => 'Prof. Eko Prasetyo', 'code' => 'NIDN202406', 'is_mock' => true],
+        ];
+    }
+
+    private function mockJurusans(): array
+    {
+        return [
+            [
+                'id' => 7001,
+                'name' => 'Informatika',
+                'fakultas_id' => 6001,
+                'fakultas' => ['id' => 6001, 'name' => 'Teknik', 'code' => 'FT'],
+                'is_mock' => true,
+            ],
+            [
+                'id' => 7002,
+                'name' => 'Sistem Informasi',
+                'fakultas_id' => 6001,
+                'fakultas' => ['id' => 6001, 'name' => 'Teknik', 'code' => 'FT'],
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockCourses(array $lecturers, array $jurusans): array
+    {
+        $lecturer = $lecturers[0] ?? ['id' => 8001, 'name' => 'Dr. Maya Dewi', 'code' => 'NIDN202405'];
+        $jurusan = $jurusans[0] ?? ['id' => 7001, 'name' => 'Informatika', 'fakultas_id' => 6001, 'fakultas' => ['name' => 'Teknik']];
+
+        return [
+            [
+                'id' => 9001,
+                'title' => 'Pemrograman Web Modern',
+                'code' => 'WEB-301',
+                'description' => 'Stack modern dan praktik deployment.',
+                'category' => 'Teknologi',
+                'tags' => ['react', 'laravel', 'api'],
+                'jurusan_id' => $jurusan['id'],
+                'jurusan' => $jurusan,
+                'lecturer_id' => $lecturer['id'],
+                'lecturer' => $lecturer,
+                'level' => 'menengah',
+                'semester' => 4,
+                'credit_hours' => 3,
+                'status' => 'active',
+                'materials' => [
+                    ['id' => 9901, 'title' => 'Silabus', 'file_name' => 'silabus.pdf', 'file_size' => 420000, 'created_at' => now()->subDays(4)->toISOString(), 'is_mock' => true],
+                    ['id' => 9902, 'title' => 'Starter Kit', 'file_name' => 'starter.zip', 'file_size' => 840000, 'created_at' => now()->subDays(2)->toISOString(), 'is_mock' => true],
+                ],
+                'is_mock' => true,
+            ],
+            [
+                'id' => 9002,
+                'title' => 'Analitik Data Bisnis',
+                'code' => 'DATA-210',
+                'description' => 'Dashboarding dan insight bisnis.',
+                'category' => 'Data',
+                'tags' => ['sql', 'analytics'],
+                'jurusan_id' => $jurusan['id'],
+                'jurusan' => $jurusan,
+                'lecturer_id' => $lecturer['id'],
+                'lecturer' => $lecturer,
+                'level' => 'dasar',
+                'semester' => 2,
+                'credit_hours' => 2,
+                'status' => 'draft',
+                'materials' => [],
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockUsers(): array
+    {
+        return [
+            [
+                'id' => 5101,
+                'name' => 'Nanda Pratama',
+                'email' => 'nanda.pratama@mail.id',
+                'username' => 'nanda.pratama',
+                'role' => 'admin',
+                'type' => 'nidn',
+                'code' => 'NIDN202450',
+                'email_verified_at' => now()->subDays(10)->toISOString(),
+                'created_at' => now()->subDays(12)->toISOString(),
+                'is_mock' => true,
+            ],
+            [
+                'id' => 5102,
+                'name' => 'Lia Kartika',
+                'email' => 'lia.kartika@mail.id',
+                'username' => 'lia.kartika',
+                'role' => 'student',
+                'type' => 'nim',
+                'code' => 'NIM2024501',
+                'email_verified_at' => null,
+                'created_at' => now()->subDays(2)->toISOString(),
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockPendingUsers(): array
+    {
+        return [
+            [
+                'id' => 5201,
+                'name' => 'Dito Arjuna',
+                'email' => 'dito.arjuna@mail.id',
+                'username' => 'dito.arjuna',
+                'role' => 'student',
+                'code' => 'NIM2024021',
+                'created_at' => now()->subDays(1)->toISOString(),
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockFakultas(): array
+    {
+        return [
+            [
+                'id' => 6001,
+                'name' => 'Teknik',
+                'code' => 'FT',
+                'slug' => 'teknik',
+                'jurusans' => [
+                    ['id' => 7001, 'fakultas_id' => 6001, 'name' => 'Informatika', 'code' => 'IF', 'slug' => 'informatika', 'is_mock' => true],
+                    ['id' => 7002, 'fakultas_id' => 6001, 'name' => 'Sistem Informasi', 'code' => 'SI', 'slug' => 'sistem-informasi', 'is_mock' => true],
+                ],
+                'is_mock' => true,
+            ],
+            [
+                'id' => 6002,
+                'name' => 'Ekonomi',
+                'code' => 'FE',
+                'slug' => 'ekonomi',
+                'jurusans' => [
+                    ['id' => 7003, 'fakultas_id' => 6002, 'name' => 'Manajemen', 'code' => 'MNJ', 'slug' => 'manajemen', 'is_mock' => true],
+                ],
+                'is_mock' => true,
+            ],
+        ];
     }
 }
