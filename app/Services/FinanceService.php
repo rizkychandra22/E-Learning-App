@@ -114,11 +114,16 @@ class FinanceService
         $selectedStatus = in_array($status, $allowedStatus, true) ? $status : 'all';
 
         if (!$this->hasFinanceTables()) {
+            $mocked = true;
+            $mockStudents = $this->mockStudents();
+            $mockComponents = $this->mockFeeComponents();
+            $mockInvoices = $this->mockInvoices($mockStudents, $mockComponents);
             return [
                 'migrationRequired' => true,
-                'invoices' => [],
-                'students' => [],
-                'feeComponents' => [],
+                'invoices' => $mockInvoices,
+                'students' => $mockStudents,
+                'feeComponents' => $mockComponents,
+                'mocked' => $mocked,
                 'filters' => [
                     'search' => $search,
                     'status' => $selectedStatus,
@@ -151,11 +156,21 @@ class FinanceService
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'amount']);
 
+        $mocked = false;
+        $shouldMock = $search === '' && $selectedStatus === 'all';
+        if ($invoices->isEmpty() && $shouldMock) {
+            $mocked = true;
+            $students = collect($this->mockStudents());
+            $feeComponents = collect($this->mockFeeComponents());
+            $invoices = collect($this->mockInvoices($students->all(), $feeComponents->all()));
+        }
+
         return [
             'migrationRequired' => false,
             'invoices' => $invoices,
             'students' => $students,
             'feeComponents' => $feeComponents,
+            'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
                 'status' => $selectedStatus,
@@ -192,11 +207,16 @@ class FinanceService
         $selectedStatus = in_array($status, $allowedStatus, true) ? $status : 'all';
 
         if (!$this->hasFinanceTables()) {
+            $mocked = true;
+            $mockStudents = $this->mockStudents();
+            $mockInvoices = $this->mockInvoices($mockStudents, $this->mockFeeComponents());
+            $mockPayments = $this->mockPayments($mockStudents, $mockInvoices);
             return [
                 'migrationRequired' => true,
-                'payments' => [],
-                'invoices' => [],
-                'students' => [],
+                'payments' => $mockPayments,
+                'invoices' => $mockInvoices,
+                'students' => $mockStudents,
+                'mocked' => $mocked,
                 'filters' => [
                     'search' => $search,
                     'status' => $selectedStatus,
@@ -227,11 +247,21 @@ class FinanceService
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
+        $mocked = false;
+        $shouldMock = $search === '' && $selectedStatus === 'all';
+        if ($payments->isEmpty() && $shouldMock) {
+            $mocked = true;
+            $students = collect($this->mockStudents());
+            $invoices = collect($this->mockInvoices($students->all(), $this->mockFeeComponents()));
+            $payments = collect($this->mockPayments($students->all(), $invoices->all()));
+        }
+
         return [
             'migrationRequired' => false,
             'payments' => $payments,
             'invoices' => $invoices,
             'students' => $students,
+            'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
                 'status' => $selectedStatus,
@@ -287,16 +317,14 @@ class FinanceService
     public function getReportsData(?string $dateFrom, ?string $dateTo): array
     {
         if (!$this->hasFinanceTables()) {
+            $mocked = true;
+            $mock = $this->mockReports();
             return [
                 'migrationRequired' => true,
-                'summary' => [
-                    'verified_income' => 0,
-                    'pending_amount' => 0,
-                    'receivables' => 0,
-                    'total_invoices' => 0,
-                ],
-                'top_unpaid' => [],
-                'cashflow' => [],
+                'summary' => $mock['summary'],
+                'top_unpaid' => $mock['top_unpaid'],
+                'cashflow' => $mock['cashflow'],
+                'mocked' => $mocked,
                 'filters' => [
                     'date_from' => $dateFrom,
                     'date_to' => $dateTo,
@@ -304,6 +332,8 @@ class FinanceService
             ];
         }
 
+        $rawFrom = $dateFrom;
+        $rawTo = $dateTo;
         $from = $dateFrom ? now()->parse($dateFrom)->startOfDay() : now()->startOfMonth();
         $to = $dateTo ? now()->parse($dateTo)->endOfDay() : now()->endOfDay();
 
@@ -342,16 +372,30 @@ class FinanceService
             })
             ->values();
 
+        $mocked = false;
+        $shouldMock = !$rawFrom && !$rawTo;
+        if ($shouldMock && $topUnpaid->isEmpty() && $verifiedIncome === 0.0 && $pendingAmount === 0.0) {
+            $mocked = true;
+            $mock = $this->mockReports();
+            $topUnpaid = collect($mock['top_unpaid']);
+            $cashflow = collect($mock['cashflow']);
+            $verifiedIncome = $mock['summary']['verified_income'];
+            $pendingAmount = $mock['summary']['pending_amount'];
+            $receivables = $mock['summary']['receivables'];
+            $totalInvoices = $mock['summary']['total_invoices'];
+        }
+
         return [
             'migrationRequired' => false,
             'summary' => [
                 'verified_income' => $verifiedIncome,
                 'pending_amount' => $pendingAmount,
                 'receivables' => $receivables,
-                'total_invoices' => Invoice::count(),
+                'total_invoices' => $mocked ? $totalInvoices : Invoice::count(),
             ],
             'top_unpaid' => $topUnpaid,
             'cashflow' => $cashflow,
+            'mocked' => $mocked,
             'filters' => [
                 'date_from' => $from->toDateString(),
                 'date_to' => $to->toDateString(),
@@ -452,5 +496,138 @@ class FinanceService
     private function settingsPrefix(int $financeId): string
     {
         return 'finance_' . $financeId . '_';
+    }
+
+    private function mockStudents(): array
+    {
+        return [
+            ['id' => 601, 'name' => 'Rani Lestari', 'code' => 'NIM2024551', 'is_mock' => true],
+            ['id' => 602, 'name' => 'Agus Saputra', 'code' => 'NIM2024552', 'is_mock' => true],
+        ];
+    }
+
+    private function mockFeeComponents(): array
+    {
+        return [
+            ['id' => 701, 'name' => 'SPP Semester', 'code' => 'SPP', 'amount' => 2500000, 'is_mock' => true],
+            ['id' => 702, 'name' => 'Biaya Praktikum', 'code' => 'PRK', 'amount' => 750000, 'is_mock' => true],
+        ];
+    }
+
+    private function mockInvoices(array $students, array $components): array
+    {
+        $student = $students[0] ?? ['id' => 601, 'name' => 'Rani Lestari', 'code' => 'NIM2024551'];
+        $component = $components[0] ?? ['id' => 701, 'name' => 'SPP Semester', 'code' => 'SPP', 'amount' => 2500000];
+
+        return [
+            [
+                'id' => 801,
+                'invoice_no' => 'INV-202603-0001',
+                'title' => 'Tagihan SPP Semester Genap',
+                'description' => 'Pembayaran semester genap.',
+                'status' => 'unpaid',
+                'amount' => $component['amount'],
+                'due_date' => now()->addDays(10)->toDateString(),
+                'student_id' => $student['id'],
+                'fee_component_id' => $component['id'],
+                'student' => $student,
+                'fee_component' => $component,
+                'is_mock' => true,
+            ],
+            [
+                'id' => 802,
+                'invoice_no' => 'INV-202603-0002',
+                'title' => 'Tagihan Praktikum',
+                'description' => 'Biaya praktikum lab.',
+                'status' => 'partial',
+                'amount' => 750000,
+                'due_date' => now()->addDays(5)->toDateString(),
+                'student_id' => $student['id'],
+                'fee_component_id' => $components[1]['id'] ?? $component['id'],
+                'student' => $student,
+                'fee_component' => $components[1] ?? $component,
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockPayments(array $students, array $invoices): array
+    {
+        $student = $students[0] ?? ['id' => 601, 'name' => 'Rani Lestari', 'code' => 'NIM2024551'];
+        $invoice = $invoices[0] ?? ['id' => 801, 'invoice_no' => 'INV-202603-0001', 'title' => 'Tagihan SPP Semester Genap', 'status' => 'unpaid', 'amount' => 2500000];
+
+        return [
+            [
+                'id' => 901,
+                'payment_no' => 'PAY-202603-0001',
+                'status' => 'pending',
+                'amount' => 1250000,
+                'method' => 'bank_transfer',
+                'paid_at' => now()->subDays(1)->toISOString(),
+                'invoice_id' => $invoice['id'],
+                'student_id' => $student['id'],
+                'invoice' => $invoice,
+                'student' => $student,
+                'is_mock' => true,
+            ],
+            [
+                'id' => 902,
+                'payment_no' => 'PAY-202603-0002',
+                'status' => 'verified',
+                'amount' => 750000,
+                'method' => 'virtual_account',
+                'paid_at' => now()->subDays(3)->toISOString(),
+                'invoice_id' => $invoice['id'],
+                'student_id' => $student['id'],
+                'invoice' => $invoice,
+                'student' => $student,
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockReports(): array
+    {
+        return [
+            'summary' => [
+                'verified_income' => 4200000,
+                'pending_amount' => 900000,
+                'receivables' => 5200000,
+                'total_invoices' => 18,
+            ],
+            'top_unpaid' => [
+                [
+                    'id' => 9901,
+                    'invoice_no' => 'INV-202603-0042',
+                    'student_id' => 601,
+                    'amount' => 2500000,
+                    'due_date' => now()->addDays(7)->toDateString(),
+                    'status' => 'overdue',
+                    'student' => ['name' => 'Rani Lestari'],
+                    'is_mock' => true,
+                ],
+                [
+                    'id' => 9902,
+                    'invoice_no' => 'INV-202603-0043',
+                    'student_id' => 602,
+                    'amount' => 1800000,
+                    'due_date' => now()->addDays(12)->toDateString(),
+                    'status' => 'unpaid',
+                    'student' => ['name' => 'Agus Saputra'],
+                    'is_mock' => true,
+                ],
+            ],
+            'cashflow' => collect(range(0, 5))
+                ->map(function (int $offset) {
+                    $date = now()->subMonths(5 - $offset);
+                    return [
+                        'month' => $date->translatedFormat('M Y'),
+                        'verified' => 700000 + ($offset * 250000),
+                        'pending' => 200000 + ($offset * 120000),
+                    ];
+                })
+                ->values()
+                ->all(),
+        ];
     }
 }

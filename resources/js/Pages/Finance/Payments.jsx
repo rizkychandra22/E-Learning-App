@@ -22,7 +22,7 @@ const statusBadge = {
     rejected: 'bg-destructive/15 text-destructive',
 };
 
-export default function Payments({ migrationRequired, payments, invoices, students, filters }) {
+export default function Payments({ migrationRequired, payments, invoices, students, filters, mocked }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
@@ -57,6 +57,16 @@ export default function Payments({ migrationRequired, payments, invoices, studen
             <Head title="Pembayaran" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Pembayaran" description="Catat dan verifikasi pembayaran mahasiswa" />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <TriangleAlert className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
@@ -122,13 +132,23 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                                             </div>
                                             <CardActions>
                                                 {payment.status !== 'verified' && (
-                                                    <button type="button" onClick={() => verifyPayment(payment)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => verifyPayment(payment)}
+                                                        disabled={mocked || payment.is_mock}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium disabled:opacity-60"
+                                                    >
                                                         <CheckCircle2 className="w-3.5 h-3.5" />
                                                         Verify
                                                     </button>
                                                 )}
                                                 {payment.status !== 'rejected' && (
-                                                    <button type="button" onClick={() => rejectPayment(payment)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => rejectPayment(payment)}
+                                                        disabled={mocked || payment.is_mock}
+                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
+                                                    >
                                                         <XCircle className="w-3.5 h-3.5" />
                                                         Reject
                                                     </button>
@@ -184,7 +204,7 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                                 {form.errors.notes && <span className="text-xs text-destructive mt-1 block">{form.errors.notes}</span>}
                             </label>
 
-                            <button type="submit" disabled={form.processing || migrationRequired} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                            <button type="submit" disabled={form.processing || migrationRequired || mocked} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                 <Plus className="w-4 h-4" />
                                 Simpan Pembayaran
                             </button>
@@ -226,5 +246,4 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
-
 
