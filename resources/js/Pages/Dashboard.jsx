@@ -45,6 +45,18 @@ function SectionTitle({ icon: Icon, children }) {
     );
 }
 
+function KpiGrid({ cards }) {
+    return (
+        <div className={UI.kpiGridClass}>
+            {cards.map((card) => (
+                <EqualCard key={card.title}>
+                    <CompactStatCard {...card} />
+                </EqualCard>
+            ))}
+        </div>
+    );
+}
+
 
 
 function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
@@ -361,6 +373,20 @@ export default function Dashboard() {
         value: Number(item.total) || 0,
     }));
 
+    const dosenKpis = [
+        { title: 'Kursus Saya', value: 6, icon: BookOpen, gradient: 'primary', delay: 0 },
+        { title: 'Total Mahasiswa', value: 182, change: '+12 minggu ini', changeType: 'up', icon: Users, gradient: 'accent', delay: 80 },
+        { title: 'Tugas Belum Dinilai', value: 23, icon: ClipboardList, gradient: 'warm', delay: 160 },
+        { title: 'Kuis Aktif', value: 4, icon: Award, gradient: 'success', delay: 240 },
+    ];
+
+    const mahasiswaKpis = [
+        { title: 'Kursus Diikuti', value: 5, icon: BookOpen, gradient: 'primary', delay: 0 },
+        { title: 'Tugas Pending', value: 3, icon: ClipboardList, gradient: 'warm', delay: 80 },
+        { title: 'Kuis Mendatang', value: 2, icon: Award, gradient: 'accent', delay: 160 },
+        { title: 'Rata-rata Nilai', value: '85.4', change: '+2.1 dari semester lalu', changeType: 'up', icon: TrendingUp, gradient: 'success', delay: 240 },
+    ];
+
     return (
         <ProtectedLayout>
             <Head title="Dashboard" />
@@ -369,12 +395,14 @@ export default function Dashboard() {
 
                 {user.role === 'super_admin' && (
                     <>
-                        <div className={UI.kpiGridClass}>
-                            <EqualCard><CompactStatCard title="Total Pengguna" value={superAdmin?.summary?.total_users ?? 0} change={`+${superAdmin?.summary?.new_this_month ?? 0} bulan ini`} changeType="up" icon={Users} gradient="primary" delay={0} /></EqualCard>
-                            <EqualCard><CompactStatCard title="Admin Akademik" value={roleStats.admin ?? 0} icon={Shield} gradient="accent" delay={80} /></EqualCard>
-                            <EqualCard><CompactStatCard title="Dosen" value={roleStats.teacher ?? 0} icon={UserCheck} gradient="warm" delay={160} /></EqualCard>
-                            <EqualCard><CompactStatCard title="Mahasiswa" value={roleStats.student ?? 0} icon={BookOpen} gradient="success" delay={240} /></EqualCard>
-                        </div>
+                        <KpiGrid
+                            cards={[
+                                { title: 'Total Pengguna', value: superAdmin?.summary?.total_users ?? 0, change: `+${superAdmin?.summary?.new_this_month ?? 0} bulan ini`, changeType: 'up', icon: Users, gradient: 'primary', delay: 0 },
+                                { title: 'Admin Akademik', value: roleStats.admin ?? 0, icon: Shield, gradient: 'accent', delay: 80 },
+                                { title: 'Dosen', value: roleStats.teacher ?? 0, icon: UserCheck, gradient: 'warm', delay: 160 },
+                                { title: 'Mahasiswa', value: roleStats.student ?? 0, icon: BookOpen, gradient: 'success', delay: 240 },
+                            ]}
+                        />
                         <div className={UI.miniGridClass}>
                             <EqualCard><MiniRoleCard title="Finance" value={roleStats.finance ?? 0} icon={Wallet} iconVariant="primary" /></EqualCard>
                             <EqualCard><MiniRoleCard title="Super Admin" value={roleStats.root ?? 0} icon={Crown} iconVariant="accent" /></EqualCard>
@@ -385,12 +413,14 @@ export default function Dashboard() {
 
                 {user.role === 'admin' && (
                     <>
-                        <div className={UI.kpiGridClass}>
-                            <EqualCard><CompactStatCard title="Total User Akademik" value={adminAcademic?.summary?.total_users ?? 0} change={`+${adminAcademic?.summary?.new_users_month ?? 0} bulan ini`} changeType="up" icon={Users} gradient="primary" delay={0} /></EqualCard>
-                            <EqualCard><CompactStatCard title="Menunggu Persetujuan" value={adminAcademic?.summary?.pending_approvals ?? 0} icon={Clock} gradient="warm" delay={80} /></EqualCard>
-                            <EqualCard><CompactStatCard title="Total Kursus" value={adminAcademic?.summary?.courses_count ?? 0} icon={BookOpen} gradient="accent" delay={160} /></EqualCard>
-                            <EqualCard><CompactStatCard title="Kursus Aktif" value={adminAcademic?.summary?.active_courses_count ?? 0} icon={FileText} gradient="success" delay={240} /></EqualCard>
-                        </div>
+                        <KpiGrid
+                            cards={[
+                                { title: 'Total User Akademik', value: adminAcademic?.summary?.total_users ?? 0, change: `+${adminAcademic?.summary?.new_users_month ?? 0} bulan ini`, changeType: 'up', icon: Users, gradient: 'primary', delay: 0 },
+                                { title: 'Menunggu Persetujuan', value: adminAcademic?.summary?.pending_approvals ?? 0, icon: Clock, gradient: 'warm', delay: 80 },
+                                { title: 'Total Kursus', value: adminAcademic?.summary?.courses_count ?? 0, icon: BookOpen, gradient: 'accent', delay: 160 },
+                                { title: 'Kursus Aktif', value: adminAcademic?.summary?.active_courses_count ?? 0, icon: FileText, gradient: 'success', delay: 240 },
+                            ]}
+                        />
                         <div className={UI.miniGridFourClass}>
                             <EqualCard><MiniRoleCard title="Admin" value={adminRoleStats.admin ?? 0} icon={Shield} iconVariant="accent" /></EqualCard>
                             <EqualCard><MiniRoleCard title="Finance" value={adminRoleStats.finance ?? 0} icon={Wallet} iconVariant="primary" /></EqualCard>
@@ -401,30 +431,22 @@ export default function Dashboard() {
                 )}
 
                 {user.role === 'finance' && (
-                    <div className={UI.kpiGridClass}>
-                        <EqualCard><CompactStatCard title="Total Tagihan" value={financeData?.summary?.total_invoices ?? 0} icon={FileText} gradient="primary" delay={0} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Pembayaran Pending" value={financeData?.summary?.pending_payments ?? 0} icon={Clock} gradient="warm" delay={80} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Pembayaran Terverifikasi" value={financeData?.summary?.verified_payments ?? 0} icon={Shield} gradient="accent" delay={160} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Pendapatan Bulan Ini" value={new Intl.NumberFormat(intlLocale).format(financeData?.summary?.income_month ?? 0)} icon={TrendingUp} gradient="success" delay={240} /></EqualCard>
-                    </div>
+                    <KpiGrid
+                        cards={[
+                            { title: 'Total Tagihan', value: financeData?.summary?.total_invoices ?? 0, icon: FileText, gradient: 'primary', delay: 0 },
+                            { title: 'Pembayaran Pending', value: financeData?.summary?.pending_payments ?? 0, icon: Clock, gradient: 'warm', delay: 80 },
+                            { title: 'Pembayaran Terverifikasi', value: financeData?.summary?.verified_payments ?? 0, icon: Shield, gradient: 'accent', delay: 160 },
+                            { title: 'Pendapatan Bulan Ini', value: new Intl.NumberFormat(intlLocale).format(financeData?.summary?.income_month ?? 0), icon: TrendingUp, gradient: 'success', delay: 240 },
+                        ]}
+                    />
                 )}
 
                 {user.role === 'dosen' && (
-                    <div className={UI.kpiGridClass}>
-                        <EqualCard><CompactStatCard title="Kursus Saya" value={6} icon={BookOpen} gradient="primary" delay={0} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Total Mahasiswa" value={182} change="+12 minggu ini" changeType="up" icon={Users} gradient="accent" delay={80} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Tugas Belum Dinilai" value={23} icon={ClipboardList} gradient="warm" delay={160} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Kuis Aktif" value={4} icon={Award} gradient="success" delay={240} /></EqualCard>
-                    </div>
+                    <KpiGrid cards={dosenKpis} />
                 )}
 
                 {user.role === 'mahasiswa' && (
-                    <div className={UI.kpiGridClass}>
-                        <EqualCard><CompactStatCard title="Kursus Diikuti" value={5} icon={BookOpen} gradient="primary" delay={0} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Tugas Pending" value={3} icon={ClipboardList} gradient="warm" delay={80} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Kuis Mendatang" value={2} icon={Award} gradient="accent" delay={160} /></EqualCard>
-                        <EqualCard><CompactStatCard title="Rata-rata Nilai" value="85.4" change="+2.1 dari semester lalu" changeType="up" icon={TrendingUp} gradient="success" delay={240} /></EqualCard>
-                    </div>
+                    <KpiGrid cards={mahasiswaKpis} />
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
