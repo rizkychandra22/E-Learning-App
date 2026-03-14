@@ -44,7 +44,7 @@ const navByRole = {
         { title: 'Mahasiswa', url: '/students', icon: Users },
     ],
     mahasiswa: [
-        { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
+        { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
         { title: 'Kursus Saya', url: '/my-courses', icon: BookOpen },
         { title: 'Materi', url: '/materials', icon: FileText },
         { title: 'Tugas', url: '/assignments', icon: ClipboardList },
