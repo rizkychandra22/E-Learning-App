@@ -157,8 +157,7 @@ class FinanceService
             ->get(['id', 'name', 'code', 'amount']);
 
         $mocked = false;
-        $shouldMock = $search === '' && $selectedStatus === 'all';
-        if ($invoices->isEmpty() && $shouldMock) {
+        if ($invoices->isEmpty()) {
             $mocked = true;
             $students = collect($this->mockStudents());
             $feeComponents = collect($this->mockFeeComponents());
@@ -248,8 +247,7 @@ class FinanceService
             ->get(['id', 'name', 'code']);
 
         $mocked = false;
-        $shouldMock = $search === '' && $selectedStatus === 'all';
-        if ($payments->isEmpty() && $shouldMock) {
+        if ($payments->isEmpty()) {
             $mocked = true;
             $students = collect($this->mockStudents());
             $invoices = collect($this->mockInvoices($students->all(), $this->mockFeeComponents()));
@@ -373,8 +371,7 @@ class FinanceService
             ->values();
 
         $mocked = false;
-        $shouldMock = !$rawFrom && !$rawTo;
-        if ($shouldMock && $topUnpaid->isEmpty() && $verifiedIncome === 0.0 && $pendingAmount === 0.0) {
+        if ($topUnpaid->isEmpty() && $verifiedIncome === 0.0 && $pendingAmount === 0.0 && $receivables === 0.0) {
             $mocked = true;
             $mock = $this->mockReports();
             $topUnpaid = collect($mock['top_unpaid']);
@@ -631,3 +628,6 @@ class FinanceService
         ];
     }
 }
+
+
+
