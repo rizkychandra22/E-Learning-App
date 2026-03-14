@@ -37,6 +37,9 @@ class LecturerController extends Controller
     public function myCourses(Request $request): Response
     {
         $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/MyCourses');
+        }
         if (!$user || $user->role !== 'teacher') {
             return Inertia::render('Courses');
         }
@@ -96,6 +99,9 @@ class LecturerController extends Controller
     public function materials(Request $request): Response
     {
         $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/Materials');
+        }
         if (!$user || $user->role !== 'teacher') {
             return $this->placeholder('Materi', 'Kelola dan akses materi pembelajaran');
         }
@@ -150,6 +156,9 @@ class LecturerController extends Controller
     public function assignments(Request $request): Response
     {
         $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/Assignments');
+        }
         if (!$user || $user->role !== 'teacher') {
             return $this->placeholder('Tugas', 'Kelola tugas mahasiswa berdasarkan kursus yang diampu');
         }
@@ -203,6 +212,9 @@ class LecturerController extends Controller
     public function quizzes(Request $request): Response
     {
         $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/Quizzes');
+        }
         if (!$user || $user->role !== 'teacher') {
             return $this->placeholder('Kuis', 'Kelola kuis dan ujian online untuk mahasiswa');
         }
@@ -256,6 +268,9 @@ class LecturerController extends Controller
     public function discussions(Request $request): Response
     {
         $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/Discussions');
+        }
         if (!$user || $user->role !== 'teacher') {
             return $this->placeholder('Diskusi', 'Forum diskusi antar mahasiswa dan dosen');
         }
