@@ -31,12 +31,19 @@ class SuperAdminService
             ->latest('id')
             ->get(['id', 'name', 'email', 'username', 'code', 'created_at']);
 
+        $mocked = false;
+        if ($search === '' && $users->isEmpty()) {
+            $mocked = true;
+            $users = collect($this->mockManagedUsers($target));
+        }
+
         return [
             'title' => $config['title'],
             'description' => $config['description'],
             'target' => $target,
             'endpoint' => $config['endpoint'],
             'users' => $users,
+            'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
             ],
@@ -147,6 +154,18 @@ class SuperAdminService
             ->where('last_activity', '>=', now()->subMinutes(15)->timestamp)
             ->count();
 
+        $mocked = false;
+        $roleTotal = array_sum(array_map(fn ($item) => (int) $item['value'], $roleDistribution));
+        $allMonthlyZero = $monthlyUsers->every(fn ($item) => (int) $item['total'] === 0);
+        if ($totalUsers === 0 && $totalFakultas === 0 && $totalJurusan === 0 && $fakultasStats->isEmpty() && $roleTotal === 0 && $allMonthlyZero) {
+            $mocked = true;
+            $mock = $this->mockStatisticsData();
+            return [
+                ...$mock,
+                'mocked' => $mocked,
+            ];
+        }
+
         return [
             'summary' => [
                 'total_users' => $totalUsers,
@@ -162,6 +181,7 @@ class SuperAdminService
             'monthly_users' => $monthlyUsers,
             'role_distribution' => $roleDistribution,
             'fakultas_stats' => $fakultasStats,
+            'mocked' => $mocked,
         ];
     }
 
@@ -317,8 +337,15 @@ class SuperAdminService
             })->values();
         }
 
+        $mocked = false;
+        if ($query === '' && ($type === '' || $type === 'all') && $logs->isEmpty()) {
+            $mocked = true;
+            $logs = collect($this->mockActivityLogs());
+        }
+
         return [
             'logs' => $logs->take(100)->values(),
+            'mocked' => $mocked,
             'filters' => [
                 'q' => $query,
                 'type' => $type === '' ? 'all' : $type,
@@ -414,5 +441,112 @@ class SuperAdminService
         abort_if($config === null, 404);
 
         return $config;
+    }
+
+    private function mockManagedUsers(string $target): array
+    {
+        $roleLabel = match ($target) {
+            'admins' => 'admin',
+            'lecturers' => 'teacher',
+            'students' => 'student',
+            default => 'admin',
+        };
+
+        $base = [
+            [
+                'id' => 9101,
+                'name' => 'Rizky Maulana',
+                'email' => 'rizky.maulana@mail.id',
+                'username' => 'rizky.maulana',
+                'code' => $roleLabel === 'student' ? 'NIM2024009' : 'NIDN202401',
+            ],
+            [
+                'id' => 9102,
+                'name' => 'Aulia Prameswari',
+                'email' => 'aulia.prameswari@mail.id',
+                'username' => 'aulia.prameswari',
+                'code' => $roleLabel === 'student' ? 'NIM2024010' : 'NIDN202402',
+            ],
+        ];
+
+        return array_map(fn ($item) => [
+            ...$item,
+            'created_at' => now()->subDays(3)->toISOString(),
+            'is_mock' => true,
+        ], $base);
+    }
+
+    private function mockActivityLogs(): array
+    {
+        return [
+            [
+                'id' => 'mock-activity-1',
+                'type' => 'create',
+                'module' => 'users',
+                'actor' => 'System',
+                'message' => 'Akun pengguna ditambahkan: Rina Putri',
+                'time' => now()->subHours(5)->toISOString(),
+                'is_mock' => true,
+            ],
+            [
+                'id' => 'mock-activity-2',
+                'type' => 'update',
+                'module' => 'fakultas',
+                'actor' => 'System',
+                'message' => 'Fakultas diperbarui: Teknik Informatika',
+                'time' => now()->subDays(1)->toISOString(),
+                'is_mock' => true,
+            ],
+            [
+                'id' => 'mock-activity-3',
+                'type' => 'delete',
+                'module' => 'users',
+                'actor' => 'System',
+                'message' => 'Data pengguna dihapus: Bagus Wijaya',
+                'time' => now()->subDays(2)->toISOString(),
+                'is_mock' => true,
+            ],
+        ];
+    }
+
+    private function mockStatisticsData(): array
+    {
+        $monthlyUsers = collect(range(0, 5))
+            ->map(function (int $offset) {
+                $date = now()->subMonths(5 - $offset);
+                return [
+                    'month' => $date->translatedFormat('M Y'),
+                    'total' => 320 + ($offset * 20),
+                ];
+            })
+            ->values();
+
+        return [
+            'summary' => [
+                'total_users' => 420,
+                'total_admins' => 12,
+                'total_lecturers' => 38,
+                'total_students' => 360,
+                'total_fakultas' => 6,
+                'total_jurusan' => 18,
+                'active_sessions' => 42,
+                'new_users_this_month' => 24,
+                'new_users_last_month' => 18,
+            ],
+            'monthly_users' => $monthlyUsers,
+            'role_distribution' => [
+                ['label' => 'Super Admin', 'value' => 2],
+                ['label' => 'Admin', 'value' => 12],
+                ['label' => 'Dosen', 'value' => 38],
+                ['label' => 'Mahasiswa', 'value' => 360],
+                ['label' => 'Finance', 'value' => 8],
+            ],
+            'fakultas_stats' => [
+                ['name' => 'Teknik', 'code' => 'FT', 'jurusan_count' => 6],
+                ['name' => 'Ekonomi', 'code' => 'FE', 'jurusan_count' => 4],
+                ['name' => 'Sains', 'code' => 'FS', 'jurusan_count' => 5],
+                ['name' => 'Humaniora', 'code' => 'FH', 'jurusan_count' => 3],
+            ],
+        ];
     }
 }

@@ -21,7 +21,7 @@ const roleLabels = {
     student: 'Mahasiswa',
 };
 
-export default function ManageUsers({ users, filters }) {
+export default function ManageUsers({ users, filters, mocked }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [roleFilter, setRoleFilter] = useState(filters?.role ?? 'all');
     const [editingId, setEditingId] = useState(null);
@@ -92,6 +92,16 @@ export default function ManageUsers({ users, filters }) {
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Kelola User" description="Kelola data admin, finance, dosen, dan mahasiswa" />
 
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <Plus className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
@@ -142,11 +152,21 @@ export default function ManageUsers({ users, filters }) {
                                             </div>
                                         </div>
                                         <CardActions>
-                                            <button type="button" onClick={() => beginEdit(user)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => beginEdit(user)}
+                                                disabled={mocked || user.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
+                                            >
                                                 <Pencil className="w-3.5 h-3.5" />
                                                 Edit
                                             </button>
-                                            <button type="button" onClick={() => destroyUser(user)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => destroyUser(user)}
+                                                disabled={mocked || user.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
+                                            >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Hapus
                                             </button>
@@ -200,7 +220,7 @@ export default function ManageUsers({ users, filters }) {
                                 onChange={(value) => form.setData('password', value)}
                             />
 
-                            <button type="submit" disabled={form.processing} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                            <button type="submit" disabled={form.processing || mocked} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                 <Plus className="w-4 h-4" />
                                 {isEditing ? 'Simpan Perubahan' : 'Tambah User'}
                             </button>
@@ -226,5 +246,4 @@ function Field({ label, value, onChange, error, type = 'text' }) {
         </label>
     );
 }
-
 

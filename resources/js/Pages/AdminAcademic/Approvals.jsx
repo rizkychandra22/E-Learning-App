@@ -13,7 +13,7 @@ const roleLabels = {
     student: 'Mahasiswa',
 };
 
-export default function Approvals({ pendingUsers, filters }) {
+export default function Approvals({ pendingUsers, filters, mocked }) {
     const { props } = usePage();
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
@@ -42,6 +42,16 @@ export default function Approvals({ pendingUsers, filters }) {
             <Head title="Persetujuan Akun" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Persetujuan Akun" description="Verifikasi akun yang menunggu persetujuan admin akademik" />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <CheckCircle2 className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. Aksi dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="bg-card border border-border rounded-xl shadow-card p-4">
                     <form onSubmit={submitSearch} className="flex flex-col sm:flex-row gap-2">
@@ -77,11 +87,21 @@ export default function Approvals({ pendingUsers, filters }) {
                                 </div>
                             </div>
                             <CardActions>
-                                <button type="button" onClick={() => approve(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium">
+                                <button
+                                    type="button"
+                                    onClick={() => approve(user)}
+                                    disabled={mocked || user.is_mock}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium disabled:opacity-60"
+                                >
                                     <CheckCircle2 className="w-3.5 h-3.5" />
                                     Setujui
                                 </button>
-                                <button type="button" onClick={() => reject(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                <button
+                                    type="button"
+                                    onClick={() => reject(user)}
+                                    disabled={mocked || user.is_mock}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
+                                >
                                     <XCircle className="w-3.5 h-3.5" />
                                     Tolak
                                 </button>
@@ -93,5 +113,3 @@ export default function Approvals({ pendingUsers, filters }) {
         </ProtectedLayout>
     );
 }
-
-

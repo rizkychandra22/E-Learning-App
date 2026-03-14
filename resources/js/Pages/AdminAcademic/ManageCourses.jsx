@@ -25,7 +25,7 @@ const statusBadge = {
     archived: 'bg-secondary text-secondary-foreground',
 };
 
-export default function ManageCourses({ courses, jurusans, lecturers, migrationRequired, materialsMigrationRequired, filters, categories }) {
+export default function ManageCourses({ courses, jurusans, lecturers, migrationRequired, materialsMigrationRequired, filters, categories, mocked }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const [categoryFilter, setCategoryFilter] = useState(filters?.category ?? 'all');
@@ -129,6 +129,16 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Kelola Kursus" description="Atur data kursus, kategori, tagging, dan unggah materi pembelajaran dalam satu alur kerja." />
 
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <FolderOpen className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
+
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
                         <TriangleAlert className="w-5 h-5 mt-0.5" />
@@ -212,11 +222,21 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                             </div>
                                         </div>
                                         <CardActions>
-                                            <button type="button" onClick={() => beginEdit(course)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => beginEdit(course)}
+                                                disabled={mocked || course.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
+                                            >
                                                 <Pencil className="w-3.5 h-3.5" />
                                                 Edit
                                             </button>
-                                            <button type="button" onClick={() => destroyCourse(course)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => destroyCourse(course)}
+                                                disabled={mocked || course.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
+                                            >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Hapus
                                             </button>
@@ -292,7 +312,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                     </SelectField>
                                 </div>
 
-                                <button type="submit" disabled={form.processing || migrationRequired} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                                <button type="submit" disabled={form.processing || migrationRequired || mocked} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                     <Plus className="w-4 h-4" />
                                     {isEditing ? 'Simpan Perubahan' : 'Tambah Kursus'}
                                 </button>
@@ -336,7 +356,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                         </label>
                                         <button
                                             type="submit"
-                                            disabled={materialForm.processing || materialsMigrationRequired}
+                                            disabled={materialForm.processing || materialsMigrationRequired || mocked}
                                             className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60"
                                         >
                                             <Upload className="w-4 h-4" />
@@ -357,8 +377,13 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                                     </div>
                                                     <div className="flex gap-1.5">
                                                         <a
-                                                            href={`/manage-courses/${editingId}/materials/${material.id}/download`}
+                                                            href={mocked || material.is_mock ? undefined : `/manage-courses/${editingId}/materials/${material.id}/download`}
                                                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent text-accent-foreground text-xs"
+                                                            onClick={(event) => {
+                                                                if (mocked || material.is_mock) {
+                                                                    event.preventDefault();
+                                                                }
+                                                            }}
                                                         >
                                                             <Download className="w-3 h-3" />
                                                             Unduh
@@ -366,7 +391,8 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                                         <button
                                                             type="button"
                                                             onClick={() => destroyMaterial(material)}
-                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs"
+                                                            disabled={mocked || material.is_mock}
+                                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs disabled:opacity-60"
                                                         >
                                                             <Trash2 className="w-3 h-3" />
                                                             Hapus

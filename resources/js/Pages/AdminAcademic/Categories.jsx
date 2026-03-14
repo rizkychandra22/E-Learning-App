@@ -7,7 +7,7 @@ import { PageHeroBanner } from '@/components/PageHeroBanner';
 const fakultasDefault = { name: '', code: '' };
 const jurusanDefault = { fakultas_id: '', name: '', code: '' };
 
-export default function Categories({ fakultas }) {
+export default function Categories({ fakultas, mocked }) {
     const [editingFakultasId, setEditingFakultasId] = useState(null);
     const [editingJurusanId, setEditingJurusanId] = useState(null);
 
@@ -74,6 +74,16 @@ export default function Categories({ fakultas }) {
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Kategori Akademik" description="Kelola struktur Fakultas dan Jurusan untuk sistem e-learning" />
 
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <FolderTree className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     <div className="bg-card border border-border rounded-xl shadow-card p-4">
                         <h2 className="font-semibold mb-4">{editingFakultasId ? 'Edit Fakultas' : 'Tambah Fakultas'}</h2>
@@ -81,7 +91,7 @@ export default function Categories({ fakultas }) {
                             <Field label="Nama Fakultas" value={fakultasForm.data.name} error={fakultasForm.errors.name} onChange={(value) => fakultasForm.setData('name', value)} />
                             <Field label="Kode Fakultas" value={fakultasForm.data.code} error={fakultasForm.errors.code} onChange={(value) => fakultasForm.setData('code', value)} />
                             <div className="flex gap-2">
-                                <button type="submit" disabled={fakultasForm.processing} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                                <button type="submit" disabled={fakultasForm.processing || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                     <Plus className="w-4 h-4" />
                                     {editingFakultasId ? 'Simpan' : 'Tambah'}
                                 </button>
@@ -116,7 +126,7 @@ export default function Categories({ fakultas }) {
                             <Field label="Nama Jurusan" value={jurusanForm.data.name} error={jurusanForm.errors.name} onChange={(value) => jurusanForm.setData('name', value)} />
                             <Field label="Kode Jurusan" value={jurusanForm.data.code} error={jurusanForm.errors.code} onChange={(value) => jurusanForm.setData('code', value)} />
                             <div className="flex gap-2">
-                                <button type="submit" disabled={jurusanForm.processing} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                                <button type="submit" disabled={jurusanForm.processing || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                     <Plus className="w-4 h-4" />
                                     {editingJurusanId ? 'Simpan' : 'Tambah'}
                                 </button>
@@ -144,11 +154,21 @@ export default function Categories({ fakultas }) {
                                         <p className="text-xs text-muted-foreground">Kode: {item.code}</p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button type="button" onClick={() => editFakultas(item)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+                                        <button
+                                            type="button"
+                                            onClick={() => editFakultas(item)}
+                                            disabled={mocked || item.is_mock}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
+                                        >
                                             <Pencil className="w-3.5 h-3.5" />
                                             Edit
                                         </button>
-                                        <button type="button" onClick={() => destroyFakultas(item)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                        <button
+                                            type="button"
+                                            onClick={() => destroyFakultas(item)}
+                                            disabled={mocked || item.is_mock}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
+                                        >
                                             <Trash2 className="w-3.5 h-3.5" />
                                             Hapus
                                         </button>
@@ -163,11 +183,21 @@ export default function Categories({ fakultas }) {
                                                 <p className="text-xs text-muted-foreground">Kode: {major.code}</p>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button type="button" onClick={() => editJurusan(major)} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent text-accent-foreground text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => editJurusan(major)}
+                                                    disabled={mocked || major.is_mock}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent text-accent-foreground text-xs disabled:opacity-60"
+                                                >
                                                     <Pencil className="w-3 h-3" />
                                                     Edit
                                                 </button>
-                                                <button type="button" onClick={() => destroyJurusan(major)} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => destroyJurusan(major)}
+                                                    disabled={mocked || major.is_mock}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-destructive/15 text-destructive text-xs disabled:opacity-60"
+                                                >
                                                     <Trash2 className="w-3 h-3" />
                                                     Hapus
                                                 </button>

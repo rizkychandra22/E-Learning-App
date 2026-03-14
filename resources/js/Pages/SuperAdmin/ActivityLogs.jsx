@@ -13,7 +13,7 @@ const typeStyles = {
     delete: 'bg-destructive/15 text-destructive',
 };
 
-export default function ActivityLogs({ logs, filters }) {
+export default function ActivityLogs({ logs, filters, mocked }) {
     const { props } = usePage();
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const [query, setQuery] = useState(filters?.q ?? '');
@@ -44,6 +44,16 @@ export default function ActivityLogs({ logs, filters }) {
             <Head title="Log Aktivitas" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Log Aktivitas" description="Pantau aktivitas perubahan data terbaru pada sistem" />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <Activity className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan.</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <Metric label="Total Log" value={totals.all} icon={Activity} variant="primary" />

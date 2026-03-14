@@ -8,7 +8,7 @@ import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
 import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
-export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters }) {
+export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters, mocked }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const cashflowData = cashflow.map((item) => ({
         label: item.month,
@@ -27,6 +27,16 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
             <Head title="Laporan Finance" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Laporan Finance" description="Ringkasan pemasukan, piutang, dan cashflow" />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <TriangleAlert className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan.</p>
+                        </div>
+                    </div>
+                )}
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">

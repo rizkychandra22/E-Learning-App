@@ -19,7 +19,7 @@ const targetMeta = {
     students: { label: 'Mahasiswa', badgeClass: 'bg-success/20 text-success' },
 };
 
-export default function UserCrud({ title, description, target, endpoint, users, filters }) {
+export default function UserCrud({ title, description, target, endpoint, users, filters, mocked }) {
     const [editingId, setEditingId] = useState(null);
     const [search, setSearch] = useState(filters?.search ?? '');
 
@@ -95,6 +95,16 @@ export default function UserCrud({ title, description, target, endpoint, users, 
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title={title} description={description} />
 
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <Plus className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
@@ -138,7 +148,8 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                             <button
                                                 type="button"
                                                 onClick={() => beginEdit(user)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium hover:opacity-90"
+                                                disabled={mocked || user.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium hover:opacity-90 disabled:opacity-60"
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
                                                 Edit
@@ -146,7 +157,8 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                             <button
                                                 type="button"
                                                 onClick={() => destroyUser(user)}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium hover:bg-destructive/20"
+                                                disabled={mocked || user.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium hover:bg-destructive/20 disabled:opacity-60"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Hapus
@@ -189,7 +201,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
 
                             <button
                                 type="submit"
-                                disabled={form.processing}
+                                disabled={form.processing || mocked}
                                 className="w-full inline-flex justify-center items-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60"
                             >
                                 <Plus className="w-4 h-4" />

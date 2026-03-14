@@ -24,7 +24,7 @@ const statusBadge = {
     cancelled: 'bg-secondary text-secondary-foreground',
 };
 
-export default function Invoices({ migrationRequired, invoices, students, feeComponents, filters }) {
+export default function Invoices({ migrationRequired, invoices, students, feeComponents, filters, mocked }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
@@ -84,6 +84,16 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
             <Head title="Tagihan" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Tagihan" description="Kelola invoice/tagihan mahasiswa" />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <TriangleAlert className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                        </div>
+                    </div>
+                )}
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
@@ -148,11 +158,21 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                                             </div>
                                         </div>
                                         <CardActions>
-                                            <button type="button" onClick={() => beginEdit(invoice)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => beginEdit(invoice)}
+                                                disabled={mocked || invoice.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
+                                            >
                                                 <Pencil className="w-3.5 h-3.5" />
                                                 Edit
                                             </button>
-                                            <button type="button" onClick={() => destroyInvoice(invoice)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium">
+                                            <button
+                                                type="button"
+                                                onClick={() => destroyInvoice(invoice)}
+                                                disabled={mocked || invoice.is_mock}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
+                                            >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Hapus
                                             </button>
@@ -217,7 +237,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                                 {form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}
                             </label>
 
-                            <button type="submit" disabled={form.processing || migrationRequired} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                            <button type="submit" disabled={form.processing || migrationRequired || mocked} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                 <Plus className="w-4 h-4" />
                                 {isEditing ? 'Simpan Perubahan' : 'Buat Tagihan'}
                             </button>
@@ -259,5 +279,3 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
-
-

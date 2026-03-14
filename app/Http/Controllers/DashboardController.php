@@ -24,6 +24,10 @@ class DashboardController extends Controller
         $adminAcademicData = null;
         $financeData = null;
 
+        if ($authUser?->role === 'student') {
+            return Inertia::render('Student/Home');
+        }
+
         if ($authUser?->role === 'root') {
             $superAdminData = $this->superAdminService->getDashboardData();
         }

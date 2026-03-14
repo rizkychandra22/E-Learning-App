@@ -9,7 +9,7 @@ import { FakultasBarChart } from '@/components/FakultasBarChart';
 
 
 
-export default function Statistics({ summary, monthly_users, role_distribution, fakultas_stats }) {
+export default function Statistics({ summary, monthly_users, role_distribution, fakultas_stats, mocked }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const monthlyData = monthly_users.map((item) => ({ label: item.month, value: Number(item.total) || 0 }));
     const roleData = role_distribution.map((item) => ({ label: item.label, value: Number(item.value) || 0 }));
@@ -19,6 +19,16 @@ export default function Statistics({ summary, monthly_users, role_distribution, 
             <Head title="Statistik Global" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Statistik Global" description="Ringkasan performa platform e-learning secara menyeluruh" />
+
+                {mocked && (
+                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
+                        <Activity className="w-5 h-5 mt-0.5" />
+                        <div className="text-sm">
+                            <p className="font-semibold">Mode data mock aktif.</p>
+                            <p>Data hanya contoh untuk review tampilan.</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr">
                     <EqualCard><CompactStatCard title="Total Pengguna" value={summary.total_users} change={`+${summary.new_users_this_month} bulan ini`} changeType="up" icon={Users} gradient="primary" delay={0} /></EqualCard>
