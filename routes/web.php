@@ -134,6 +134,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/materials/{material}/download', [LecturerController::class, 'downloadMaterial']);
 
     Route::get('/assignments', [LecturerController::class, 'assignments']);
+    Route::get('/assignments/{assignment}', function ($assignment) {
+        if (auth()->user()?->role === 'student') {
+            return Inertia::render('Student/AssignmentDetail', [
+                'assignmentId' => (int) $assignment,
+            ]);
+        }
+
+        return redirect('/assignments');
+    });
     Route::post('/assignments', [LecturerController::class, 'storeAssignment']);
     Route::put('/assignments/{assignment}', [LecturerController::class, 'updateAssignment']);
     Route::delete('/assignments/{assignment}', [LecturerController::class, 'destroyAssignment']);
@@ -155,9 +164,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/students/enrollments', [LecturerController::class, 'enrollStudent']);
     Route::delete('/students/enrollments/{course}/{student}', [LecturerController::class, 'removeEnrollment']);
 
-    $placeholderRoutes = [
-        '/grades' => ['title' => 'Nilai', 'description' => 'Lihat rekap nilai dan progress akademik'],
-    ];
+    Route::get('/grades', function () {
+        if (auth()->user()?->role === 'student') {
+            return Inertia::render('Student/Grades');
+        }
+
+        return Inertia::render('Placeholder', [
+            'title' => 'Nilai',
+            'description' => 'Lihat rekap nilai dan progress akademik',
+        ]);
+    });
+
+    $placeholderRoutes = [];
 
     foreach ($placeholderRoutes as $uri => $props) {
         Route::get($uri, function () use ($props) {
@@ -165,3 +183,10 @@ Route::middleware('auth')->group(function () {
         });
     }
 });
+
+
+
+
+
+
+
