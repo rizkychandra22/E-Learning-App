@@ -8,14 +8,24 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthService
 {
-    public function login(string $identity, string $password, bool $remember = false): bool
+    public function findByIdentity(string $identity): ?User
     {
         $trimmedIdentity = trim($identity);
-        $user = User::query()
+
+        if ($trimmedIdentity === '') {
+            return null;
+        }
+
+        return User::query()
             ->where('email', $trimmedIdentity)
             ->orWhere('username', $trimmedIdentity)
             ->orWhere('code', $trimmedIdentity)
-            ->first(['id', 'email']);
+            ->first();
+    }
+
+    public function login(string $identity, string $password, bool $remember = false): bool
+    {
+        $user = $this->findByIdentity($identity);
 
         if (!$user) {
             return false;
