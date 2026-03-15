@@ -183,11 +183,9 @@
                 position: relative;
                 background: linear-gradient(150deg, #ffffff, #f8fafc);
                 border-radius: 28px;
-                padding: 26px;
                 box-shadow: var(--shadow);
                 overflow: hidden;
                 min-height: 340px;
-                display: grid;
                 place-items: center;
             }
             .hero-art::before {
@@ -206,6 +204,14 @@
                 background: conic-gradient(from 120deg, rgba(34, 211, 238, 0.12), rgba(79, 70, 229, 0.12), transparent 60%);
                 animation: spin 16s linear infinite;
                 opacity: 0.6;
+            }
+            .team-illustration {
+                max-width: 85%;
+                width: 850%;
+                height: 85%;
+                object-fit: contain;
+                position: relative;
+                z-index: 1;
             }
             .glow-bar {
                 position: absolute;
@@ -301,7 +307,7 @@
             }
 
             footer {
-                padding: 40px 0 50px;
+                padding: 40px 0 40px;
                 color: var(--muted);
                 font-size: 0.9rem;
                 text-align: center;
@@ -400,35 +406,7 @@
                     <div class="orb three"></div>
                     <div class="scanline"></div>
 
-                    <div class="insight-panel">
-                        <div class="insight-header">
-                            <div class="insight-title">Insight Hari Ini</div>
-                            <div class="insight-badge" aria-hidden="true">
-                                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                                    <path d="M8.211 2.047a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 .025.917l7.5 3a.5.5 0 0 0 .372 0L14 7.14V13a1 1 0 0 0-1 1v2h3v-2a1 1 0 0 0-1-1V6.739l.686-.275a.5.5 0 0 0 .025-.917z"/>
-                                    <path d="M4.176 9.032a.5.5 0 0 0-.656.327l-.5 1.7a.5.5 0 0 0 .294.605l4.5 1.8a.5.5 0 0 0 .372 0l4.5-1.8a.5.5 0 0 0 .294-.605l-.5-1.7a.5.5 0 0 0-.656-.327L8 10.466z"/>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="insight-grid">
-                            <div class="insight-card">
-                                <h4>Total Pengguna</h4>
-                                <div class="insight-value">{{ number_format($stats['total_users'] ?? 0) }}</div>
-                            </div>
-                            <div class="insight-card">
-                                <h4>Total Kursus</h4>
-                                <div class="insight-value">{{ number_format($stats['total_courses'] ?? 0) }}</div>
-                            </div>
-                            <div class="insight-card">
-                                <h4>Total Mahasiswa</h4>
-                                <div class="insight-value">{{ number_format($stats['total_students'] ?? 0) }}</div>
-                            </div>
-                            <div class="insight-card">
-                                <h4>Total Dosen</h4>
-                                <div class="insight-value">{{ number_format($stats['total_lecturers'] ?? 0) }}</div>
-                            </div>
-                        </div>
-                    </div>
+                    <img src="{{ asset('images/Gemini2-Photoroom.png') }}" alt="Team Development" class="team-illustration">
                     <div class="glow-bar"></div>
                 </div>
             </section>
