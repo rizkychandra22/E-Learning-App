@@ -128,7 +128,7 @@ const Login = () => {
                                                 />
                                                 <label className="form-check-label small" htmlFor="remember">Ingat Saya</label>
                                             </div>
-                                            <Link href="#" className="small text-decoration-none">Lupa Password?</Link>
+                                            <Link href="/forgot-password" className="small text-decoration-none">Lupa Password?</Link>
                                         </div>
 
                                         <button
