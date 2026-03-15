@@ -307,7 +307,7 @@
             }
 
             footer {
-                padding: 40px 0 40px;
+                padding: 50px 0 50px;
                 color: var(--muted);
                 font-size: 0.9rem;
                 text-align: center;
