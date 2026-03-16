@@ -406,7 +406,7 @@
                     <div class="orb three"></div>
                     <div class="scanline"></div>
 
-                    <img src="{{ asset('images/Gemini2-Photoroom.png') }}" alt="Team Development" class="team-illustration">
+                    <img src="{{ asset('images/Photoroom.png') }}" alt="Team Development" class="team-illustration">
                     <div class="glow-bar"></div>
                 </div>
             </section>
