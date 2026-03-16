@@ -131,6 +131,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-courses', [LecturerController::class, 'storeCourse']);
     Route::put('/my-courses/{course}', [LecturerController::class, 'updateCourse']);
     Route::delete('/my-courses/{course}', [LecturerController::class, 'destroyCourse']);
+    Route::get('/learning-modules', [LecturerController::class, 'learningModules']);
+    Route::post('/learning-modules/modules', [LecturerController::class, 'storeModule']);
+    Route::put('/learning-modules/modules/{module}', [LecturerController::class, 'updateModule']);
+    Route::delete('/learning-modules/modules/{module}', [LecturerController::class, 'destroyModule']);
+    Route::post('/learning-modules/lessons', [LecturerController::class, 'storeLesson']);
+    Route::put('/learning-modules/lessons/{lesson}', [LecturerController::class, 'updateLesson']);
+    Route::delete('/learning-modules/lessons/{lesson}', [LecturerController::class, 'destroyLesson']);
+    Route::get('/learning/{course}', [LecturerController::class, 'learningPlayer']);
+    Route::post('/learning/lessons/{lesson}/progress', [LecturerController::class, 'updateLearningProgress']);
 
     Route::get('/materials', [LecturerController::class, 'materials']);
     Route::post('/materials', [LecturerController::class, 'storeMaterial']);

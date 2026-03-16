@@ -42,6 +42,11 @@ class Course extends Model
         return $this->hasMany(CourseMaterial::class);
     }
 
+    public function modules(): HasMany
+    {
+        return $this->hasMany(CourseModule::class)->orderBy('sort_order');
+    }
+
     public function students(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_student', 'course_id', 'student_id')

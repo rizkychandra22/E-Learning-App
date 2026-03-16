@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\Assignment;
 use App\Models\Course;
+use App\Models\CourseLesson;
 use App\Models\CourseMaterial;
+use App\Models\CourseModule;
 use App\Models\Discussion;
+use App\Models\LessonProgress;
 use App\Models\Quiz;
 use App\Models\StudentNote;
 use App\Models\User;
@@ -87,6 +90,184 @@ class LecturerService
                 'category' => $normalizedCategory,
             ],
         ];
+    }
+
+    public function canManageLearningModules(): bool
+    {
+        return Schema::hasTable('course_modules') && Schema::hasTable('course_lessons');
+    }
+
+    public function canTrackLessonProgress(): bool
+    {
+        return $this->canManageLearningModules() && Schema::hasTable('lesson_progress');
+    }
+
+    public function getLearningModulesData(int $lecturerId, ?int $courseId = null): array
+    {
+        $migrationRequired = !$this->canManageLearningModules();
+        $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
+        $selectedCourse = null;
+        $modules = collect();
+
+        if (!$migrationRequired && $courseId) {
+            $selectedCourse = $this->findLecturerCourse($lecturerId, $courseId);
+            $modules = $selectedCourse->modules()
+                ->with(['lessons' => fn ($query) => $query->orderBy('sort_order')])
+                ->get();
+        }
+
+        return [
+            'courses' => $courses,
+            'selectedCourseId' => $courseId,
+            'selectedCourse' => $selectedCourse,
+            'modules' => $modules,
+            'migrationRequired' => $migrationRequired,
+        ];
+    }
+
+    public function createModule(int $lecturerId, array $payload): void
+    {
+        $course = $this->findLecturerCourse($lecturerId, (int) $payload['course_id']);
+
+        $course->modules()->create([
+            'title' => trim((string) $payload['title']),
+            'description' => $payload['description'] ?? null,
+            'sort_order' => (int) ($payload['sort_order'] ?? ($course->modules()->count() + 1)),
+        ]);
+    }
+
+    public function updateModule(int $lecturerId, CourseModule $module, array $payload): void
+    {
+        $this->ensureModuleOwner($lecturerId, $module);
+
+        $module->update([
+            'title' => trim((string) $payload['title']),
+            'description' => $payload['description'] ?? null,
+            'sort_order' => (int) ($payload['sort_order'] ?? $module->sort_order),
+        ]);
+    }
+
+    public function deleteModule(int $lecturerId, CourseModule $module): void
+    {
+        $this->ensureModuleOwner($lecturerId, $module);
+        $module->delete();
+    }
+
+    public function createLesson(int $lecturerId, array $payload): void
+    {
+        $module = $this->findLecturerModule($lecturerId, (int) $payload['course_module_id']);
+
+        $module->lessons()->create([
+            'title' => trim((string) $payload['title']),
+            'summary' => $payload['summary'] ?? null,
+            'content_type' => $payload['content_type'],
+            'video_url' => $payload['content_type'] === 'video' ? ($payload['video_url'] ?? null) : null,
+            'content' => $payload['content'] ?? null,
+            'duration_minutes' => (int) ($payload['duration_minutes'] ?? 0),
+            'sort_order' => (int) ($payload['sort_order'] ?? ($module->lessons()->count() + 1)),
+        ]);
+    }
+
+    public function updateLesson(int $lecturerId, CourseLesson $lesson, array $payload): void
+    {
+        $this->ensureLessonOwner($lecturerId, $lesson);
+
+        $lesson->update([
+            'title' => trim((string) $payload['title']),
+            'summary' => $payload['summary'] ?? null,
+            'content_type' => $payload['content_type'],
+            'video_url' => $payload['content_type'] === 'video' ? ($payload['video_url'] ?? null) : null,
+            'content' => $payload['content'] ?? null,
+            'duration_minutes' => (int) ($payload['duration_minutes'] ?? 0),
+            'sort_order' => (int) ($payload['sort_order'] ?? $lesson->sort_order),
+        ]);
+    }
+
+    public function deleteLesson(int $lecturerId, CourseLesson $lesson): void
+    {
+        $this->ensureLessonOwner($lecturerId, $lesson);
+        $lesson->delete();
+    }
+
+    public function getStudentLearningDashboard(int $studentId): array
+    {
+        $migrationRequired = !Schema::hasTable('course_student');
+        if ($migrationRequired) {
+            return [
+                'courses' => collect(),
+                'summary' => [
+                    'active_courses' => 0,
+                    'completed_lessons' => 0,
+                    'average_progress' => 0,
+                ],
+                'migrationRequired' => true,
+            ];
+        }
+
+        $courses = User::query()
+            ->findOrFail($studentId)
+            ->enrolledCourses()
+            ->with(['lecturer:id,name', 'modules.lessons.progress' => fn ($query) => $query->where('student_id', $studentId)])
+            ->orderBy('title')
+            ->get();
+
+        $mappedCourses = $courses->map(fn (Course $course) => $this->mapStudentCourse($course, $studentId));
+        $averageProgress = (int) round($mappedCourses->avg('progress_percent') ?? 0);
+        $completedLessons = (int) $mappedCourses->sum('completed_lessons');
+
+        return [
+            'courses' => $mappedCourses,
+            'summary' => [
+                'active_courses' => $mappedCourses->count(),
+                'completed_lessons' => $completedLessons,
+                'average_progress' => $averageProgress,
+            ],
+            'migrationRequired' => false,
+        ];
+    }
+
+    public function getStudentLearningPlayer(int $studentId, int $courseId): array
+    {
+        $course = Course::query()
+            ->whereHas('students', fn ($query) => $query->where('users.id', $studentId))
+            ->with([
+                'lecturer:id,name',
+                'modules.lessons.progress' => fn ($query) => $query->where('student_id', $studentId),
+            ])
+            ->findOrFail($courseId);
+
+        $mappedCourse = $this->mapStudentCourse($course, $studentId, true);
+        $activeLesson = collect($mappedCourse['modules'])
+            ->flatMap(fn ($module) => $module['lessons'])
+            ->firstWhere('is_completed', false)
+            ?? collect($mappedCourse['modules'])->flatMap(fn ($module) => $module['lessons'])->first();
+
+        return [
+            'course' => $mappedCourse,
+            'activeLesson' => $activeLesson,
+        ];
+    }
+
+    public function updateLessonProgress(int $studentId, CourseLesson $lesson, int $progressPercent): void
+    {
+        $lesson->loadMissing('module.course.students');
+
+        abort_if(!$this->canTrackLessonProgress(), 404);
+        abort_if(!$lesson->module || !$lesson->module->course, 404);
+        abort_if(!$lesson->module->course->students()->where('users.id', $studentId)->exists(), 403);
+
+        LessonProgress::updateOrCreate(
+            [
+                'lesson_id' => $lesson->id,
+                'student_id' => $studentId,
+            ],
+            [
+                'progress_percent' => $progressPercent,
+                'is_completed' => $progressPercent >= 100,
+                'completed_at' => $progressPercent >= 100 ? now() : null,
+                'last_accessed_at' => now(),
+            ]
+        );
     }
 
     public function canManageCourses(): bool
@@ -616,6 +797,55 @@ class LecturerService
         $note->delete();
     }
 
+    private function mapStudentCourse(Course $course, int $studentId, bool $withLessonContent = false): array
+    {
+        $modules = $course->modules->map(function (CourseModule $module) use ($studentId, $withLessonContent) {
+            $lessons = $module->lessons->map(function (CourseLesson $lesson) use ($studentId, $withLessonContent) {
+                $progress = $lesson->progress->firstWhere('student_id', $studentId);
+                $progressPercent = (int) ($progress->progress_percent ?? 0);
+
+                return [
+                    'id' => $lesson->id,
+                    'title' => $lesson->title,
+                    'summary' => $lesson->summary,
+                    'content_type' => $lesson->content_type,
+                    'video_url' => $lesson->video_url,
+                    'content' => $withLessonContent ? $lesson->content : null,
+                    'duration_minutes' => $lesson->duration_minutes,
+                    'sort_order' => $lesson->sort_order,
+                    'progress_percent' => $progressPercent,
+                    'is_completed' => (bool) ($progress->is_completed ?? false),
+                ];
+            })->values();
+
+            return [
+                'id' => $module->id,
+                'title' => $module->title,
+                'description' => $module->description,
+                'sort_order' => $module->sort_order,
+                'lessons' => $lessons,
+            ];
+        })->values();
+
+        $lessonCollection = $modules->flatMap(fn ($module) => $module['lessons']);
+        $totalLessons = $lessonCollection->count();
+        $completedLessons = $lessonCollection->where('is_completed', true)->count();
+        $progressPercent = $totalLessons > 0 ? (int) round(($completedLessons / $totalLessons) * 100) : 0;
+
+        return [
+            'id' => $course->id,
+            'title' => $course->title,
+            'code' => $course->code,
+            'description' => $course->description,
+            'category' => $course->category,
+            'lecturer' => $course->lecturer ? ['id' => $course->lecturer->id, 'name' => $course->lecturer->name] : null,
+            'modules' => $modules,
+            'total_lessons' => $totalLessons,
+            'completed_lessons' => $completedLessons,
+            'progress_percent' => $progressPercent,
+        ];
+    }
+
     private function getLecturerCoursesSimple(int $lecturerId): Collection
     {
         return Course::query()
@@ -642,6 +872,18 @@ class LecturerService
         abort_if((int) $course->lecturer_id !== $lecturerId, 404);
     }
 
+    private function ensureModuleOwner(int $lecturerId, CourseModule $module): void
+    {
+        $module->loadMissing('course');
+        abort_if(!$module->course || (int) $module->course->lecturer_id !== $lecturerId, 404);
+    }
+
+    private function ensureLessonOwner(int $lecturerId, CourseLesson $lesson): void
+    {
+        $lesson->loadMissing('module.course');
+        abort_if(!$lesson->module || !$lesson->module->course || (int) $lesson->module->course->lecturer_id !== $lecturerId, 404);
+    }
+
     private function ensureMaterialOwner(int $lecturerId, CourseMaterial $material): void
     {
         $material->loadMissing('course');
@@ -663,6 +905,18 @@ class LecturerService
         abort_if(!$course, 404);
 
         return $course;
+    }
+
+    private function findLecturerModule(int $lecturerId, int $moduleId): CourseModule
+    {
+        $module = CourseModule::query()
+            ->where('id', $moduleId)
+            ->whereHas('course', fn ($query) => $query->where('lecturer_id', $lecturerId))
+            ->first();
+
+        abort_if(!$module, 404);
+
+        return $module;
     }
 
     private function normalizeCoursePayload(array $payload): array

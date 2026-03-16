@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\AdminAcademic\StoreCourseRequest;
 use App\Http\Requests\AdminAcademic\UpdateCourseRequest;
 use App\Http\Requests\Lecturer\StoreAssignmentRequest;
+use App\Models\CourseLesson;
+use App\Models\CourseModule;
 use App\Http\Requests\Lecturer\StoreDiscussionRequest;
 use App\Http\Requests\Lecturer\StoreMaterialRequest;
 use App\Http\Requests\Lecturer\StoreQuizRequest;
@@ -38,7 +40,7 @@ class LecturerController extends Controller
     {
         $user = $request->user();
         if ($user && $user->role === 'student') {
-            return Inertia::render('Student/MyCourses');
+            return Inertia::render('Student/MyCourses', $this->service->getStudentLearningDashboard((int) $user->id));
         }
         if (!$user || $user->role !== 'teacher') {
             return Inertia::render('Courses');
@@ -49,6 +51,146 @@ class LecturerController extends Controller
         $category = trim((string) $request->query('category', 'all'));
 
         return Inertia::render('Lecturer/MyCourses', $this->service->getMyCoursesData((int) $user->id, $search, $status, $category));
+    }
+
+    public function learningModules(Request $request): Response
+    {
+        $user = $this->requireLecturer();
+        $courseId = $request->query('course') ? (int) $request->query('course') : null;
+
+        return Inertia::render('Lecturer/LearningModules', $this->service->getLearningModulesData((int) $user->id, $courseId));
+    }
+
+    public function storeModule(Request $request): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        if (!$this->service->canManageLearningModules()) {
+            return back()->withErrors(['modules' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'title' => ['required', 'string', 'max:150'],
+            'description' => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $this->service->createModule((int) $user->id, $payload);
+
+        return back()->with('success', 'Modul berhasil ditambahkan.');
+    }
+
+    public function updateModule(Request $request, CourseModule $module): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        if (!$this->service->canManageLearningModules()) {
+            return back()->withErrors(['modules' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'title' => ['required', 'string', 'max:150'],
+            'description' => ['nullable', 'string'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $this->service->updateModule((int) $user->id, $module, $payload);
+
+        return back()->with('success', 'Modul berhasil diperbarui.');
+    }
+
+    public function destroyModule(CourseModule $module): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        if (!$this->service->canManageLearningModules()) {
+            return back()->withErrors(['modules' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $this->service->deleteModule((int) $user->id, $module);
+
+        return back()->with('success', 'Modul berhasil dihapus.');
+    }
+
+    public function storeLesson(Request $request): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        if (!$this->service->canManageLearningModules()) {
+            return back()->withErrors(['lessons' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'course_module_id' => ['required', 'integer', 'exists:course_modules,id'],
+            'title' => ['required', 'string', 'max:150'],
+            'summary' => ['nullable', 'string'],
+            'content_type' => ['required', 'in:video,document,text'],
+            'video_url' => ['nullable', 'url', 'max:255'],
+            'content' => ['nullable', 'string'],
+            'duration_minutes' => ['nullable', 'integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $this->service->createLesson((int) $user->id, $payload);
+
+        return back()->with('success', 'Lesson berhasil ditambahkan.');
+    }
+
+    public function updateLesson(Request $request, CourseLesson $lesson): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        if (!$this->service->canManageLearningModules()) {
+            return back()->withErrors(['lessons' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'title' => ['required', 'string', 'max:150'],
+            'summary' => ['nullable', 'string'],
+            'content_type' => ['required', 'in:video,document,text'],
+            'video_url' => ['nullable', 'url', 'max:255'],
+            'content' => ['nullable', 'string'],
+            'duration_minutes' => ['nullable', 'integer', 'min:0'],
+            'sort_order' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $this->service->updateLesson((int) $user->id, $lesson, $payload);
+
+        return back()->with('success', 'Lesson berhasil diperbarui.');
+    }
+
+    public function destroyLesson(CourseLesson $lesson): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        if (!$this->service->canManageLearningModules()) {
+            return back()->withErrors(['lessons' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $this->service->deleteLesson((int) $user->id, $lesson);
+
+        return back()->with('success', 'Lesson berhasil dihapus.');
+    }
+
+    public function learningPlayer(Course $course): Response
+    {
+        $user = auth()->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+
+        return Inertia::render('Student/LearningPlayer', $this->service->getStudentLearningPlayer((int) $user->id, (int) $course->id));
+    }
+
+    public function updateLearningProgress(Request $request, CourseLesson $lesson): RedirectResponse
+    {
+        $user = auth()->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+
+        if (!$this->service->canTrackLessonProgress()) {
+            return back()->withErrors(['progress' => 'Tabel lesson progress belum tersedia. Jalankan migrasi terlebih dahulu.']);
+        }
+
+        $payload = $request->validate([
+            'progress_percent' => ['required', 'integer', 'min:0', 'max:100'],
+        ]);
+
+        $this->service->updateLessonProgress((int) $user->id, $lesson, (int) $payload['progress_percent']);
+
+        return back()->with('success', 'Progress belajar berhasil diperbarui.');
     }
 
     public function storeCourse(StoreCourseRequest $request): RedirectResponse
