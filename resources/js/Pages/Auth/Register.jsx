@@ -12,6 +12,7 @@ const Register = () => {
         username: '',
         email: '',
         password: '',
+        password_confirmation: '',
         role: 'student',
     });
 
@@ -99,6 +100,27 @@ const Register = () => {
                                                 />
                                             </div>
                                             {errors.password && <small className="text-danger">{errors.password}</small>}
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <label className="form-label fw-semibold">Konfirmasi Password</label>
+                                            <div className="input-group">
+                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-shield-check text-muted"></i></span>
+                                                <input
+                                                    type="password"
+                                                    className={`form-control bg-light border-start-0 ${errors.password_confirmation ? 'is-invalid' : ''}`}
+                                                    placeholder="Ulangi password"
+                                                    value={data.password_confirmation}
+                                                    onChange={e => setData('password_confirmation', e.target.value)}
+                                                />
+                                            </div>
+                                            {errors.password_confirmation && <small className="text-danger">{errors.password_confirmation}</small>}
+                                        </div>
+
+                                        <div className="alert alert-info small py-2" role="alert">
+                                            {isEnglish
+                                                ? 'New student accounts require approval from the academic admin before they can sign in.'
+                                                : 'Akun mahasiswa baru perlu persetujuan admin akademik sebelum bisa login.'}
                                         </div>
 
                                         <button

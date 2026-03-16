@@ -27,6 +27,7 @@ class UserSeeder extends Seeder
             'type'     => 'nidn',
             'code'     => '0120' . $codeUniv . '20' . '000',
             'password' => Hash::make('password'),
+            'email_verified_at' => now(),
         ]);
 
         // 2. Admin (02)
@@ -38,6 +39,7 @@ class UserSeeder extends Seeder
             'type'     => 'nidn',
             'code'     => '0220' . $codeUniv . '20' . '001',
             'password' => Hash::make('password'),
+            'email_verified_at' => now(),
         ]);
 
         // 3. Finance (03)
@@ -49,6 +51,7 @@ class UserSeeder extends Seeder
             'type'     => 'nidn',
             'code'     => '0320' . $codeUniv . '20' . '002',
             'password' => Hash::make('password'),
+            'email_verified_at' => now(),
         ]);
 
         // 4. Teacher (04) - Teknik Informatika
@@ -60,6 +63,7 @@ class UserSeeder extends Seeder
             'type'     => 'nidn',
             'code'     => '04' . $codeUniv . $codeFakultas . $codeJurusan . '001',
             'password' => Hash::make('password'),
+            'email_verified_at' => now(),
         ]);
 
         // 5. Students (07) - Teknik Informatika
@@ -77,6 +81,7 @@ class UserSeeder extends Seeder
                 'type'     => 'nim',
                 'code'     => '07' . $yearCode . $codeFakultas . $codeJurusan . $s['seq'],
                 'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ]);
         }
     }

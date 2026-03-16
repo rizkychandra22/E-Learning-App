@@ -307,7 +307,7 @@
             }
 
             footer {
-                padding: 40px 0 40px;
+                padding: 50px 0 50px;
                 color: var(--muted);
                 font-size: 0.9rem;
                 text-align: center;
@@ -406,7 +406,7 @@
                     <div class="orb three"></div>
                     <div class="scanline"></div>
 
-                    <img src="{{ asset('images/Gemini2-Photoroom.png') }}" alt="Team Development" class="team-illustration">
+                    <img src="{{ asset('images/Photoroom.png') }}" alt="Team Development" class="team-illustration">
                     <div class="glow-bar"></div>
                 </div>
             </section>

@@ -30,6 +30,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/register', [AuthController::class, 'showRegister']);
     Route::post('/register', [AuthController::class, 'register']);
+    Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
+    Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
@@ -127,6 +131,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/my-courses', [LecturerController::class, 'storeCourse']);
     Route::put('/my-courses/{course}', [LecturerController::class, 'updateCourse']);
     Route::delete('/my-courses/{course}', [LecturerController::class, 'destroyCourse']);
+    Route::get('/learning-modules', [LecturerController::class, 'learningModules']);
+    Route::post('/learning-modules/modules', [LecturerController::class, 'storeModule']);
+    Route::put('/learning-modules/modules/{module}', [LecturerController::class, 'updateModule']);
+    Route::delete('/learning-modules/modules/{module}', [LecturerController::class, 'destroyModule']);
+    Route::post('/learning-modules/lessons', [LecturerController::class, 'storeLesson']);
+    Route::put('/learning-modules/lessons/{lesson}', [LecturerController::class, 'updateLesson']);
+    Route::delete('/learning-modules/lessons/{lesson}', [LecturerController::class, 'destroyLesson']);
+    Route::get('/learning/{course}', [LecturerController::class, 'learningPlayer']);
+    Route::post('/learning/lessons/{lesson}/progress', [LecturerController::class, 'updateLearningProgress']);
 
     Route::get('/materials', [LecturerController::class, 'materials']);
     Route::post('/materials', [LecturerController::class, 'storeMaterial']);
