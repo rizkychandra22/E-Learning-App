@@ -38,7 +38,7 @@ class LearningModulesFlowTest extends TestCase
             'title' => 'Lesson Video',
             'summary' => 'Pengenalan materi',
             'content_type' => 'video',
-            'video_url' => 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+            'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
             'content' => 'Catatan lesson',
             'duration_minutes' => 12,
             'sort_order' => 1,
@@ -53,6 +53,49 @@ class LearningModulesFlowTest extends TestCase
     }
 
     public function test_student_can_update_lesson_progress(): void
+    {
+        [$student, $lesson] = $this->prepareLearningFlow();
+
+        $response = $this->actingAs($student)->post("/learning/lessons/{$lesson->id}/progress", [
+            'progress_percent' => 100,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('lesson_progress', [
+            'lesson_id' => $lesson->id,
+            'student_id' => $student->id,
+            'progress_percent' => 100,
+            'is_completed' => 1,
+        ]);
+    }
+
+    public function test_student_can_open_learning_player_and_select_specific_lesson(): void
+    {
+        [$student, $lesson, $course, $secondLesson] = $this->prepareLearningFlow();
+
+        $response = $this->actingAs($student)->get("/learning/{$course->id}?lesson={$secondLesson->id}");
+
+        $response->assertOk();
+        $response->assertSee('Lesson Lanjutan');
+        $response->assertSee('https:\/\/www.youtube.com\/embed\/dQw4w9WgXcQ', false);
+    }
+
+    public function test_student_dashboard_reflects_completed_progress_after_learning_update(): void
+    {
+        [$student, $lesson] = $this->prepareLearningFlow();
+
+        $this->actingAs($student)->post("/learning/lessons/{$lesson->id}/progress", [
+            'progress_percent' => 100,
+        ]);
+
+        $response = $this->actingAs($student)->get('/my-courses');
+
+        $response->assertOk();
+        $response->assertSee('&quot;completed_lessons&quot;:1', false);
+        $response->assertSee('&quot;average_progress&quot;:50', false);
+    }
+
+    private function prepareLearningFlow(): array
     {
         $lecturer = $this->makeUser('teacher', 'TCH-302');
         $student = $this->makeUser('student', 'STD-302');
@@ -74,17 +117,17 @@ class LearningModulesFlowTest extends TestCase
             'sort_order' => 1,
         ]);
 
-        $response = $this->actingAs($student)->post("/learning/lessons/{$lesson->id}/progress", [
-            'progress_percent' => 100,
+        $secondLesson = CourseLesson::create([
+            'course_module_id' => $module->id,
+            'title' => 'Lesson Lanjutan',
+            'content_type' => 'video',
+            'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'content' => 'Video lanjutan',
+            'duration_minutes' => 14,
+            'sort_order' => 2,
         ]);
 
-        $response->assertRedirect();
-        $this->assertDatabaseHas('lesson_progress', [
-            'lesson_id' => $lesson->id,
-            'student_id' => $student->id,
-            'progress_percent' => 100,
-            'is_completed' => 1,
-        ]);
+        return [$student, $lesson, $course, $secondLesson];
     }
 
     private function makeUser(string $role, string $code): User
@@ -115,3 +158,4 @@ class LearningModulesFlowTest extends TestCase
         ]);
     }
 }
+
