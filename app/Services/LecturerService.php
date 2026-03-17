@@ -226,7 +226,7 @@ class LecturerService
         ];
     }
 
-    public function getStudentLearningPlayer(int $studentId, int $courseId): array
+    public function getStudentLearningPlayer(int $studentId, int $courseId, ?int $requestedLessonId = null): array
     {
         $course = Course::query()
             ->whereHas('students', fn ($query) => $query->where('users.id', $studentId))
@@ -237,10 +237,19 @@ class LecturerService
             ->findOrFail($courseId);
 
         $mappedCourse = $this->mapStudentCourse($course, $studentId, true);
-        $activeLesson = collect($mappedCourse['modules'])
-            ->flatMap(fn ($module) => $module['lessons'])
-            ->firstWhere('is_completed', false)
-            ?? collect($mappedCourse['modules'])->flatMap(fn ($module) => $module['lessons'])->first();
+        $lessons = collect($mappedCourse['modules'])->flatMap(fn ($module) => $module['lessons'])->values();
+        $activeLesson = $requestedLessonId ? $lessons->firstWhere('id', $requestedLessonId) : null;
+
+        if (!$activeLesson) {
+            $activeLesson = $lessons
+                ->filter(fn ($lesson) => !empty($lesson['last_accessed_at']))
+                ->sortByDesc('last_accessed_at')
+                ->first();
+        }
+
+        if (!$activeLesson) {
+            $activeLesson = $lessons->firstWhere('is_completed', false) ?? $lessons->first();
+        }
 
         return [
             'course' => $mappedCourse,
@@ -810,11 +819,13 @@ class LecturerService
                     'summary' => $lesson->summary,
                     'content_type' => $lesson->content_type,
                     'video_url' => $lesson->video_url,
+                    'video_embed_url' => $this->normalizeVideoUrl($lesson->video_url),
                     'content' => $withLessonContent ? $lesson->content : null,
                     'duration_minutes' => $lesson->duration_minutes,
                     'sort_order' => $lesson->sort_order,
                     'progress_percent' => $progressPercent,
                     'is_completed' => (bool) ($progress->is_completed ?? false),
+                    'last_accessed_at' => $progress?->last_accessed_at?->toISOString(),
                 ];
             })->values();
 
@@ -917,6 +928,36 @@ class LecturerService
         abort_if(!$module, 404);
 
         return $module;
+    }
+
+    private function normalizeVideoUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        if (str_contains($url, 'youtube.com/watch?v=')) {
+            $videoId = Str::after($url, 'watch?v=');
+            $videoId = Str::before($videoId, '&');
+
+            return 'https://www.youtube.com/embed/' . $videoId;
+        }
+
+        if (str_contains($url, 'youtu.be/')) {
+            $videoId = Str::afterLast($url, 'youtu.be/');
+            $videoId = Str::before($videoId, '?');
+
+            return 'https://www.youtube.com/embed/' . $videoId;
+        }
+
+        if (str_contains($url, 'vimeo.com/') && !str_contains($url, 'player.vimeo.com/video/')) {
+            $videoId = Str::afterLast($url, 'vimeo.com/');
+            $videoId = Str::before($videoId, '?');
+
+            return 'https://player.vimeo.com/video/' . $videoId;
+        }
+
+        return $url;
     }
 
     private function normalizeCoursePayload(array $payload): array

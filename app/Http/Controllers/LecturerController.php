@@ -167,12 +167,13 @@ class LecturerController extends Controller
         return back()->with('success', 'Lesson berhasil dihapus.');
     }
 
-    public function learningPlayer(Course $course): Response
+    public function learningPlayer(Request $request, Course $course): Response
     {
         $user = auth()->user();
         abort_if(!$user || $user->role !== 'student', 403);
+        $lessonId = $request->query('lesson') ? (int) $request->query('lesson') : null;
 
-        return Inertia::render('Student/LearningPlayer', $this->service->getStudentLearningPlayer((int) $user->id, (int) $course->id));
+        return Inertia::render('Student/LearningPlayer', $this->service->getStudentLearningPlayer((int) $user->id, (int) $course->id, $lessonId));
     }
 
     public function updateLearningProgress(Request $request, CourseLesson $lesson): RedirectResponse
