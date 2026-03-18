@@ -87,7 +87,7 @@ export default function StudentDiscussions() {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {threads.map((thread) => (
                         <ThreadCard key={thread.title} {...thread} />
                     ))}
@@ -96,3 +96,4 @@ export default function StudentDiscussions() {
         </ProtectedLayout>
     );
 }
+

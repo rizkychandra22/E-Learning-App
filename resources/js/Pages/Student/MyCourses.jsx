@@ -101,7 +101,7 @@ export default function StudentMyCourses({ courses = [], summary = {}, migration
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {courses.length > 0 ? courses.map((course) => <CourseCard key={course.id} course={course} />) : (
                         <div className={cn(UI.panel, 'text-sm text-muted-foreground lg:col-span-2')}>
                             Belum ada kursus yang terdaftar untuk mahasiswa ini.
@@ -112,3 +112,4 @@ export default function StudentMyCourses({ courses = [], summary = {}, migration
         </ProtectedLayout>
     );
 }
+

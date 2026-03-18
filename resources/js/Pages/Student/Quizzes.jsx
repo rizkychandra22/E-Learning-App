@@ -103,7 +103,7 @@ export default function StudentQuizzes() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {quizzes.map((quiz) => (
                         <QuizCard key={`${quiz.title}-${quiz.time}`} {...quiz} />
                     ))}
@@ -112,3 +112,4 @@ export default function StudentQuizzes() {
         </ProtectedLayout>
     );
 }
+
