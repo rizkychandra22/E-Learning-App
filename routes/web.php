@@ -8,6 +8,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LecturerController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\PerformanceLogController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SuperAdminOverviewController;
 use App\Http\Controllers\SuperAdminUserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+    Route::get('/profile', [ProfileController::class, 'edit']);
+    Route::put('/profile', [ProfileController::class, 'update']);
 
     Route::middleware('role:root')->group(function () {
         Route::get('/manage-admins', [SuperAdminUserManagementController::class, 'index'])->defaults('target', 'admins');
