@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS, WARM_STRIP_CLASS } from '@/lib/card';
 import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 const typeStyles = {
@@ -125,10 +125,10 @@ export default function ActivityLogs({ logs, filters, mocked }) {
 
 function Metric({ label, value, icon: Icon, variant = 'primary' }) {
     const stripClass = {
-        primary: 'gradient-primary',
-        accent: 'gradient-accent',
-        warm: 'gradient-warm',
-        success: 'gradient-success',
+        primary: WARM_STRIP_CLASS,
+        accent: WARM_STRIP_CLASS,
+        warm: WARM_STRIP_CLASS,
+        success: WARM_STRIP_CLASS,
     };
 
     const variantClass = {

@@ -5,7 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS, WARM_STRIP_CLASS } from '@/lib/card';
 import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters, mocked }) {
@@ -116,10 +116,10 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
 function SummaryCard({ title, value, plain = false, icon: Icon, variant = 'primary' }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const stripClass = {
-        primary: 'gradient-primary',
-        accent: 'gradient-accent',
-        warm: 'gradient-warm',
-        success: 'gradient-success',
+        primary: WARM_STRIP_CLASS,
+        accent: WARM_STRIP_CLASS,
+        warm: WARM_STRIP_CLASS,
+        success: WARM_STRIP_CLASS,
     };
 
     const variantClass = {
