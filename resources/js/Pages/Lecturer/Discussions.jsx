@@ -98,7 +98,7 @@ export default function Discussions({ discussions, courses, filters, migrationRe
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
@@ -184,7 +184,7 @@ export default function Discussions({ discussions, courses, filters, migrationRe
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? 'Edit Diskusi' : 'Tambah Diskusi'}</h2>
                             {isEditing && (
@@ -276,3 +276,4 @@ function formatDateTime(dateString) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleString('id-ID');
 }
+

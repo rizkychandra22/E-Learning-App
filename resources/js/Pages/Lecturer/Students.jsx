@@ -161,7 +161,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 space-y-5">
                         <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
                             <div className="p-4 border-b border-border flex items-center justify-between">
@@ -269,7 +269,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                        <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                             <h2 className="font-semibold mb-4">Tambah Mahasiswa ke Kursus</h2>
                             <form onSubmit={submitEnrollForm} className="space-y-3">
                                 <SelectField
@@ -305,7 +305,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
                             </form>
                         </div>
 
-                        <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                        <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="font-semibold">{isEditing ? 'Edit Catatan' : 'Tambah Catatan'}</h2>
                                 {isEditing && (
@@ -398,3 +398,4 @@ function formatDate(dateString) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID');
 }
+

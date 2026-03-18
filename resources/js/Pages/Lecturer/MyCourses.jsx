@@ -109,7 +109,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border space-y-3">
                             <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
@@ -178,7 +178,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? 'Edit Kursus' : 'Tambah Kursus'}</h2>
                             {isEditing && <button type="button" onClick={beginCreate} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Batalkan edit"><X className="w-4 h-4" /></button>}
@@ -237,4 +237,5 @@ function parseTags(raw) {
     if (!raw) return [];
     return [...new Set(String(raw).split(',').map((item) => item.trim()).filter((item) => item !== ''))];
 }
+
 
