@@ -73,3 +73,32 @@
     .shadow-card { box-shadow: var(--shadow-md); }
     .shadow-card-lg { box-shadow: var(--shadow-lg); }
 }
+
+@layer base {
+    .dark .text-black,
+    .dark .text-slate-900,
+    .dark .text-slate-800,
+    .dark .text-slate-700,
+    .dark .text-gray-900,
+    .dark .text-gray-800,
+    .dark .text-gray-700,
+    .dark .text-dark {
+        color: hsl(var(--foreground)) !important;
+    }
+
+    .dark .bg-white {
+        background-color: hsl(var(--card)) !important;
+    }
+
+    .dark .border-slate-200,
+    .dark .border-slate-300,
+    .dark .border-gray-200,
+    .dark .border-gray-300 {
+        border-color: hsl(var(--border)) !important;
+    }
+
+    .dark .placeholder\:text-slate-400::placeholder,
+    .dark .placeholder\:text-gray-400::placeholder {
+        color: hsl(var(--muted-foreground)) !important;
+    }
+}
