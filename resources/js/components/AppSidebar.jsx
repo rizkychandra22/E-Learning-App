@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
-    Award, Settings, LogOut, GraduationCap, Shield, UserCheck, FolderOpen,
+    Award, Settings, GraduationCap, Shield, UserCheck, FolderOpen,
     BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
@@ -54,23 +53,9 @@ const navByRole = {
     ],
 };
 
-const roleLabels = {
-    super_admin: 'Super Admin',
-    admin: 'Admin',
-    finance: 'Finance',
-    dosen: 'Dosen',
-    mahasiswa: 'Mahasiswa',
-};
-
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const page = usePage();
-    const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-    const handleLogout = () => {
-        setIsLoggingOut(true);
-        logout();
-    };
 
     if (!user) return null;
 
@@ -84,7 +69,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
 
             <aside
                 className={cn(
-                    'flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 min-h-screen lg:static lg:translate-x-0 lg:z-auto',
+                    'flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 min-h-screen lg:h-screen lg:sticky lg:top-0 lg:translate-x-0 lg:z-auto',
                     collapsed ? 'lg:w-16' : 'lg:w-64',
                     'fixed inset-y-0 left-0 z-40 w-72',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
@@ -120,23 +105,10 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                     })}
                 </nav>
 
-                <div className="border-t border-sidebar-border p-3 space-y-2">
-                    {showLabel && (
-                        <div className="px-2 mb-2">
-                            <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{user.name}</p>
-                            <p className="text-xs text-sidebar-muted truncate">{roleLabels[user.role]}</p>
-                        </div>
-                    )}
-                    <button onClick={handleLogout} disabled={isLoggingOut} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors w-full disabled:opacity-70">
-                        {isLoggingOut ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <LogOut className="w-5 h-5 flex-shrink-0" />}
-                        {showLabel && <span>{isLoggingOut ? 'Keluar...' : 'Keluar'}</span>}
-                    </button>
-                </div>
-
                 <button
                     type="button"
                     onClick={onToggleCollapse}
-                    className="hidden lg:flex items-center justify-center h-10 border-t border-sidebar-border text-sidebar-muted hover:text-sidebar-foreground transition-colors"
+                    className="hidden lg:flex items-center justify-center h-10 border-t border-sidebar-border text-sidebar-muted hover:text-sidebar-foreground transition-colors mt-auto"
                     aria-label="Toggle sidebar width"
                 >
                     {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
