@@ -24,6 +24,7 @@ import { Head, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
+import { WARM_STRIP_CLASS } from '@/lib/card';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CompactStatCard, MiniRoleCard, EqualCard } from '@/components/CompactStatCard';
@@ -91,12 +92,12 @@ function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
             <PageHeroBanner title={greeting} description={subtitle} />
             <div className={UI.heroMetaGridClass}>
                 <div className={UI.heroMetaCardClass}>
-                    <div className="absolute inset-x-0 top-0 h-1.5 gradient-warm opacity-90" />
+                    <div className={cn('absolute inset-x-0 top-0 h-1.5 opacity-90', WARM_STRIP_CLASS)} />
                     <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Role Aktif</p>
                     <p className="text-sm sm:text-base leading-tight font-semibold capitalize">{String(user.role).replace('_', ' ')}</p>
                 </div>
                 <div className={UI.heroMetaCardClass}>
-                    <div className="absolute inset-x-0 top-0 h-1.5 gradient-warm opacity-90" />
+                    <div className={cn('absolute inset-x-0 top-0 h-1.5 opacity-90', WARM_STRIP_CLASS)} />
                     <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground flex items-center gap-1.5">
                         <CalendarDays className="w-3.5 h-3.5" />
                         Hari Ini
