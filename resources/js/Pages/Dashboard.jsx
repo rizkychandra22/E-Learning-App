@@ -24,15 +24,19 @@ import { Head, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
+import { WARM_STRIP_CLASS } from '@/lib/card';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CompactStatCard, MiniRoleCard, EqualCard } from '@/components/CompactStatCard';
 
 const UI = {
-    panelClass: 'bg-card rounded-xl border border-border p-4 shadow-card',
-    kpiGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr',
-    miniGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr',
-    miniGridFourClass: 'grid grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-fr',
+    panelClass: 'bg-card rounded-xl border border-border p-3 sm:p-4 shadow-card',
+    kpiGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-fr',
+    miniGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 auto-rows-fr',
+    miniGridFourClass: 'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-fr',
+    heroMetaGridClass: 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-w-0 auto-rows-fr',
+    heroMetaCardClass:
+        'relative min-h-[96px] sm:h-[100px] overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-card/95 p-3 sm:p-3.5 shadow-[0_8px_24px_-18px_hsl(var(--foreground)/0.6)] flex flex-col justify-between',
     chartHeightClass: 'h-[210px]',
 };
 
@@ -57,7 +61,19 @@ function KpiGrid({ cards }) {
     );
 }
 
-
+function TrendEmptyState({ title }) {
+    return (
+        <div className={cn(UI.panelClass, 'animate-fade-in')}>
+            <div className="flex items-center justify-between gap-4">
+                <SectionTitle icon={BarChart3}>{title}</SectionTitle>
+            </div>
+            <div className="mt-4 rounded-xl border border-dashed border-border bg-background/50 p-6 text-center">
+                <p className="text-sm font-medium">Belum ada data tren</p>
+                <p className="text-xs text-muted-foreground mt-1">Data akan muncul setelah periode pelaporan tersedia.</p>
+            </div>
+        </div>
+    );
+}
 
 function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
     const today = useMemo(
@@ -72,19 +88,21 @@ function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
     );
 
     return (
-        <section className="space-y-3 animate-fade-in">
+        <section className="space-y-4 sm:space-y-6 animate-fade-in">
             <PageHeroBanner title={greeting} description={subtitle} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
-                <div className="rounded-xl border border-border bg-card px-4 py-3">
-                    <p className="text-xs text-muted-foreground">Role Aktif</p>
-                    <p className="font-semibold mt-1 capitalize">{String(user.role).replace('_', ' ')}</p>
+            <div className={UI.heroMetaGridClass}>
+                <div className={UI.heroMetaCardClass}>
+                    <div className={cn('absolute inset-x-0 top-0 h-1.5 opacity-90', WARM_STRIP_CLASS)} />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Role Aktif</p>
+                    <p className="text-sm sm:text-base leading-tight font-semibold capitalize">{String(user.role).replace('_', ' ')}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card px-4 py-3">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <div className={UI.heroMetaCardClass}>
+                    <div className={cn('absolute inset-x-0 top-0 h-1.5 opacity-90', WARM_STRIP_CLASS)} />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground flex items-center gap-1.5">
                         <CalendarDays className="w-3.5 h-3.5" />
                         Hari Ini
                     </p>
-                    <p className="font-semibold mt-1">{today}</p>
+                    <p className="text-sm sm:text-base leading-tight font-semibold">{today}</p>
                 </div>
             </div>
         </section>
@@ -390,7 +408,7 @@ export default function Dashboard() {
     return (
         <ProtectedLayout>
             <Head title="Dashboard" />
-            <div className="space-y-6 w-full max-w-none">
+            <div className="space-y-5 sm:space-y-6 w-full max-w-none">
                 <HeroSection user={user} greeting={roleGreeting[user.role]} subtitle={roleSubtitle[user.role]} intlLocale={intlLocale} />
 
                 {user.role === 'super_admin' && (
@@ -404,9 +422,9 @@ export default function Dashboard() {
                             ]}
                         />
                         <div className={UI.miniGridClass}>
-                            <EqualCard><MiniRoleCard title="Finance" value={roleStats.finance ?? 0} icon={Wallet} iconVariant="primary" /></EqualCard>
-                            <EqualCard><MiniRoleCard title="Super Admin" value={roleStats.root ?? 0} icon={Crown} iconVariant="accent" /></EqualCard>
-                            <EqualCard><MiniRoleCard title="Sesi Aktif (15m)" value={superAdmin?.summary?.active_sessions ?? 0} icon={Activity} iconVariant="success" /></EqualCard>
+                            <EqualCard className="lg:col-span-4"><MiniRoleCard title="Finance" value={roleStats.finance ?? 0} icon={Wallet} iconVariant="primary" meta="Transaksi tervalidasi" /></EqualCard>
+                            <EqualCard className="lg:col-span-4"><MiniRoleCard title="Super Admin" value={roleStats.root ?? 0} icon={Crown} iconVariant="accent" meta="Akses tertinggi" /></EqualCard>
+                            <EqualCard className="lg:col-span-4"><MiniRoleCard title="Sesi Aktif (15m)" value={superAdmin?.summary?.active_sessions ?? 0} icon={Activity} iconVariant="success" meta="15 menit terakhir" /></EqualCard>
                         </div>
                     </>
                 )}
@@ -422,10 +440,10 @@ export default function Dashboard() {
                             ]}
                         />
                         <div className={UI.miniGridFourClass}>
-                            <EqualCard><MiniRoleCard title="Admin" value={adminRoleStats.admin ?? 0} icon={Shield} iconVariant="accent" /></EqualCard>
-                            <EqualCard><MiniRoleCard title="Finance" value={adminRoleStats.finance ?? 0} icon={Wallet} iconVariant="primary" /></EqualCard>
-                            <EqualCard><MiniRoleCard title="Dosen" value={adminRoleStats.teacher ?? 0} icon={UserCheck} iconVariant="warm" /></EqualCard>
-                            <EqualCard><MiniRoleCard title="Mahasiswa" value={adminRoleStats.student ?? 0} icon={BookOpen} iconVariant="success" /></EqualCard>
+                            <EqualCard><MiniRoleCard title="Admin" value={adminRoleStats.admin ?? 0} icon={Shield} iconVariant="accent" meta="Operator aktif" /></EqualCard>
+                            <EqualCard><MiniRoleCard title="Finance" value={adminRoleStats.finance ?? 0} icon={Wallet} iconVariant="primary" meta="Tim keuangan" /></EqualCard>
+                            <EqualCard><MiniRoleCard title="Dosen" value={adminRoleStats.teacher ?? 0} icon={UserCheck} iconVariant="warm" meta="Pengajar aktif" /></EqualCard>
+                            <EqualCard><MiniRoleCard title="Mahasiswa" value={adminRoleStats.student ?? 0} icon={BookOpen} iconVariant="success" meta="Peserta belajar" /></EqualCard>
                         </div>
                     </>
                 )}
@@ -449,8 +467,8 @@ export default function Dashboard() {
                     <KpiGrid cards={mahasiswaKpis} />
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                         <RecentActivity
                             intlLocale={intlLocale}
                             activities={
@@ -464,16 +482,21 @@ export default function Dashboard() {
                             }
                         />
 
-                        {user.role === 'super_admin' && superAdminChartData.length > 0 && (
-                            <ModernTrendChart title="Pertumbuhan Akun 6 Bulan" data={superAdminChartData} tone="primary" />
+                        {user.role === 'super_admin' && (
+                            superAdminChartData.length > 0
+                                ? <ModernTrendChart title="Pertumbuhan Akun 6 Bulan" data={superAdminChartData} tone="primary" />
+                                : <TrendEmptyState title="Pertumbuhan Akun 6 Bulan" />
                         )}
-                        {user.role === 'finance' && financeChartData.length > 0 && (
-                            <ModernTrendChart
-                                title="Cashflow 6 Bulan"
-                                data={financeChartData}
-                                tone="success"
-                                valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
-                            />
+                        {user.role === 'finance' && (
+                            financeChartData.length > 0
+                                ? (
+                                    <ModernTrendChart
+                                        title="Cashflow 6 Bulan"
+                                        data={financeChartData}
+                                        tone="success"
+                                        valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
+                                    />
+                                ) : <TrendEmptyState title="Cashflow 6 Bulan" />
                         )}
 
                         {(user.role === 'admin' || user.role === 'dosen' || user.role === 'mahasiswa') && (
@@ -495,7 +518,7 @@ export default function Dashboard() {
                             </div>
                         )}
                     </div>
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                         {(user.role === 'mahasiswa' || user.role === 'dosen') && <CourseProgress />}
                         <UpcomingSchedule />
                     </div>

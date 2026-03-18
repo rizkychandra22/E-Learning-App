@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS, WARM_STRIP_CLASS } from '@/lib/card';
 import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 const typeStyles = {
@@ -124,6 +124,13 @@ export default function ActivityLogs({ logs, filters, mocked }) {
 }
 
 function Metric({ label, value, icon: Icon, variant = 'primary' }) {
+    const stripClass = {
+        primary: WARM_STRIP_CLASS,
+        accent: WARM_STRIP_CLASS,
+        warm: WARM_STRIP_CLASS,
+        success: WARM_STRIP_CLASS,
+    };
+
     const variantClass = {
         primary: 'gradient-primary text-primary-foreground',
         accent: 'gradient-accent text-accent-foreground',
@@ -133,15 +140,16 @@ function Metric({ label, value, icon: Icon, variant = 'primary' }) {
 
     return (
         <div className={`${KPI_CARD_BASE_CLASS} ${KPI_CARD_HEIGHT_CLASS}`}>
+            <div className={`absolute inset-x-0 top-0 h-1.5 opacity-90 ${stripClass[variant] ?? stripClass.primary}`} />
             <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-muted-foreground truncate">{label}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground truncate">{label}</p>
                 {Icon && (
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
                         <Icon className="w-4 h-4" />
                     </div>
                 )}
             </div>
-            <p className="text-2xl font-bold mt-2">{value}</p>
+            <p className="text-3xl leading-none font-bold tracking-tight">{value}</p>
         </div>
     );
 }

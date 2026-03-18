@@ -50,8 +50,8 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    <div className="xl:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                    <div className="xl:col-span-2 rounded-2xl border border-border bg-card p-4 shadow-card space-y-4">
                         <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">Course aktif</p>
@@ -111,7 +111,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                     </div>
 
                     <div className="space-y-5">
-                        <form onSubmit={submitModule} className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-3">
+                        <form onSubmit={submitModule} className="rounded-2xl border border-border bg-card p-4 shadow-card space-y-3">
                             <div className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /><h3 className="font-semibold">Tambah Modul</h3></div>
                             <select value={moduleForm.data.course_id} onChange={(event) => moduleForm.setData('course_id', event.target.value)} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm">
                                 <option value="">Pilih course</option>
@@ -123,7 +123,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                             <button type="submit" disabled={moduleForm.processing} className="w-full px-4 py-2 rounded-xl gradient-primary text-primary-foreground text-sm font-medium">Simpan Modul</button>
                         </form>
 
-                        <form onSubmit={submitLesson} className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-3">
+                        <form onSubmit={submitLesson} className="rounded-2xl border border-border bg-card p-4 shadow-card space-y-3">
                             <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-primary" /><h3 className="font-semibold">Tambah Lesson</h3></div>
                             <select value={lessonForm.data.course_module_id} onChange={(event) => lessonForm.setData('course_module_id', event.target.value)} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm">
                                 <option value="">Pilih modul</option>
@@ -152,3 +152,4 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
         </ProtectedLayout>
     );
 }
+

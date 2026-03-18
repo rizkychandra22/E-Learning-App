@@ -69,7 +69,7 @@ export default function Materials({ materials, courses, migrationRequired, filte
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
@@ -145,7 +145,7 @@ export default function Materials({ materials, courses, migrationRequired, filte
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-5 h-fit">
+                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
                         <h2 className="font-semibold mb-4">Upload Materi</h2>
                         <form onSubmit={submitForm} className="space-y-3">
                             <SelectField label="Pilih Kursus" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}>
@@ -230,3 +230,4 @@ function formatDate(dateString) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID');
 }
+
