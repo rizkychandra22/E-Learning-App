@@ -1,11 +1,11 @@
 import { cn } from '@/lib/cn';
-import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS } from '@/lib/card';
+import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS, WARM_STRIP_CLASS } from '@/lib/card';
 
 const ACCENT_STRIP_BY_VARIANT = {
-    primary: 'gradient-primary',
-    accent: 'gradient-accent',
-    warm: 'gradient-warm',
-    success: 'gradient-success',
+    primary: WARM_STRIP_CLASS,
+    accent: WARM_STRIP_CLASS,
+    warm: WARM_STRIP_CLASS,
+    success: WARM_STRIP_CLASS,
 };
 
 export function DashboardIcon({ icon: Icon, variant = 'primary' }) {
