@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Services\SystemSettingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -50,6 +51,7 @@ class HandleInertiaRequests extends Middleware
                     'username' => $user->username,
                     'role' => $user->role,
                     'dashboard_role' => $this->mapDashboardRole($user->role),
+                    'profile_photo_url' => $user->profile_photo_path ? Storage::disk('public')->url($user->profile_photo_path) : null,
                 ] : null,
             ],
             'system' => [
