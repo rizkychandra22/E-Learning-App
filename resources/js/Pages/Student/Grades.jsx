@@ -39,12 +39,9 @@ export default function StudentGrades() {
         [intlLocale]
     );
 
-    const grades = [
-        { course: 'Algoritma & Struktur Data', average: '88', last: '90', status: 'Naik' },
-        { course: 'Basis Data Lanjut', average: '84', last: '82', status: 'Stabil' },
-        { course: 'Pemrograman Web', average: '87', last: '89', status: 'Naik' },
-        { course: 'Machine Learning', average: '79', last: '76', status: 'Perlu fokus' },
-    ];
+    const records = props?.records ?? [];
+    const summary = props?.summary ?? { average: 0, graded_count: 0, assignment_avg: 0, quiz_avg: 0 };
+    const migrationRequired = props?.migrationRequired;
 
     return (
         <ProtectedLayout>
@@ -52,8 +49,14 @@ export default function StudentGrades() {
             <div className="space-y-6">
                 <PageHeroBanner
                     title="Nilai"
-                    description="Pantau performa akademik, rata-rata nilai, dan tren belajar semester ini."
+                    description="Pantau hasil penilaian quiz dan assignment dari semua kursus yang Anda ikuti."
                 />
+
+                {migrationRequired && (
+                    <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                        Tabel penilaian belum tersedia. Jalankan <code className="font-mono">php artisan migrate</code>
+                    </div>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2 text-sm">
@@ -63,38 +66,44 @@ export default function StudentGrades() {
                         </span>
                         <span className={UI.chip}>
                             <Award className="w-3.5 h-3.5" />
-                            IPK sementara 3.62
+                            {summary.graded_count} penilaian selesai
                         </span>
                         <span className={UI.chip}>
                             <TrendingUp className="w-3.5 h-3.5" />
-                            +0.12 dari semester lalu
+                            Rata-rata {summary.average}
                         </span>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <ScoreCard label="Rata-rata nilai" value="85.4" helper="Target semester: 87" />
-                    <ScoreCard label="Kuis & tugas" value="88" helper="Konsisten 4 minggu" />
-                    <ScoreCard label="Ujian tengah" value="82" helper="Butuh latihan 2 topik" />
+                    <ScoreCard label="Rata-rata total" value={summary.average} helper="Gabungan assignment + quiz" />
+                    <ScoreCard label="Rata-rata assignment" value={summary.assignment_avg} helper="Skor dari tugas yang sudah dinilai" />
+                    <ScoreCard label="Rata-rata quiz" value={summary.quiz_avg} helper="Skor dari kuis yang sudah dinilai" />
                 </div>
 
                 <div className={UI.panel}>
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold flex items-center gap-2">
                             <BarChart3 className="w-4 h-4 text-primary" />
-                            Rangkuman per Kursus
+                            Riwayat Penilaian
                         </h3>
                     </div>
                     <div className="mt-4 space-y-3">
-                        {grades.map((item) => (
-                            <div key={item.course} className="flex items-center justify-between rounded-xl border border-border bg-background p-3 text-sm">
+                        {records.length === 0 && (
+                            <div className="rounded-xl border border-border bg-background p-3 text-sm text-muted-foreground">
+                                Belum ada nilai yang dipublikasikan.
+                            </div>
+                        )}
+                        {records.map((item, index) => (
+                            <div key={`${item.type}-${item.title}-${index}`} className="flex items-center justify-between rounded-xl border border-border bg-background p-3 text-sm">
                                 <div>
-                                    <p className="font-medium">{item.course}</p>
-                                    <p className="text-xs text-muted-foreground">Nilai terakhir: {item.last}</p>
+                                    <p className="font-medium">{item.title}</p>
+                                    <p className="text-xs text-muted-foreground">{item?.course?.title ?? 'Tanpa kursus'} - {item.type}</p>
+                                    <p className="text-xs text-muted-foreground">Dinilai: {item.graded_at ? new Date(item.graded_at).toLocaleString('id-ID') : '-'}</p>
+                                    {item.feedback && <p className="text-xs text-muted-foreground">Feedback: {item.feedback}</p>}
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-semibold">{item.average}</p>
-                                    <p className="text-xs text-muted-foreground">{item.status}</p>
+                                    <p className="font-semibold">{item.score} / {item.max_score}</p>
                                 </div>
                             </div>
                         ))}

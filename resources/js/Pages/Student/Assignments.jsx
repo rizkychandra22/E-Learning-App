@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CalendarDays, ClipboardList, Clock, FileText, Flag, ListChecks } from 'lucide-react';
+import { CalendarDays, CheckCircle2, ClipboardList, Clock, Flag, ListChecks } from 'lucide-react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
@@ -12,40 +12,38 @@ const UI = {
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
-function AssignmentCard({ id, title, course, due, status, progress }) {
-    const statusTone = {
-        tinggi: 'text-destructive',
-        sedang: 'text-warning',
-        rendah: 'text-success',
-    };
+function AssignmentCard({ assignment, intlLocale }) {
+    const dueAt = assignment?.due_at ? new Date(assignment.due_at) : null;
+    const now = new Date();
+    const dayDiff = dueAt ? Math.ceil((dueAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+    const priorityClass = dayDiff !== null && dayDiff <= 1 ? 'text-destructive' : dayDiff !== null && dayDiff <= 3 ? 'text-warning' : 'text-success';
+    const submissionStatus = assignment?.submission?.status ?? 'belum';
 
     return (
         <div className={cn(UI.panel, 'space-y-3')}>
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs text-muted-foreground">{course}</p>
-                    <h3 className="font-semibold">{title}</h3>
+                    <p className="text-xs text-muted-foreground">{assignment?.course?.title ?? 'Tanpa kursus'}</p>
+                    <h3 className="font-semibold">{assignment?.title}</h3>
                 </div>
-                <span className={UI.chip}>{progress}%</span>
+                <span className={UI.chip}>{assignment?.max_score ?? 100} poin</span>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span className={UI.chip}>
                     <Clock className="w-3.5 h-3.5" />
-                    {due}
+                    {dueAt ? dueAt.toLocaleString(intlLocale) : 'Tanpa deadline'}
                 </span>
-                <span className={cn(UI.chip, statusTone[status] ?? 'text-muted-foreground')}>
+                <span className={cn(UI.chip, priorityClass)}>
                     <Flag className="w-3.5 h-3.5" />
-                    Prioritas {status}
+                    {dayDiff === null ? 'Deadline fleksibel' : dayDiff < 0 ? 'Lewat deadline' : `${dayDiff} hari lagi`}
                 </span>
-            </div>
-            <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
+                <span className={cn(UI.chip, submissionStatus === 'graded' ? 'text-success' : submissionStatus === 'submitted' ? 'text-primary' : 'text-muted-foreground')}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {submissionStatus === 'graded' ? 'Sudah dinilai' : submissionStatus === 'submitted' ? 'Sudah dikumpulkan' : 'Belum dikumpulkan'}
+                </span>
             </div>
             <div className="flex flex-wrap gap-2">
-                <Link href="/materials" className="text-xs font-medium text-primary hover:opacity-80">
-                    Buka Materi Pendukung
-                </Link>
-                <Link href={`/assignments/${id}`} className="text-xs font-medium text-muted-foreground hover:text-primary">
+                <Link href={`/assignments/${assignment?.id}`} className="text-xs font-medium text-primary hover:opacity-80">
                     Lihat Detail
                 </Link>
             </div>
@@ -70,12 +68,9 @@ export default function StudentAssignments() {
         [intlLocale]
     );
 
-    const assignments = [
-        { id: 1, title: 'Tugas 3: Normalisasi', course: 'Basis Data Lanjut', due: '2 hari lagi', status: 'tinggi', progress: 30 },
-        { id: 2, title: 'Analisis Kompleksitas', course: 'Algoritma & Struktur Data', due: '4 hari lagi', status: 'sedang', progress: 55 },
-        { id: 3, title: 'Landing Page Responsif', course: 'Pemrograman Web', due: '6 hari lagi', status: 'rendah', progress: 80 },
-        { id: 4, title: 'Resume Video Pointer', course: 'Algoritma & Struktur Data', due: '1 minggu lagi', status: 'rendah', progress: 15 },
-    ];
+    const assignments = props?.assignments ?? [];
+    const summary = props?.summary ?? { active_count: 0, submitted_count: 0, graded_count: 0 };
+    const migrationRequired = props?.migrationRequired ?? { assignments: false, submissions: false };
 
     return (
         <ProtectedLayout>
@@ -86,6 +81,12 @@ export default function StudentAssignments() {
                     description="Kelola daftar tugas aktif, pantau progress, dan prioritas deadline."
                 />
 
+                {(migrationRequired.assignments || migrationRequired.submissions) && (
+                    <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                        Fitur tugas/submission belum siap. Jalankan migrasi: <code className="font-mono">php artisan migrate</code>
+                    </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-2 text-sm">
                         <span className={UI.chip}>
@@ -94,26 +95,22 @@ export default function StudentAssignments() {
                         </span>
                         <span className={UI.chip}>
                             <ClipboardList className="w-3.5 h-3.5" />
-                            4 tugas aktif
+                            {summary.active_count} tugas
                         </span>
                         <span className={UI.chip}>
                             <ListChecks className="w-3.5 h-3.5" />
-                            2 tugas mendekati deadline
+                            {summary.submitted_count} sudah dikumpulkan
                         </span>
                     </div>
-                    <button type="button" className="text-xs font-medium text-primary hover:opacity-80 flex items-center gap-1">
-                        <FileText className="w-3.5 h-3.5" />
-                        Unduh daftar tugas
-                    </button>
+                    <span className={UI.chip}>{summary.graded_count} sudah dinilai</span>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {assignments.map((assignment) => (
-                        <AssignmentCard key={assignment.title} {...assignment} />
+                        <AssignmentCard key={assignment.id} assignment={assignment} intlLocale={intlLocale} />
                     ))}
                 </div>
             </div>
         </ProtectedLayout>
     );
 }
-
