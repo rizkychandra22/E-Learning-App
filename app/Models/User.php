@@ -78,4 +78,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(QuizAttempt::class, 'student_id');
     }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(InAppNotification::class);
+    }
 }
