@@ -22,6 +22,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LecturerService
 {
+    public function __construct(
+        private readonly NotificationService $notificationService
+    ) {
+    }
+
     public function getMyCoursesData(int $lecturerId, string $search, string $status, string $category = 'all'): array
     {
         $normalizedStatus = in_array($status, ['all', 'draft', 'active', 'archived'], true) ? $status : 'all';
@@ -197,17 +202,20 @@ class LecturerService
         if ($migrationRequired) {
             return [
                 'courses' => collect(),
+                'available_courses' => collect(),
                 'summary' => [
                     'active_courses' => 0,
                     'completed_lessons' => 0,
                     'average_progress' => 0,
                 ],
                 'migrationRequired' => true,
+                'selfEnrollmentAvailable' => false,
             ];
         }
 
-        $courses = User::query()
-            ->findOrFail($studentId)
+        $student = User::query()->findOrFail($studentId);
+
+        $courses = $student
             ->enrolledCourses()
             ->with(['lecturer:id,name', 'modules.lessons.progress' => fn ($query) => $query->where('student_id', $studentId)])
             ->orderBy('title')
@@ -217,14 +225,40 @@ class LecturerService
         $averageProgress = (int) round($mappedCourses->avg('progress_percent') ?? 0);
         $completedLessons = (int) $mappedCourses->sum('completed_lessons');
 
+        $selfEnrollmentAvailable = Schema::hasTable('courses')
+            && Schema::hasColumn('courses', 'allow_self_enrollment')
+            && Schema::hasColumn('courses', 'enrollment_key');
+        $availableCourses = collect();
+
+        if ($selfEnrollmentAvailable) {
+            $enrolledCourseIds = $courses->pluck('id')->all();
+            $availableCourses = Course::query()
+                ->where('status', 'active')
+                ->where('allow_self_enrollment', true)
+                ->whereNotIn('id', $enrolledCourseIds)
+                ->with('lecturer:id,name')
+                ->orderBy('title')
+                ->get(['id', 'title', 'code', 'description', 'lecturer_id', 'enrollment_key'])
+                ->map(fn (Course $course) => [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'code' => $course->code,
+                    'description' => $course->description,
+                    'lecturer' => $course->lecturer ? ['id' => $course->lecturer->id, 'name' => $course->lecturer->name] : null,
+                    'requires_key' => !empty($course->enrollment_key),
+                ]);
+        }
+
         return [
             'courses' => $mappedCourses,
+            'available_courses' => $availableCourses,
             'summary' => [
                 'active_courses' => $mappedCourses->count(),
                 'completed_lessons' => $completedLessons,
                 'average_progress' => $averageProgress,
             ],
             'migrationRequired' => false,
+            'selfEnrollmentAvailable' => $selfEnrollmentAvailable,
         ];
     }
 
@@ -1213,16 +1247,78 @@ class LecturerService
     public function enrollStudent(int $lecturerId, array $payload): void
     {
         $course = $this->findLecturerCourse($lecturerId, (int) $payload['course_id']);
+        $student = User::query()
+            ->where('id', (int) $payload['student_id'])
+            ->where('role', 'student')
+            ->firstOrFail();
+
+        $alreadyEnrolled = $course->students()->where('users.id', $student->id)->exists();
+        abort_if($alreadyEnrolled, 422, 'Mahasiswa sudah terdaftar di kursus ini.');
 
         $course->students()->syncWithoutDetaching([
-            (int) $payload['student_id'] => ['enrolled_at' => now()],
+            (int) $student->id => ['enrolled_at' => now()],
         ]);
+
+        $lecturer = User::query()->findOrFail($lecturerId);
+        $this->notificationService->notifyEnrollment($student, $lecturer, (string) $course->title, $lecturerId, false);
     }
 
     public function removeEnrollment(int $lecturerId, int $courseId, int $studentId): void
     {
         $course = $this->findLecturerCourse($lecturerId, $courseId);
         $course->students()->detach($studentId);
+
+        $student = User::query()->find($studentId);
+        if ($student) {
+            $this->notificationService->notify(
+                (int) $student->id,
+                'enrollment',
+                'Enrollment diperbarui',
+                "Anda dikeluarkan dari kursus {$course->title}.",
+                '/my-courses',
+                ['course_id' => $course->id, 'course_title' => $course->title],
+                $lecturerId
+            );
+        }
+    }
+
+    public function selfEnrollStudent(int $studentId, array $payload): void
+    {
+        abort_if(!$this->canManageEnrollments(), 404);
+        abort_if(!Schema::hasColumn('courses', 'allow_self_enrollment') || !Schema::hasColumn('courses', 'enrollment_key'), 404);
+
+        $course = Course::query()
+            ->with('lecturer:id,name,email')
+            ->where('id', (int) $payload['course_id'])
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        abort_if(!$course->allow_self_enrollment, 422, 'Kursus ini tidak membuka self-enrollment.');
+
+        $enrollmentKey = trim((string) ($payload['enrollment_key'] ?? ''));
+        if (!empty($course->enrollment_key)) {
+            abort_if($enrollmentKey === '' || !hash_equals((string) $course->enrollment_key, $enrollmentKey), 422, 'Kunci enrollment tidak valid.');
+        }
+
+        $alreadyEnrolled = $course->students()->where('users.id', $studentId)->exists();
+        abort_if($alreadyEnrolled, 422, 'Anda sudah terdaftar di kursus ini.');
+
+        $course->students()->attach($studentId, ['enrolled_at' => now()]);
+
+        $student = User::query()->findOrFail($studentId);
+        if ($course->lecturer) {
+            $this->notificationService->notifyEnrollment($student, $course->lecturer, (string) $course->title, $studentId, true);
+        } else {
+            $this->notificationService->notify(
+                $studentId,
+                'enrollment',
+                'Enrollment berhasil',
+                "Anda berhasil mendaftar ke kursus {$course->title}.",
+                '/my-courses',
+                ['course_id' => $course->id, 'course_title' => $course->title],
+                $studentId
+            );
+        }
     }
 
     public function createStudentNote(int $lecturerId, array $payload): void

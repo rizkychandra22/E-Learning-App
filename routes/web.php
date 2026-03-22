@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LecturerController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\PerformanceLogController;
 use App\Http\Controllers\ProfileController;
@@ -131,6 +132,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/my-courses', [LecturerController::class, 'myCourses']);
+    Route::post('/my-courses/enroll', [LecturerController::class, 'selfEnroll']);
     Route::post('/my-courses', [LecturerController::class, 'storeCourse']);
     Route::put('/my-courses/{course}', [LecturerController::class, 'updateCourse']);
     Route::delete('/my-courses/{course}', [LecturerController::class, 'destroyCourse']);
@@ -177,6 +179,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/grades', [LecturerController::class, 'grades']);
     Route::put('/grades/assignments/{submission}', [LecturerController::class, 'gradeAssignmentSubmission']);
     Route::put('/grades/quizzes/{attempt}', [LecturerController::class, 'gradeQuizAttempt']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::put('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::put('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
     $placeholderRoutes = [];
 

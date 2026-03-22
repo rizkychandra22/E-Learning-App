@@ -580,6 +580,21 @@ class LecturerController extends Controller
         return back()->with('success', 'Mahasiswa berhasil ditambahkan ke kursus.');
     }
 
+    public function selfEnroll(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+
+        $payload = $request->validate([
+            'course_id' => ['required', 'integer', 'exists:courses,id'],
+            'enrollment_key' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $this->service->selfEnrollStudent((int) $user->id, $payload);
+
+        return back()->with('success', 'Enrollment kursus berhasil.');
+    }
+
     public function removeEnrollment(int $course, int $student): RedirectResponse
     {
         $user = $this->requireLecturer();
