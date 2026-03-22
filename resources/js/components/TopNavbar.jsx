@@ -1,5 +1,5 @@
 import { Bell, Sun, Moon, Search, Menu, UserCog, LogOut, ChevronDown } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -41,6 +41,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes' },
         { title: 'Diskusi', url: '/discussions' },
         { title: 'Mahasiswa', url: '/students' },
+        { title: 'Notifikasi', url: '/notifications' },
         { title: 'Profil Saya', url: '/profile' },
     ],
     mahasiswa: [
@@ -51,6 +52,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes' },
         { title: 'Nilai', url: '/grades' },
         { title: 'Diskusi', url: '/discussions' },
+        { title: 'Notifikasi', url: '/notifications' },
         { title: 'Profil Saya', url: '/profile' },
     ],
 };
@@ -63,60 +65,20 @@ const roleLabels = {
     mahasiswa: 'Mahasiswa',
 };
 
-function createNotificationsByRole(role) {
-    const common = [
-        { id: 1, title: 'Selamat datang di dashboard', description: 'Lihat update terbaru dari sistem.', url: '/dashboard', unread: true },
-    ];
-
-    const byRole = {
-        super_admin: [
-            { id: 2, title: 'Cek statistik global', description: 'Pantau ringkasan data lintas role.', url: '/statistics', unread: true },
-            { id: 3, title: 'Lihat log aktivitas', description: 'Audit aktivitas user terbaru.', url: '/activity-logs', unread: false },
-        ],
-        admin: [
-            { id: 2, title: 'Persetujuan akun menunggu', description: 'Buka halaman approvals untuk meninjau.', url: '/approvals', unread: true },
-            { id: 3, title: 'Kelola kursus', description: 'Pastikan data mata kuliah terbarui.', url: '/manage-courses', unread: false },
-        ],
-        finance: [
-            { id: 2, title: 'Pembayaran baru masuk', description: 'Verifikasi pembayaran terbaru.', url: '/finance-payments', unread: true },
-            { id: 3, title: 'Tagihan perlu ditinjau', description: 'Periksa invoice yang belum lunas.', url: '/finance-invoices', unread: false },
-        ],
-        dosen: [
-            { id: 2, title: 'Kuis perlu dipublikasikan', description: 'Cek kembali kuis yang sudah dibuat.', url: '/quizzes', unread: true },
-            { id: 3, title: 'Diskusi kelas aktif', description: 'Balas diskusi mahasiswa terbaru.', url: '/discussions', unread: false },
-        ],
-        mahasiswa: [
-            { id: 2, title: 'Tugas mendekati deadline', description: 'Segera buka halaman tugas.', url: '/assignments', unread: true },
-            { id: 3, title: 'Kuis baru tersedia', description: 'Kerjakan kuis terbaru di kelasmu.', url: '/quizzes', unread: false },
-        ],
-    };
-
-    return [...common, ...(byRole[role] ?? [])];
-}
-
 export function TopNavbar({ onOpenMobileSidebar }) {
     const { user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
+    const page = usePage();
     const [query, setQuery] = useState('');
     const [openProfileMenu, setOpenProfileMenu] = useState(false);
     const [openNotificationMenu, setOpenNotificationMenu] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [notifications, setNotifications] = useState([]);
     const profileMenuRef = useRef(null);
     const notificationMenuRef = useRef(null);
     const userRole = user?.role ?? 'mahasiswa';
     const roleMenus = useMemo(() => navByRole[userRole] || [], [userRole]);
-    const unreadCount = notifications.filter((item) => item.unread).length;
-
-    useEffect(() => {
-        if (!user) {
-            return;
-        }
-
-        setNotifications(createNotificationsByRole(user.role));
-    }, [user]);
-
-    if (!user) return null;
+    const notifications = page?.props?.notifications?.items ?? [];
+    const unreadCount = page?.props?.notifications?.unread_count ?? 0;
 
     const handleSearch = (event) => {
         event.preventDefault();
@@ -147,6 +109,8 @@ export function TopNavbar({ onOpenMobileSidebar }) {
         return () => document.removeEventListener('mousedown', handleOutsideClick);
     }, []);
 
+    if (!user) return null;
+
     const handleLogout = () => {
         setIsLoggingOut(true);
         setOpenProfileMenu(false);
@@ -154,15 +118,20 @@ export function TopNavbar({ onOpenMobileSidebar }) {
     };
 
     const markAllNotificationsRead = () => {
-        setNotifications((previous) => previous.map((item) => ({ ...item, unread: false })));
+        router.put('/notifications/read-all', {}, { preserveState: true, preserveScroll: true });
     };
 
     const openNotification = (item) => {
-        setNotifications((previous) => previous.map((entry) => (entry.id === item.id ? { ...entry, unread: false } : entry)));
-        setOpenNotificationMenu(false);
-        if (item.url) {
-            router.visit(item.url);
-        }
+        router.put(`/notifications/${item.id}/read`, {}, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                setOpenNotificationMenu(false);
+                if (item.url) {
+                    router.visit(item.url);
+                }
+            },
+        });
     };
 
     return (
@@ -229,14 +198,24 @@ export function TopNavbar({ onOpenMobileSidebar }) {
                                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
                                     >
                                         <div className="flex items-start gap-2">
-                                            <span className={`mt-1.5 w-2 h-2 rounded-full ${item.unread ? 'bg-destructive' : 'bg-muted-foreground/40'}`} />
+                                            <span className={`mt-1.5 w-2 h-2 rounded-full ${item.read_at ? 'bg-muted-foreground/40' : 'bg-destructive'}`} />
                                             <div className="min-w-0">
                                                 <p className="text-sm font-medium truncate">{item.title}</p>
-                                                <p className="text-xs text-muted-foreground">{item.description}</p>
+                                                <p className="text-xs text-muted-foreground">{item.message}</p>
                                             </div>
                                         </div>
                                     </button>
                                 ))}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpenNotificationMenu(false);
+                                        router.visit('/notifications');
+                                    }}
+                                    className="w-full mt-1 rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-secondary transition-colors"
+                                >
+                                    Buka Notification Center
+                                </button>
                             </div>
                         </div>
                     )}
