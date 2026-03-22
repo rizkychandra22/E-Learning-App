@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { BookOpen, CalendarDays, CheckCircle2, PlayCircle, Target } from 'lucide-react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { BookOpen, CalendarDays, CheckCircle2, PlayCircle, Target, UserPlus } from 'lucide-react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
@@ -62,16 +62,31 @@ function CourseCard({ course }) {
     );
 }
 
-export default function StudentMyCourses({ courses = [], summary = {}, migrationRequired = false }) {
+export default function StudentMyCourses({ courses = [], available_courses = [], summary = {}, migrationRequired = false, selfEnrollmentAvailable = false }) {
     const { user } = useAuth();
     const { props } = usePage();
     if (!user) return null;
+
+    const enrollForm = useForm({
+        course_id: '',
+        enrollment_key: '',
+    });
 
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const today = useMemo(
         () => new Intl.DateTimeFormat(intlLocale, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()),
         [intlLocale]
     );
+
+    const selectedCourse = available_courses.find((course) => String(course.id) === String(enrollForm.data.course_id));
+
+    const submitEnroll = (event) => {
+        event.preventDefault();
+        enrollForm.post('/my-courses/enroll', {
+            preserveScroll: true,
+            onSuccess: () => enrollForm.reset(),
+        });
+    };
 
     const stats = [
         { label: 'Kursus Aktif', value: String(summary.active_courses ?? 0), helper: 'Kursus yang sedang dipelajari', icon: BookOpen },
@@ -101,6 +116,54 @@ export default function StudentMyCourses({ courses = [], summary = {}, migration
                     </div>
                 )}
 
+                {selfEnrollmentAvailable && (
+                    <div className={UI.panel}>
+                        <h3 className="font-semibold flex items-center gap-2">
+                            <UserPlus className="w-4 h-4 text-primary" />
+                            Self Enrollment
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">Daftar kursus aktif yang membuka pendaftaran mandiri.</p>
+
+                        <form onSubmit={submitEnroll} className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                            <label className="block md:col-span-2">
+                                <span className="text-sm font-medium">Pilih kursus</span>
+                                <select
+                                    value={enrollForm.data.course_id}
+                                    onChange={(event) => enrollForm.setData('course_id', event.target.value)}
+                                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                >
+                                    <option value="">Pilih kursus</option>
+                                    {available_courses.map((course) => (
+                                        <option key={course.id} value={course.id}>{course.title} ({course.code})</option>
+                                    ))}
+                                </select>
+                                {enrollForm.errors.course_id && <span className="text-xs text-destructive mt-1 block">{enrollForm.errors.course_id}</span>}
+                            </label>
+
+                            <label className="block">
+                                <span className="text-sm font-medium">Kunci enrollment</span>
+                                <input
+                                    type="text"
+                                    value={enrollForm.data.enrollment_key}
+                                    onChange={(event) => enrollForm.setData('enrollment_key', event.target.value)}
+                                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    placeholder={selectedCourse?.requires_key ? 'Wajib diisi' : 'Opsional'}
+                                />
+                                {enrollForm.errors.enrollment_key && <span className="text-xs text-destructive mt-1 block">{enrollForm.errors.enrollment_key}</span>}
+                            </label>
+
+                            <button
+                                type="submit"
+                                disabled={enrollForm.processing}
+                                className="md:col-span-3 inline-flex items-center justify-center gap-2 rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                            >
+                                <UserPlus className="w-4 h-4" />
+                                Daftar Kursus
+                            </button>
+                        </form>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {courses.length > 0 ? courses.map((course) => <CourseCard key={course.id} course={course} />) : (
                         <div className={cn(UI.panel, 'text-sm text-muted-foreground lg:col-span-2')}>
@@ -112,4 +175,3 @@ export default function StudentMyCourses({ courses = [], summary = {}, migration
         </ProtectedLayout>
     );
 }
-
