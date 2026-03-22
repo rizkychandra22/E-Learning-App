@@ -21,10 +21,13 @@ class Course extends Model
         'semester',
         'credit_hours',
         'status',
+        'allow_self_enrollment',
+        'enrollment_key',
     ];
 
     protected $casts = [
         'tags' => 'array',
+        'allow_self_enrollment' => 'boolean',
     ];
 
     public function jurusan(): BelongsTo

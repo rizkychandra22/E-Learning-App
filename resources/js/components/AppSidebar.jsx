@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity
+    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity, Bell
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ const navByRole = {
         { title: 'Statistik Global', url: '/statistics', icon: BarChart3 },
         { title: 'Log Aktivitas', url: '/activity-logs', icon: FileText },
         { title: 'Performance Logs', url: '/perf-logs', icon: Activity },
+        { title: 'Notifikasi', url: '/notifications', icon: Bell },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
     admin: [
@@ -24,6 +25,7 @@ const navByRole = {
         { title: 'Kelola Kursus', url: '/manage-courses', icon: BookOpen },
         { title: 'Persetujuan Akun', url: '/approvals', icon: UserCheck },
         { title: 'Kategori', url: '/categories', icon: FolderOpen },
+        { title: 'Notifikasi', url: '/notifications', icon: Bell },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
     finance: [
@@ -31,6 +33,7 @@ const navByRole = {
         { title: 'Tagihan', url: '/finance-invoices', icon: FileText },
         { title: 'Pembayaran', url: '/finance-payments', icon: Wallet },
         { title: 'Laporan', url: '/finance-reports', icon: BarChart3 },
+        { title: 'Notifikasi', url: '/notifications', icon: Bell },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
     dosen: [
@@ -41,6 +44,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes', icon: Award },
         { title: 'Diskusi', url: '/discussions', icon: MessageSquare },
         { title: 'Mahasiswa', url: '/students', icon: Users },
+        { title: 'Notifikasi', url: '/notifications', icon: Bell },
     ],
     mahasiswa: [
         { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
@@ -50,6 +54,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes', icon: Award },
         { title: 'Nilai', url: '/grades', icon: BarChart3 },
         { title: 'Diskusi', url: '/discussions', icon: MessageSquare },
+        { title: 'Notifikasi', url: '/notifications', icon: Bell },
     ],
 };
 

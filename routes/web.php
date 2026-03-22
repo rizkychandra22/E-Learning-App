@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\LecturerController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PerformanceController;
 use App\Http\Controllers\PerformanceLogController;
 use App\Http\Controllers\ProfileController;
@@ -131,6 +132,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::get('/my-courses', [LecturerController::class, 'myCourses']);
+    Route::post('/my-courses/enroll', [LecturerController::class, 'selfEnroll']);
     Route::post('/my-courses', [LecturerController::class, 'storeCourse']);
     Route::put('/my-courses/{course}', [LecturerController::class, 'updateCourse']);
     Route::delete('/my-courses/{course}', [LecturerController::class, 'destroyCourse']);
@@ -150,20 +152,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/materials/{material}/download', [LecturerController::class, 'downloadMaterial']);
 
     Route::get('/assignments', [LecturerController::class, 'assignments']);
-    Route::get('/assignments/{assignment}', function ($assignment) {
-        if (auth()->user()?->role === 'student') {
-            return Inertia::render('Student/AssignmentDetail', [
-                'assignmentId' => (int) $assignment,
-            ]);
-        }
-
-        return redirect('/assignments');
-    });
+    Route::get('/assignments/{assignment}', [LecturerController::class, 'assignmentDetail']);
+    Route::post('/assignments/{assignment}/submit', [LecturerController::class, 'submitAssignment']);
     Route::post('/assignments', [LecturerController::class, 'storeAssignment']);
     Route::put('/assignments/{assignment}', [LecturerController::class, 'updateAssignment']);
     Route::delete('/assignments/{assignment}', [LecturerController::class, 'destroyAssignment']);
 
     Route::get('/quizzes', [LecturerController::class, 'quizzes']);
+    Route::post('/quizzes/{quiz}/submit', [LecturerController::class, 'submitQuiz']);
     Route::post('/quizzes', [LecturerController::class, 'storeQuiz']);
     Route::put('/quizzes/{quiz}', [LecturerController::class, 'updateQuiz']);
     Route::delete('/quizzes/{quiz}', [LecturerController::class, 'destroyQuiz']);
@@ -180,16 +176,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/students/enrollments', [LecturerController::class, 'enrollStudent']);
     Route::delete('/students/enrollments/{course}/{student}', [LecturerController::class, 'removeEnrollment']);
 
-    Route::get('/grades', function () {
-        if (auth()->user()?->role === 'student') {
-            return Inertia::render('Student/Grades');
-        }
+    Route::get('/grades', [LecturerController::class, 'grades']);
+    Route::put('/grades/assignments/{submission}', [LecturerController::class, 'gradeAssignmentSubmission']);
+    Route::put('/grades/quizzes/{attempt}', [LecturerController::class, 'gradeQuizAttempt']);
 
-        return Inertia::render('Placeholder', [
-            'title' => 'Nilai',
-            'description' => 'Lihat rekap nilai dan progress akademik',
-        ]);
-    });
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::put('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::put('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
     $placeholderRoutes = [];
 

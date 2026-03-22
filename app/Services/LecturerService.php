@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Assignment;
+use App\Models\AssignmentSubmission;
 use App\Models\Course;
 use App\Models\CourseLesson;
 use App\Models\CourseMaterial;
@@ -10,6 +11,7 @@ use App\Models\CourseModule;
 use App\Models\Discussion;
 use App\Models\LessonProgress;
 use App\Models\Quiz;
+use App\Models\QuizAttempt;
 use App\Models\StudentNote;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -20,6 +22,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LecturerService
 {
+    public function __construct(
+        private readonly NotificationService $notificationService
+    ) {
+    }
+
     public function getMyCoursesData(int $lecturerId, string $search, string $status, string $category = 'all'): array
     {
         $normalizedStatus = in_array($status, ['all', 'draft', 'active', 'archived'], true) ? $status : 'all';
@@ -195,17 +202,20 @@ class LecturerService
         if ($migrationRequired) {
             return [
                 'courses' => collect(),
+                'available_courses' => collect(),
                 'summary' => [
                     'active_courses' => 0,
                     'completed_lessons' => 0,
                     'average_progress' => 0,
                 ],
                 'migrationRequired' => true,
+                'selfEnrollmentAvailable' => false,
             ];
         }
 
-        $courses = User::query()
-            ->findOrFail($studentId)
+        $student = User::query()->findOrFail($studentId);
+
+        $courses = $student
             ->enrolledCourses()
             ->with(['lecturer:id,name', 'modules.lessons.progress' => fn ($query) => $query->where('student_id', $studentId)])
             ->orderBy('title')
@@ -215,14 +225,40 @@ class LecturerService
         $averageProgress = (int) round($mappedCourses->avg('progress_percent') ?? 0);
         $completedLessons = (int) $mappedCourses->sum('completed_lessons');
 
+        $selfEnrollmentAvailable = Schema::hasTable('courses')
+            && Schema::hasColumn('courses', 'allow_self_enrollment')
+            && Schema::hasColumn('courses', 'enrollment_key');
+        $availableCourses = collect();
+
+        if ($selfEnrollmentAvailable) {
+            $enrolledCourseIds = $courses->pluck('id')->all();
+            $availableCourses = Course::query()
+                ->where('status', 'active')
+                ->where('allow_self_enrollment', true)
+                ->whereNotIn('id', $enrolledCourseIds)
+                ->with('lecturer:id,name')
+                ->orderBy('title')
+                ->get(['id', 'title', 'code', 'description', 'lecturer_id', 'enrollment_key'])
+                ->map(fn (Course $course) => [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'code' => $course->code,
+                    'description' => $course->description,
+                    'lecturer' => $course->lecturer ? ['id' => $course->lecturer->id, 'name' => $course->lecturer->name] : null,
+                    'requires_key' => !empty($course->enrollment_key),
+                ]);
+        }
+
         return [
             'courses' => $mappedCourses,
+            'available_courses' => $availableCourses,
             'summary' => [
                 'active_courses' => $mappedCourses->count(),
                 'completed_lessons' => $completedLessons,
                 'average_progress' => $averageProgress,
             ],
             'migrationRequired' => false,
+            'selfEnrollmentAvailable' => $selfEnrollmentAvailable,
         ];
     }
 
@@ -277,6 +313,331 @@ class LecturerService
                 'last_accessed_at' => now(),
             ]
         );
+    }
+
+    public function canManageAssessmentSubmissions(): bool
+    {
+        return Schema::hasTable('assignment_submissions') && Schema::hasTable('quiz_attempts');
+    }
+
+    public function getStudentAssignmentsData(int $studentId): array
+    {
+        $migrationRequired = !Schema::hasTable('assignments') || !Schema::hasTable('course_student');
+        $submissionMigrationRequired = !Schema::hasTable('assignment_submissions');
+
+        if ($migrationRequired) {
+            return [
+                'assignments' => collect(),
+                'summary' => [
+                    'active_count' => 0,
+                    'submitted_count' => 0,
+                    'graded_count' => 0,
+                ],
+                'migrationRequired' => [
+                    'assignments' => true,
+                    'submissions' => $submissionMigrationRequired,
+                ],
+            ];
+        }
+
+        $assignments = Assignment::query()
+            ->where('status', '!=', 'draft')
+            ->whereHas('course.students', fn ($query) => $query->where('users.id', $studentId))
+            ->with([
+                'course:id,title,code',
+                'submissions' => fn ($query) => $query->where('student_id', $studentId),
+            ])
+            ->orderByRaw('CASE WHEN due_at IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_at')
+            ->get()
+            ->map(function (Assignment $assignment) {
+                $submission = $assignment->submissions->first();
+
+                return [
+                    'id' => $assignment->id,
+                    'title' => $assignment->title,
+                    'description' => $assignment->description,
+                    'status' => $assignment->status,
+                    'due_at' => $assignment->due_at?->toISOString(),
+                    'max_score' => $assignment->max_score,
+                    'course' => $assignment->course ? [
+                        'id' => $assignment->course->id,
+                        'title' => $assignment->course->title,
+                        'code' => $assignment->course->code,
+                    ] : null,
+                    'submission' => $submission ? [
+                        'id' => $submission->id,
+                        'status' => $submission->status,
+                        'score' => $submission->score,
+                        'feedback' => $submission->feedback,
+                        'submission_text' => $submission->submission_text,
+                        'attachment_url' => $submission->attachment_url,
+                        'submitted_at' => $submission->submitted_at?->toISOString(),
+                        'graded_at' => $submission->graded_at?->toISOString(),
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        return [
+            'assignments' => $assignments,
+            'summary' => [
+                'active_count' => $assignments->count(),
+                'submitted_count' => $assignments->filter(fn ($item) => in_array($item['submission']['status'] ?? null, ['submitted', 'graded'], true))->count(),
+                'graded_count' => $assignments->filter(fn ($item) => ($item['submission']['status'] ?? null) === 'graded')->count(),
+            ],
+            'migrationRequired' => [
+                'assignments' => false,
+                'submissions' => $submissionMigrationRequired,
+            ],
+        ];
+    }
+
+    public function getStudentAssignmentDetailData(int $studentId, int $assignmentId): array
+    {
+        $assignment = Assignment::query()
+            ->with([
+                'course.students:id',
+                'lecturer:id,name',
+                'submissions' => fn ($query) => $query->where('student_id', $studentId),
+            ])
+            ->findOrFail($assignmentId);
+
+        $this->ensureStudentCanAccessAssignment($studentId, $assignment);
+        $submission = $assignment->submissions->first();
+
+        return [
+            'assignment' => [
+                'id' => $assignment->id,
+                'title' => $assignment->title,
+                'description' => $assignment->description,
+                'status' => $assignment->status,
+                'due_at' => $assignment->due_at?->toISOString(),
+                'max_score' => $assignment->max_score,
+                'course' => $assignment->course ? [
+                    'id' => $assignment->course->id,
+                    'title' => $assignment->course->title,
+                    'code' => $assignment->course->code,
+                ] : null,
+                'lecturer' => $assignment->lecturer ? [
+                    'id' => $assignment->lecturer->id,
+                    'name' => $assignment->lecturer->name,
+                ] : null,
+                'submission' => $submission ? [
+                    'id' => $submission->id,
+                    'status' => $submission->status,
+                    'score' => $submission->score,
+                    'feedback' => $submission->feedback,
+                    'submission_text' => $submission->submission_text,
+                    'attachment_url' => $submission->attachment_url,
+                    'submitted_at' => $submission->submitted_at?->toISOString(),
+                    'graded_at' => $submission->graded_at?->toISOString(),
+                ] : null,
+            ],
+            'migrationRequired' => [
+                'submissions' => !Schema::hasTable('assignment_submissions'),
+            ],
+        ];
+    }
+
+    public function submitAssignment(int $studentId, Assignment $assignment, array $payload): void
+    {
+        $this->ensureStudentCanAccessAssignment($studentId, $assignment);
+        abort_if($assignment->status !== 'active', 422, 'Tugas belum dapat dikumpulkan.');
+        abort_if(!Schema::hasTable('assignment_submissions'), 404);
+
+        AssignmentSubmission::updateOrCreate(
+            [
+                'assignment_id' => $assignment->id,
+                'student_id' => $studentId,
+            ],
+            [
+                'submission_text' => trim((string) ($payload['submission_text'] ?? '')),
+                'attachment_url' => isset($payload['attachment_url']) && trim((string) $payload['attachment_url']) !== ''
+                    ? trim((string) $payload['attachment_url'])
+                    : null,
+                'status' => 'submitted',
+                'submitted_at' => now(),
+                'score' => null,
+                'feedback' => null,
+                'graded_at' => null,
+            ]
+        );
+    }
+
+    public function getStudentQuizzesData(int $studentId): array
+    {
+        $migrationRequired = !Schema::hasTable('quizzes') || !Schema::hasTable('course_student');
+        $attemptMigrationRequired = !Schema::hasTable('quiz_attempts');
+
+        if ($migrationRequired) {
+            return [
+                'quizzes' => collect(),
+                'summary' => [
+                    'active_count' => 0,
+                    'submitted_count' => 0,
+                    'graded_count' => 0,
+                ],
+                'migrationRequired' => [
+                    'quizzes' => true,
+                    'attempts' => $attemptMigrationRequired,
+                ],
+            ];
+        }
+
+        $quizzes = Quiz::query()
+            ->where('status', '!=', 'draft')
+            ->whereHas('course.students', fn ($query) => $query->where('users.id', $studentId))
+            ->with([
+                'course:id,title,code',
+                'attempts' => fn ($query) => $query->where('student_id', $studentId),
+            ])
+            ->orderByRaw('CASE WHEN scheduled_at IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('scheduled_at')
+            ->get()
+            ->map(function (Quiz $quiz) {
+                $attempt = $quiz->attempts->first();
+
+                return [
+                    'id' => $quiz->id,
+                    'title' => $quiz->title,
+                    'description' => $quiz->description,
+                    'status' => $quiz->status,
+                    'duration_minutes' => $quiz->duration_minutes,
+                    'total_questions' => $quiz->total_questions,
+                    'scheduled_at' => $quiz->scheduled_at?->toISOString(),
+                    'course' => $quiz->course ? [
+                        'id' => $quiz->course->id,
+                        'title' => $quiz->course->title,
+                        'code' => $quiz->course->code,
+                    ] : null,
+                    'attempt' => $attempt ? [
+                        'id' => $attempt->id,
+                        'status' => $attempt->status,
+                        'score' => $attempt->score,
+                        'feedback' => $attempt->feedback,
+                        'answers' => $attempt->answers,
+                        'submitted_at' => $attempt->submitted_at?->toISOString(),
+                        'graded_at' => $attempt->graded_at?->toISOString(),
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        return [
+            'quizzes' => $quizzes,
+            'summary' => [
+                'active_count' => $quizzes->count(),
+                'submitted_count' => $quizzes->filter(fn ($item) => in_array($item['attempt']['status'] ?? null, ['submitted', 'graded'], true))->count(),
+                'graded_count' => $quizzes->filter(fn ($item) => ($item['attempt']['status'] ?? null) === 'graded')->count(),
+            ],
+            'migrationRequired' => [
+                'quizzes' => false,
+                'attempts' => $attemptMigrationRequired,
+            ],
+        ];
+    }
+
+    public function submitQuiz(int $studentId, Quiz $quiz, array $payload): void
+    {
+        $this->ensureStudentCanAccessQuiz($studentId, $quiz);
+        abort_if($quiz->status !== 'active', 422, 'Kuis belum dapat dikerjakan.');
+        abort_if(!Schema::hasTable('quiz_attempts'), 404);
+
+        QuizAttempt::updateOrCreate(
+            [
+                'quiz_id' => $quiz->id,
+                'student_id' => $studentId,
+            ],
+            [
+                'answers' => trim((string) ($payload['answers'] ?? '')),
+                'status' => 'submitted',
+                'started_at' => now(),
+                'submitted_at' => now(),
+                'score' => null,
+                'feedback' => null,
+                'graded_at' => null,
+            ]
+        );
+    }
+
+    public function getStudentGradesData(int $studentId): array
+    {
+        $migrationRequired = !Schema::hasTable('assignment_submissions') || !Schema::hasTable('quiz_attempts');
+        if ($migrationRequired) {
+            return [
+                'records' => collect(),
+                'summary' => [
+                    'average' => 0,
+                    'graded_count' => 0,
+                    'assignment_avg' => 0,
+                    'quiz_avg' => 0,
+                ],
+                'migrationRequired' => true,
+            ];
+        }
+
+        $assignmentRecords = AssignmentSubmission::query()
+            ->where('student_id', $studentId)
+            ->where('status', 'graded')
+            ->whereNotNull('score')
+            ->with('assignment.course:id,title,code')
+            ->get()
+            ->map(function (AssignmentSubmission $submission) {
+                $assignment = $submission->assignment;
+                $course = $assignment?->course;
+
+                return [
+                    'type' => 'assignment',
+                    'title' => $assignment?->title ?? '-',
+                    'course' => $course ? ['id' => $course->id, 'title' => $course->title, 'code' => $course->code] : null,
+                    'score' => $submission->score,
+                    'max_score' => $assignment?->max_score ?? 100,
+                    'graded_at' => $submission->graded_at?->toISOString(),
+                    'feedback' => $submission->feedback,
+                ];
+            });
+
+        $quizRecords = QuizAttempt::query()
+            ->where('student_id', $studentId)
+            ->where('status', 'graded')
+            ->whereNotNull('score')
+            ->with('quiz.course:id,title,code')
+            ->get()
+            ->map(function (QuizAttempt $attempt) {
+                $quiz = $attempt->quiz;
+                $course = $quiz?->course;
+
+                return [
+                    'type' => 'quiz',
+                    'title' => $quiz?->title ?? '-',
+                    'course' => $course ? ['id' => $course->id, 'title' => $course->title, 'code' => $course->code] : null,
+                    'score' => $attempt->score,
+                    'max_score' => 100,
+                    'graded_at' => $attempt->graded_at?->toISOString(),
+                    'feedback' => $attempt->feedback,
+                ];
+            });
+
+        $records = $assignmentRecords
+            ->concat($quizRecords)
+            ->sortByDesc(fn ($item) => $item['graded_at'] ?? '')
+            ->values();
+
+        $assignmentAvg = (int) round($assignmentRecords->avg('score') ?? 0);
+        $quizAvg = (int) round($quizRecords->avg('score') ?? 0);
+        $overallAvg = (int) round($records->avg('score') ?? 0);
+
+        return [
+            'records' => $records,
+            'summary' => [
+                'average' => $overallAvg,
+                'graded_count' => $records->count(),
+                'assignment_avg' => $assignmentAvg,
+                'quiz_avg' => $quizAvg,
+            ],
+            'migrationRequired' => false,
+        ];
     }
 
     public function canManageCourses(): bool
@@ -583,6 +944,127 @@ class LecturerService
         $quiz->delete();
     }
 
+    public function getGradesDashboardData(int $lecturerId, string $search = '', string $courseId = '', string $type = 'all', string $status = 'all'): array
+    {
+        $normalizedType = in_array($type, ['all', 'assignment', 'quiz'], true) ? $type : 'all';
+        $normalizedStatus = in_array($status, ['all', 'submitted', 'graded'], true) ? $status : 'all';
+        $selectedCourseId = trim($courseId) !== '' ? (int) $courseId : null;
+
+        $assignmentMigrationRequired = !Schema::hasTable('assignment_submissions');
+        $quizMigrationRequired = !Schema::hasTable('quiz_attempts');
+        $migrationRequired = $assignmentMigrationRequired || $quizMigrationRequired;
+
+        $assignmentSubmissions = collect();
+        if (!$assignmentMigrationRequired && $normalizedType !== 'quiz') {
+            $assignmentSubmissions = AssignmentSubmission::query()
+                ->whereHas('assignment', fn ($query) => $query->where('lecturer_id', $lecturerId))
+                ->with(['assignment.course:id,title,code', 'student:id,name,email,code'])
+                ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
+                ->when($selectedCourseId, fn ($query) => $query->whereHas('assignment', fn ($subQuery) => $subQuery->where('course_id', $selectedCourseId)))
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery
+                            ->where('submission_text', 'like', '%' . $search . '%')
+                            ->orWhere('feedback', 'like', '%' . $search . '%')
+                            ->orWhereHas('assignment', fn ($assignmentQuery) => $assignmentQuery->where('title', 'like', '%' . $search . '%'))
+                            ->orWhereHas('student', function ($studentQuery) use ($search) {
+                                $studentQuery
+                                    ->where('name', 'like', '%' . $search . '%')
+                                    ->orWhere('email', 'like', '%' . $search . '%')
+                                    ->orWhere('code', 'like', '%' . $search . '%');
+                            });
+                    });
+                })
+                ->latest('submitted_at')
+                ->latest('id')
+                ->get();
+        }
+
+        $quizAttempts = collect();
+        if (!$quizMigrationRequired && $normalizedType !== 'assignment') {
+            $quizAttempts = QuizAttempt::query()
+                ->whereHas('quiz', fn ($query) => $query->where('lecturer_id', $lecturerId))
+                ->with(['quiz.course:id,title,code', 'student:id,name,email,code'])
+                ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
+                ->when($selectedCourseId, fn ($query) => $query->whereHas('quiz', fn ($subQuery) => $subQuery->where('course_id', $selectedCourseId)))
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery
+                            ->where('answers', 'like', '%' . $search . '%')
+                            ->orWhere('feedback', 'like', '%' . $search . '%')
+                            ->orWhereHas('quiz', fn ($quizQuery) => $quizQuery->where('title', 'like', '%' . $search . '%'))
+                            ->orWhereHas('student', function ($studentQuery) use ($search) {
+                                $studentQuery
+                                    ->where('name', 'like', '%' . $search . '%')
+                                    ->orWhere('email', 'like', '%' . $search . '%')
+                                    ->orWhere('code', 'like', '%' . $search . '%');
+                            });
+                    });
+                })
+                ->latest('submitted_at')
+                ->latest('id')
+                ->get();
+        }
+
+        $courses = Schema::hasTable('courses')
+            ? Course::query()->where('lecturer_id', $lecturerId)->orderBy('title')->get(['id', 'title', 'code'])
+            : collect();
+
+        return [
+            'assignmentSubmissions' => $assignmentSubmissions,
+            'quizAttempts' => $quizAttempts,
+            'courses' => $courses,
+            'filters' => [
+                'search' => $search,
+                'course' => $selectedCourseId,
+                'type' => $normalizedType,
+                'status' => $normalizedStatus,
+            ],
+            'summary' => [
+                'pending_assignment' => $assignmentSubmissions->where('status', 'submitted')->count(),
+                'pending_quiz' => $quizAttempts->where('status', 'submitted')->count(),
+                'graded_assignment' => $assignmentSubmissions->where('status', 'graded')->count(),
+                'graded_quiz' => $quizAttempts->where('status', 'graded')->count(),
+            ],
+            'migrationRequired' => [
+                'assignments' => $assignmentMigrationRequired,
+                'quizzes' => $quizMigrationRequired,
+                'any' => $migrationRequired,
+            ],
+        ];
+    }
+
+    public function gradeAssignmentSubmission(int $lecturerId, AssignmentSubmission $submission, array $payload): void
+    {
+        $submission->loadMissing('assignment');
+        abort_if(!$submission->assignment || (int) $submission->assignment->lecturer_id !== $lecturerId, 404);
+
+        $maxScore = (int) ($submission->assignment->max_score ?? 100);
+        $score = max(0, min((int) $payload['score'], $maxScore));
+
+        $submission->update([
+            'score' => $score,
+            'feedback' => $payload['feedback'] ?? null,
+            'status' => 'graded',
+            'graded_at' => now(),
+        ]);
+    }
+
+    public function gradeQuizAttempt(int $lecturerId, QuizAttempt $attempt, array $payload): void
+    {
+        $attempt->loadMissing('quiz');
+        abort_if(!$attempt->quiz || (int) $attempt->quiz->lecturer_id !== $lecturerId, 404);
+
+        $score = max(0, min((int) $payload['score'], 100));
+
+        $attempt->update([
+            'score' => $score,
+            'feedback' => $payload['feedback'] ?? null,
+            'status' => 'graded',
+            'graded_at' => now(),
+        ]);
+    }
+
     public function getDiscussionsData(int $lecturerId, string $search, string $status, string $courseId): array
     {
         $normalizedStatus = in_array($status, ['all', 'open', 'closed'], true) ? $status : 'all';
@@ -765,16 +1247,78 @@ class LecturerService
     public function enrollStudent(int $lecturerId, array $payload): void
     {
         $course = $this->findLecturerCourse($lecturerId, (int) $payload['course_id']);
+        $student = User::query()
+            ->where('id', (int) $payload['student_id'])
+            ->where('role', 'student')
+            ->firstOrFail();
+
+        $alreadyEnrolled = $course->students()->where('users.id', $student->id)->exists();
+        abort_if($alreadyEnrolled, 422, 'Mahasiswa sudah terdaftar di kursus ini.');
 
         $course->students()->syncWithoutDetaching([
-            (int) $payload['student_id'] => ['enrolled_at' => now()],
+            (int) $student->id => ['enrolled_at' => now()],
         ]);
+
+        $lecturer = User::query()->findOrFail($lecturerId);
+        $this->notificationService->notifyEnrollment($student, $lecturer, (string) $course->title, $lecturerId, false);
     }
 
     public function removeEnrollment(int $lecturerId, int $courseId, int $studentId): void
     {
         $course = $this->findLecturerCourse($lecturerId, $courseId);
         $course->students()->detach($studentId);
+
+        $student = User::query()->find($studentId);
+        if ($student) {
+            $this->notificationService->notify(
+                (int) $student->id,
+                'enrollment',
+                'Enrollment diperbarui',
+                "Anda dikeluarkan dari kursus {$course->title}.",
+                '/my-courses',
+                ['course_id' => $course->id, 'course_title' => $course->title],
+                $lecturerId
+            );
+        }
+    }
+
+    public function selfEnrollStudent(int $studentId, array $payload): void
+    {
+        abort_if(!$this->canManageEnrollments(), 404);
+        abort_if(!Schema::hasColumn('courses', 'allow_self_enrollment') || !Schema::hasColumn('courses', 'enrollment_key'), 404);
+
+        $course = Course::query()
+            ->with('lecturer:id,name,email')
+            ->where('id', (int) $payload['course_id'])
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        abort_if(!$course->allow_self_enrollment, 422, 'Kursus ini tidak membuka self-enrollment.');
+
+        $enrollmentKey = trim((string) ($payload['enrollment_key'] ?? ''));
+        if (!empty($course->enrollment_key)) {
+            abort_if($enrollmentKey === '' || !hash_equals((string) $course->enrollment_key, $enrollmentKey), 422, 'Kunci enrollment tidak valid.');
+        }
+
+        $alreadyEnrolled = $course->students()->where('users.id', $studentId)->exists();
+        abort_if($alreadyEnrolled, 422, 'Anda sudah terdaftar di kursus ini.');
+
+        $course->students()->attach($studentId, ['enrolled_at' => now()]);
+
+        $student = User::query()->findOrFail($studentId);
+        if ($course->lecturer) {
+            $this->notificationService->notifyEnrollment($student, $course->lecturer, (string) $course->title, $studentId, true);
+        } else {
+            $this->notificationService->notify(
+                $studentId,
+                'enrollment',
+                'Enrollment berhasil',
+                "Anda berhasil mendaftar ke kursus {$course->title}.",
+                '/my-courses',
+                ['course_id' => $course->id, 'course_title' => $course->title],
+                $studentId
+            );
+        }
     }
 
     public function createStudentNote(int $lecturerId, array $payload): void
@@ -904,6 +1448,20 @@ class LecturerService
     private function ensureOwned(int $lecturerId, $model): void
     {
         abort_if((int) $model->lecturer_id !== $lecturerId, 404);
+    }
+
+    private function ensureStudentCanAccessAssignment(int $studentId, Assignment $assignment): void
+    {
+        $assignment->loadMissing('course.students:id');
+        abort_if(!$assignment->course, 404);
+        abort_if(!$assignment->course->students->contains('id', $studentId), 403);
+    }
+
+    private function ensureStudentCanAccessQuiz(int $studentId, Quiz $quiz): void
+    {
+        $quiz->loadMissing('course.students:id');
+        abort_if(!$quiz->course, 404);
+        abort_if(!$quiz->course->students->contains('id', $studentId), 403);
     }
 
     private function findLecturerCourse(int $lecturerId, int $courseId): Course

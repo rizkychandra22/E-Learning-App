@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\InAppNotification;
 use App\Services\SystemSettingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
@@ -60,6 +62,21 @@ class HandleInertiaRequests extends Middleware
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
+            ],
+            'notifications' => [
+                'items' => fn () => $user && Schema::hasTable('in_app_notifications')
+                    ? InAppNotification::query()
+                        ->where('user_id', $user->id)
+                        ->latest('id')
+                        ->limit(10)
+                        ->get()
+                    : [],
+                'unread_count' => fn () => $user && Schema::hasTable('in_app_notifications')
+                    ? InAppNotification::query()
+                        ->where('user_id', $user->id)
+                        ->whereNull('read_at')
+                        ->count()
+                    : 0,
             ],
         ];
     }
