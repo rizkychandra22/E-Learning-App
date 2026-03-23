@@ -106,7 +106,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="xl:col-span-2 panel-card overflow-hidden">
                         <div className="p-4 border-b border-border flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
                             <p className="text-sm text-muted-foreground">
                                 Total data: <span className="font-semibold text-foreground">{users.length}</span>
@@ -170,7 +170,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                    <div className="panel-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? `Edit ${meta.label}` : `Tambah ${meta.label}`}</h2>
                             {isEditing && (
@@ -229,3 +229,4 @@ function Field({ label, value, onChange, error, type = 'text' }) {
         </label>
     );
 }
+

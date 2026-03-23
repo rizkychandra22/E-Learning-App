@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS, WARM_STRIP_CLASS } from '@/lib/card';
+import { StatCard } from '@/components/StatCard';
 import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 const typeStyles = {
@@ -56,13 +56,13 @@ export default function ActivityLogs({ logs, filters, mocked }) {
                 )}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Metric label="Total Log" value={totals.all} icon={Activity} variant="primary" />
-                    <Metric label="Create" value={totals.create} icon={PlusCircle} variant="success" />
-                    <Metric label="Update" value={totals.update} icon={RefreshCw} variant="accent" />
-                    <Metric label="Delete" value={totals.delete} icon={Trash2} variant="warm" />
+                    <StatCard title="Total Log" value={totals.all} icon={Activity} gradient="primary" delay={0} />
+                    <StatCard title="Create" value={totals.create} icon={PlusCircle} gradient="success" delay={80} />
+                    <StatCard title="Update" value={totals.update} icon={RefreshCw} gradient="accent" delay={160} />
+                    <StatCard title="Delete" value={totals.delete} icon={Trash2} gradient="warm" delay={240} />
                 </div>
 
-                <div className="bg-card border border-border rounded-xl shadow-card p-4">
+                <div className="panel-card p-4">
                     <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-3">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -123,33 +123,3 @@ export default function ActivityLogs({ logs, filters, mocked }) {
     );
 }
 
-function Metric({ label, value, icon: Icon, variant = 'primary' }) {
-    const stripClass = {
-        primary: WARM_STRIP_CLASS,
-        accent: WARM_STRIP_CLASS,
-        warm: WARM_STRIP_CLASS,
-        success: WARM_STRIP_CLASS,
-    };
-
-    const variantClass = {
-        primary: 'gradient-primary text-primary-foreground',
-        accent: 'gradient-accent text-accent-foreground',
-        warm: 'gradient-warm text-foreground',
-        success: 'gradient-success text-success-foreground',
-    };
-
-    return (
-        <div className={`${KPI_CARD_BASE_CLASS} ${KPI_CARD_HEIGHT_CLASS}`}>
-            <div className={`absolute inset-x-0 top-0 h-1.5 opacity-90 ${stripClass[variant] ?? stripClass.primary}`} />
-            <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground truncate">{label}</p>
-                {Icon && (
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
-                        <Icon className="w-4 h-4" />
-                    </div>
-                )}
-            </div>
-            <p className="text-3xl leading-none font-bold tracking-tight">{value}</p>
-        </div>
-    );
-}

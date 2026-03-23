@@ -49,7 +49,7 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_2fr] gap-4">
-                    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+                    <div className="panel-card p-4">
                         <div className="flex items-center gap-2 text-sm font-semibold">
                             <Filter className="w-4 h-4 text-primary" />
                             Pilih File Log
@@ -106,7 +106,7 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                         )}
                     </div>
 
-                    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+                    <div className="panel-card p-4">
                         <h3 className="font-semibold mb-3">Detail Entry</h3>
                         <DataCardList
                             items={entries}
@@ -137,3 +137,4 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
         </ProtectedLayout>
     );
 }
+
