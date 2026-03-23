@@ -22,7 +22,7 @@ export default function Settings({ settings }) {
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Pengaturan Admin Akademik" description="Atur preferensi kerja untuk dashboard dan manajemen data akademik" />
 
-                <form onSubmit={submit} className="bg-card border border-border rounded-xl shadow-card p-4 space-y-5">
+                <form onSubmit={submit} className="panel-card p-4 space-y-5">
                     <div className="flex items-center gap-2 text-sm font-semibold">
                         <SlidersHorizontal className="w-4 h-4 text-primary" />
                         Preferensi Dashboard
@@ -84,5 +84,6 @@ function SwitchField({ title, checked, onChange }) {
         </label>
     );
 }
+
 
 
