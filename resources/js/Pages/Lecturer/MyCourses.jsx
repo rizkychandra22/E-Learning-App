@@ -19,6 +19,12 @@ const emptyForm = {
 };
 
 const gradients = ['gradient-primary', 'gradient-accent', 'gradient-warm', 'gradient-success'];
+const cardToneOverlays = [
+    'from-primary/25 via-primary/5 to-transparent',
+    'from-accent/25 via-accent/5 to-transparent',
+    'from-warning/25 via-warning/5 to-transparent',
+    'from-success/25 via-success/5 to-transparent',
+];
 
 const statusMeta = {
     draft: { label: 'Draft', progress: 25 },
@@ -110,7 +116,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="xl:col-span-2 panel-card overflow-hidden">
                         <div className="p-4 border-b border-border space-y-3">
                             <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
                                 <div className="relative flex-1">
@@ -142,17 +148,16 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                             {courses.map((course, index) => {
                                 const meta = statusMeta[course.status] ?? statusMeta.draft;
                                 return (
-                                    <div key={course.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-card hover:shadow-card-lg transition-all duration-300 animate-fade-in group" style={{ animationDelay: `${index * 60}ms` }}>
-                                        <div className={cn('h-28 flex items-end p-4', gradients[index % gradients.length])}>
-                                            <span className="text-xs font-medium px-2 py-1 rounded-md bg-background/20 text-primary-foreground backdrop-blur-sm">{course.category || 'Kursus'}</span>
-                                        </div>
-                                        <div className="p-5 space-y-3">
+                                    <div key={course.id} className="panel-card p-4 relative overflow-hidden hover:shadow-card-lg transition-all duration-300 animate-fade-in group" style={{ animationDelay: `${index * 60}ms` }}>
+                                        <div className={cn('absolute inset-0 bg-gradient-to-br opacity-70', cardToneOverlays[index % cardToneOverlays.length])} />
+                                        <div className="relative space-y-3">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="min-w-0">
+                                                    <p className="text-sm text-muted-foreground">{course.category || 'Kursus'}</p>
                                                     <h3 className="font-semibold group-hover:text-primary transition-colors truncate">{course.title}</h3>
                                                     <p className="text-xs text-muted-foreground truncate">{course.code}</p>
                                                 </div>
-                                                <span className="text-[11px] px-2 py-1 rounded-full bg-secondary text-secondary-foreground capitalize">{course.status}</span>
+                                                <span className="text-[11px] px-2 py-1 rounded-full border border-border bg-background/80 text-secondary-foreground capitalize backdrop-blur-sm">{course.status}</span>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                                 <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{course.credit_hours ?? 0} SKS</span>
@@ -161,15 +166,15 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                                             </div>
                                             <div className="space-y-1.5">
                                                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">Status</span><span className="font-medium">{meta.label}</span></div>
-                                                <div className="h-1.5 bg-secondary rounded-full overflow-hidden"><div className={cn('h-full rounded-full', gradients[index % gradients.length])} style={{ width: `${meta.progress}%` }} /></div>
+                                                <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className={cn('h-full rounded-full', gradients[index % gradients.length])} style={{ width: `${meta.progress}%` }} /></div>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-1.5">
                                                 {(course.tags ?? []).length > 0 ? course.tags.map((tag) => <span key={`${course.id}-${tag}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground"><Tags className="w-3 h-3" />{tag}</span>) : <span className="text-xs text-muted-foreground">Tanpa tag</span>}
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
+                                            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/80">
                                                 <button type="button" onClick={() => beginEdit(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"><Pencil className="w-3.5 h-3.5" />Edit</button>
                                                 <button type="button" onClick={() => destroyCourse(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
-                                                <Link href={`/learning-modules?course=${course.id}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground text-xs font-medium hover:bg-secondary/60 transition-colors"><Layers3 className="w-3.5 h-3.5" />Modules</Link>
+                                                <Link href={`/learning-modules?course=${course.id}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-background/80 text-foreground text-xs font-medium hover:bg-secondary/60 transition-colors"><Layers3 className="w-3.5 h-3.5" />Modules</Link>
                                             </div>
                                         </div>
                                     </div>
@@ -178,7 +183,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                    <div className="panel-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? 'Edit Kursus' : 'Tambah Kursus'}</h2>
                             {isEditing && <button type="button" onClick={beginCreate} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Batalkan edit"><X className="w-4 h-4" /></button>}
@@ -237,5 +242,8 @@ function parseTags(raw) {
     if (!raw) return [];
     return [...new Set(String(raw).split(',').map((item) => item.trim()).filter((item) => item !== ''))];
 }
+
+
+
 
 

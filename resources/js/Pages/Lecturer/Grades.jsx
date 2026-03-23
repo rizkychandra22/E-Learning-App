@@ -102,7 +102,7 @@ export default function Grades({ assignmentSubmissions, quizAttempts, courses, s
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="xl:col-span-2 panel-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={applyFilters} className="flex flex-col lg:flex-row gap-2">
                                 <div className="relative flex-1">
@@ -227,7 +227,7 @@ export default function Grades({ assignmentSubmissions, quizAttempts, courses, s
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                    <div className="panel-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">Form Penilaian</h2>
                         </div>
@@ -240,7 +240,7 @@ export default function Grades({ assignmentSubmissions, quizAttempts, courses, s
 
                         {selectedItem && (
                             <>
-                                <div className="rounded-xl border border-border bg-background p-3 text-sm mb-4">
+                                <div className="panel-subcard p-3 text-sm mb-4">
                                     <p className="font-medium">{editingType === 'assignment' ? selectedItem.assignment?.title : selectedItem.quiz?.title}</p>
                                     <p className="text-xs text-muted-foreground">{selectedItem.student?.name}</p>
                                 </div>
@@ -288,7 +288,7 @@ export default function Grades({ assignmentSubmissions, quizAttempts, courses, s
 
 function SummaryCard({ label, value }) {
     return (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+        <div className="panel-card p-4">
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="mt-1 text-xl font-semibold">{value}</p>
         </div>
@@ -301,3 +301,5 @@ function formatDateTime(dateString) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleString('id-ID');
 }
+
+

@@ -51,7 +51,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 rounded-2xl border border-border bg-card p-4 shadow-card space-y-4">
+                    <div className="xl:col-span-2 panel-card p-4 space-y-4">
                         <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
                             <div>
                                 <p className="text-sm text-muted-foreground">Course aktif</p>
@@ -73,7 +73,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                         ) : (
                             <div className="space-y-4">
                                 {modules.map((module) => (
-                                    <div key={module.id} className="rounded-2xl border border-border bg-background p-4 space-y-4">
+                                    <div key={module.id} className="panel-subcard p-4 space-y-4">
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
                                                 <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-medium">
@@ -89,7 +89,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
 
                                         <div className="space-y-3">
                                             {module.lessons.length > 0 ? module.lessons.map((lesson) => (
-                                                <div key={lesson.id} className="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-3">
+                                                <div key={lesson.id} className="panel-card p-4 flex items-start justify-between gap-3">
                                                     <div>
                                                         <div className="flex items-center gap-2 text-sm font-medium">
                                                             <PlayCircle className="w-4 h-4 text-primary" /> {lesson.title}
@@ -111,7 +111,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                     </div>
 
                     <div className="space-y-5">
-                        <form onSubmit={submitModule} className="rounded-2xl border border-border bg-card p-4 shadow-card space-y-3">
+                        <form onSubmit={submitModule} className="panel-card p-4 space-y-3">
                             <div className="flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /><h3 className="font-semibold">Tambah Modul</h3></div>
                             <select value={moduleForm.data.course_id} onChange={(event) => moduleForm.setData('course_id', event.target.value)} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm">
                                 <option value="">Pilih course</option>
@@ -123,7 +123,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                             <button type="submit" disabled={moduleForm.processing} className="w-full px-4 py-2 rounded-xl gradient-primary text-primary-foreground text-sm font-medium">Simpan Modul</button>
                         </form>
 
-                        <form onSubmit={submitLesson} className="rounded-2xl border border-border bg-card p-4 shadow-card space-y-3">
+                        <form onSubmit={submitLesson} className="panel-card p-4 space-y-3">
                             <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-primary" /><h3 className="font-semibold">Tambah Lesson</h3></div>
                             <select value={lessonForm.data.course_module_id} onChange={(event) => lessonForm.setData('course_module_id', event.target.value)} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm">
                                 <option value="">Pilih modul</option>
@@ -152,4 +152,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
         </ProtectedLayout>
     );
 }
+
+
+
 
