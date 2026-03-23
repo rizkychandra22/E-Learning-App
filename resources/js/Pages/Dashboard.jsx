@@ -27,7 +27,7 @@ import { cn } from '@/lib/cn';
 import { toIntlLocale } from '@/lib/locale';
 
 const UI = {
-    panelClass: 'relative overflow-hidden rounded-2xl border border-border/80 bg-card p-3 sm:p-4 shadow-card',
+    panelClass: 'relative overflow-hidden rounded-2xl border border-border/80 bg-card p-3 sm:p-4 shadow-card text-foreground',
     kpiGridClass: 'grid grid-cols-1 min-[540px]:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 auto-rows-fr',
     miniGridClass: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 auto-rows-fr',
     miniGridFourClass: 'grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-fr',
@@ -51,7 +51,7 @@ const CHIP_BY_ROLE = {
 
 function SectionTitle({ icon: Icon, children }) {
     return (
-        <h3 className="font-semibold flex items-center gap-2">
+        <h3 className="font-semibold flex items-center gap-2 text-foreground">
             {Icon && <Icon className="w-4 h-4 text-primary" />}
             <span>{children}</span>
         </h3>
@@ -141,7 +141,7 @@ function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
             </div>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{greeting}</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">{greeting}</h1>
                     <p className="mt-1 text-sm sm:text-base text-muted-foreground max-w-3xl">{subtitle}</p>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-muted-foreground">
