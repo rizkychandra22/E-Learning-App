@@ -65,7 +65,7 @@ export default function EditProfile({ profile }) {
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 lg:col-span-2">
+                    <div className="panel-card p-4 lg:col-span-2">
                         <form onSubmit={submit} className="space-y-3">
                             <Field label="Nama" value={form.data.name} error={form.errors.name} onChange={(value) => form.setData('name', value)} />
                             <Field label="Email" type="email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
@@ -136,7 +136,7 @@ export default function EditProfile({ profile }) {
                         </form>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                    <div className="panel-card p-4 h-fit">
                         <div className="flex items-center gap-3">
                             {previewUrl ? (
                                 <img src={previewUrl} alt="Foto profil" className="w-11 h-11 rounded-full object-cover border border-border" />
@@ -181,3 +181,4 @@ function Field({ label, value, onChange, error, type = 'text' }) {
         </label>
     );
 }
+

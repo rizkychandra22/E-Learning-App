@@ -5,7 +5,7 @@ import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { cn } from '@/lib/cn';
 
 const UI = {
-    panel: 'rounded-2xl border border-border bg-card p-4 shadow-card',
+    panel: 'panel-card p-4',
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
@@ -82,3 +82,4 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         </ProtectedLayout>
     );
 }
+
