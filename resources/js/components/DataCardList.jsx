@@ -44,7 +44,7 @@ export function DataCard({ children, accentColor, className, onClick }) {
         <div
             onClick={onClick}
             className={cn(
-                'group relative rounded-xl border border-border bg-card p-4 shadow-card',
+                'group relative panel-card p-4',
                 'transition-all duration-200 hover:shadow-card-lg hover:-translate-y-0.5',
                 onClick && 'cursor-pointer',
                 className,
@@ -89,3 +89,4 @@ export function CardActions({ children }) {
         </div>
     );
 }
+
