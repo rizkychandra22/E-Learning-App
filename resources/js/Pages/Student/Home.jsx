@@ -20,11 +20,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
 import { toIntlLocale } from '@/lib/locale';
-import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const UI = {
-    panel: 'rounded-2xl border border-border bg-card p-4 shadow-card',
+    panel: 'panel-card p-4',
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
+};
+
+const KPI_GRADIENT_CLASS = {
+    primary: 'gradient-primary',
+    success: 'gradient-success',
+    warning: 'gradient-warm',
+    accent: 'gradient-accent',
 };
 
 function SectionTitle({ icon: Icon, children, action }) {
@@ -40,23 +46,15 @@ function SectionTitle({ icon: Icon, children, action }) {
 }
 
 function FocusStat({ icon: Icon, label, value, helper, tone = 'primary' }) {
-    const toneStyles = {
-        primary: 'bg-primary/10 text-primary',
-        success: 'bg-success/10 text-success',
-        warning: 'bg-warning/10 text-warning',
-        accent: 'bg-accent/10 text-accent-foreground',
-    };
-
     return (
-        <div className={cn(UI.panel, 'flex items-start gap-3')}>
-            <div className={cn('rounded-xl p-2.5', toneStyles[tone] ?? toneStyles.primary)}>
+        <div className={cn('relative overflow-hidden rounded-2xl p-4 text-white shadow-card-lg', KPI_GRADIENT_CLASS[tone] ?? KPI_GRADIENT_CLASS.primary)}>
+            <div className="absolute -right-6 -top-7 h-24 w-24 rounded-full bg-white/10" />
+            <div className="absolute right-4 top-4 h-10 w-10 rounded-full bg-white/16 grid place-items-center">
                 <Icon className="w-4 h-4" />
             </div>
-            <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-lg font-semibold mt-1">{value}</p>
-                {helper && <p className="text-xs text-muted-foreground mt-1">{helper}</p>}
-            </div>
+            <p className="text-sm text-white/85">{label}</p>
+            <p className="text-4xl font-bold mt-2 leading-none">{value}</p>
+            {helper && <p className="text-xs text-white/85 mt-2">{helper}</p>}
         </div>
     );
 }
@@ -100,7 +98,7 @@ function DeadlineItem({ title, course, due, status }) {
     };
 
     return (
-        <div className="flex items-start gap-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-start gap-3 panel-subcard p-3">
             <div className={cn('mt-1 h-2.5 w-2.5 rounded-full', status === 'tinggi' ? 'bg-destructive' : status === 'sedang' ? 'bg-warning' : 'bg-success')} />
             <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium truncate">{title}</p>
@@ -113,7 +111,7 @@ function DeadlineItem({ title, course, due, status }) {
 
 function PlanItem({ title, time, done }) {
     return (
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
+        <div className="flex items-center gap-3 panel-subcard p-3">
             <div className={cn('h-9 w-9 rounded-lg grid place-items-center', done ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground')}>
                 {done ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
             </div>
@@ -170,11 +168,13 @@ export default function StudentHome() {
         <ProtectedLayout>
             <Head title="Beranda Mahasiswa" />
             <div className="space-y-6">
-                <div className={cn(UI.panel, 'bg-gradient-to-br from-primary/10 via-transparent to-transparent')}>
-                    <PageHeroBanner
-                        title={`Halo, ${user.name}`}
-                        description="Ritme belajarmu hari ini sudah siap. Pilih fokus utama, kelola tugas, dan jaga progres tetap stabil."
-                    />
+                <div className={cn(UI.panel, 'relative overflow-hidden')}>
+                    <div className="absolute inset-x-0 top-0 h-1.5 gradient-primary opacity-90" />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">Mahasiswa</span>
+                    </div>
+                    <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight">{`Dashboard ${user.name}`}</h1>
+                    <p className="mt-1 text-sm sm:text-base text-muted-foreground">Pantau progres belajar, tugas aktif, dan jadwal hari ini dalam satu tampilan.</p>
                     <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
                         <span className={UI.chip}>
                             <CalendarDays className="w-3.5 h-3.5" />
@@ -193,7 +193,7 @@ export default function StudentHome() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 min-[540px]:grid-cols-2 xl:grid-cols-3 gap-4">
                             {focusStats.map((stat) => (
                                 <FocusStat key={stat.label} {...stat} />
                             ))}
@@ -275,7 +275,7 @@ export default function StudentHome() {
                         <div className={UI.panel}>
                             <SectionTitle icon={Zap}>Ritme Belajar</SectionTitle>
                             <div className="mt-4 space-y-3">
-                                <div className="rounded-xl border border-border bg-background p-3">
+                                <div className="panel-subcard p-3">
                                     <p className="text-xs text-muted-foreground">Total waktu minggu ini</p>
                                     <p className="text-lg font-semibold mt-1">12 jam 40 menit</p>
                                     <div className="mt-3 h-2.5 rounded-full bg-secondary overflow-hidden">
@@ -284,11 +284,11 @@ export default function StudentHome() {
                                     <p className="text-xs text-muted-foreground mt-2">63% dari target mingguan</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 text-sm">
-                                    <div className="rounded-xl border border-border bg-background p-3">
+                                    <div className="panel-subcard p-3">
                                         <p className="text-xs text-muted-foreground">Konsistensi</p>
                                         <p className="font-semibold mt-1">88%</p>
                                     </div>
-                                    <div className="rounded-xl border border-border bg-background p-3">
+                                    <div className="panel-subcard p-3">
                                         <p className="text-xs text-muted-foreground">Fokus sesi</p>
                                         <p className="font-semibold mt-1">42 menit</p>
                                     </div>
@@ -304,7 +304,7 @@ export default function StudentHome() {
                                     'Dosen membuka sesi konsultasi proyek pada Jumat.',
                                     'Forum kelas Basis Data pindah ke topik baru.',
                                 ].map((note) => (
-                                    <div key={note} className="rounded-xl border border-border bg-background p-3 text-sm">
+                                    <div key={note} className="panel-subcard p-3 text-sm">
                                         {note}
                                     </div>
                                 ))}
@@ -316,3 +316,5 @@ export default function StudentHome() {
         </ProtectedLayout>
     );
 }
+
+

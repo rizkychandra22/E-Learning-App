@@ -8,7 +8,7 @@ import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const UI = {
-    panel: 'rounded-2xl border border-border bg-card p-4 shadow-card',
+    panel: 'panel-card p-4',
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
@@ -114,3 +114,4 @@ export default function StudentAssignments() {
         </ProtectedLayout>
     );
 }
+

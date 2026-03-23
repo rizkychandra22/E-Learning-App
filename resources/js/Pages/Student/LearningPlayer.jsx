@@ -26,7 +26,7 @@ export default function LearningPlayer({ course, activeLesson }) {
                 <PageHeroBanner title={course.title} description={course.description || 'Lanjutkan pembelajaran dari progress terakhir Anda.'} />
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-                    <div className="xl:col-span-2 rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+                    <div className="xl:col-span-2 panel-card p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3">
                             <div>
                                 <p className="text-sm text-muted-foreground">Lesson aktif</p>
@@ -41,7 +41,7 @@ export default function LearningPlayer({ course, activeLesson }) {
                             </div>
                         )}
 
-                        <div className="rounded-2xl border border-border bg-background p-4 space-y-3">
+                        <div className="panel-subcard p-4 space-y-3">
                             <div className="flex items-center gap-2 text-sm font-medium"><PlayCircle className="w-4 h-4 text-primary" /> {activeLesson?.title ?? 'Pilih lesson'}</div>
                             <p className="text-sm text-muted-foreground">{activeLesson?.summary || 'Belum ada ringkasan untuk lesson ini.'}</p>
                             {activeLesson?.content && <div className="text-sm leading-6 whitespace-pre-wrap">{activeLesson.content}</div>}
@@ -57,7 +57,7 @@ export default function LearningPlayer({ course, activeLesson }) {
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-border bg-card p-5 shadow-card space-y-4">
+                    <div className="panel-card p-5 space-y-4">
                         <div>
                             <p className="text-sm text-muted-foreground">Progress overview</p>
                             <h3 className="text-lg font-semibold mt-1">{course.completed_lessons} / {course.total_lessons} lesson selesai</h3>
@@ -68,7 +68,7 @@ export default function LearningPlayer({ course, activeLesson }) {
 
                         <div className="space-y-3">
                             {course.modules.map((module) => (
-                                <div key={module.id} className="rounded-xl border border-border bg-background p-4 space-y-3">
+                                <div key={module.id} className="panel-subcard p-4 space-y-3">
                                     <div>
                                         <p className="text-sm font-semibold">{module.title}</p>
                                         <p className="text-xs text-muted-foreground mt-1">{module.description || 'Tanpa deskripsi modul.'}</p>
@@ -104,3 +104,5 @@ export default function LearningPlayer({ course, activeLesson }) {
         </ProtectedLayout>
     );
 }
+
+

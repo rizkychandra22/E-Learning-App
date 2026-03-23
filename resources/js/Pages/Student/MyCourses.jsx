@@ -8,7 +8,7 @@ import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const UI = {
-    panel: 'rounded-2xl border border-border bg-card p-4 shadow-card',
+    panel: 'panel-card p-4',
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
@@ -48,7 +48,7 @@ function CourseCard({ course }) {
                     <span className={UI.chip}>{course.modules.length} modul</span>
                 </div>
             </div>
-            <div className="rounded-xl border border-border bg-background p-3 text-sm">
+            <div className="panel-subcard p-3 text-sm">
                 <p className="font-medium">Progress Pembelajaran</p>
                 <p className="text-xs text-muted-foreground mt-1">{course.completed_lessons} dari {course.total_lessons} lesson selesai</p>
             </div>
@@ -175,3 +175,5 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
         </ProtectedLayout>
     );
 }
+
+
