@@ -863,17 +863,22 @@ export default function Dashboard() {
                     <KpiGrid cards={mahasiswaKpis} />
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-                    <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                        {user.role === 'super_admin' && (
-                            <>
-                                <RecentActivity title="Notifikasi Sistem" intlLocale={intlLocale} activities={superAdmin?.recent_activities ?? []} />
-                                {superAdminChartData.length > 0
-                                    ? <ModernTrendChart title="Pertumbuhan Pengguna" data={superAdminChartData} tone="primary" />
-                                    : <TrendEmptyState title="Pertumbuhan Pengguna" />}
-                                <BarColumnChart title="Aktivitas Kursus Mingguan" data={superWeeklyActivityData} />
-                            </>
-                        )}
+                {user.role === 'super_admin' ? (
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
+                        <div className="xl:col-span-8 space-y-4 sm:space-y-6">
+                            {superAdminChartData.length > 0
+                                ? <ModernTrendChart title="Pertumbuhan Pengguna" data={superAdminChartData} tone="primary" />
+                                : <TrendEmptyState title="Pertumbuhan Pengguna" />}
+                            <BarColumnChart title="Aktivitas Kursus Mingguan" data={superWeeklyActivityData} />
+                        </div>
+                        <div className="xl:col-span-4 space-y-4 sm:space-y-6">
+                            <HorizontalMetricChart title="Distribusi Role" data={roleDistributionData} />
+                            <RecentActivity title="Notifikasi Sistem" intlLocale={intlLocale} activities={superAdmin?.recent_activities ?? []} />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
 
                         {user.role === 'admin' && (
                             <>
@@ -921,16 +926,16 @@ export default function Dashboard() {
                                 </div>
                             </div>
                         )}
-                    </div>
-                    <div className="space-y-4 sm:space-y-6">
-                        {user.role === 'super_admin' && <HorizontalMetricChart title="Distribusi Role" data={roleDistributionData} />}
+                        </div>
+                        <div className="space-y-4 sm:space-y-6">
                         {user.role === 'admin' && <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />}
                         {user.role === 'finance' && <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} />}
                         {user.role === 'dosen' && <RadarPerformanceChart title="Rata-rata Nilai Kelas" data={dosenRadarData} />}
                         {(user.role === 'mahasiswa' || user.role === 'dosen') && <CourseProgress />}
                         <UpcomingSchedule />
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </ProtectedLayout>
     );
