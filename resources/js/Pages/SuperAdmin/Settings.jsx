@@ -40,7 +40,7 @@ export default function Settings({ settings }) {
                 <PageHeroBanner title="Pengaturan" description="Konfigurasi sistem dan platform secara menyeluruh" />
 
                 <form onSubmit={submit} className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                    <aside className="xl:col-span-3 panel-card p-3 h-fit">
+                    <aside className="xl:col-span-3 panel-card p-4 h-fit">
                         <div className="space-y-1">
                             {settingTabs.map((tab) => {
                                 const Icon = tab.icon;
@@ -64,7 +64,7 @@ export default function Settings({ settings }) {
                         </div>
                     </aside>
 
-                    <section className="xl:col-span-9 panel-card p-5 space-y-5">
+                    <section className="xl:col-span-9 panel-card p-4 space-y-4">
                         <div className="flex items-center gap-2 text-lg font-semibold">
                             <SlidersHorizontal className="w-5 h-5 text-primary" />
                             {activeTabLabel}
@@ -211,7 +211,7 @@ function SelectField({ label, value, onChange, error, options }) {
 
 function SwitchRow({ title, description, checked, onChange }) {
     return (
-        <label className="panel-subcard p-3.5 flex items-center justify-between gap-3 cursor-pointer">
+        <label className="panel-subcard p-3 flex items-center justify-between gap-3 cursor-pointer">
             <span>
                 <span className="block text-sm font-medium">{title}</span>
                 <span className="block text-xs text-muted-foreground mt-0.5">{description}</span>

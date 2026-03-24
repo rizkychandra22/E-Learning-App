@@ -90,12 +90,12 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         <ProtectedLayout>
             <Head title="Notifikasi" />
             <div className="space-y-5 w-full max-w-none">
-                <section className="panel-card p-6">
+                <section className="panel-card p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="flex items-center gap-2">
                                 <Bell className="w-6 h-6 text-primary" />
-                                <h1 className="text-[34px] leading-none font-bold">Notifikasi</h1>
+                                <h1 className="text-3xl leading-none font-bold">Notifikasi</h1>
                                 <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-primary text-primary-foreground">
                                     {summary.unread} baru
                                 </span>

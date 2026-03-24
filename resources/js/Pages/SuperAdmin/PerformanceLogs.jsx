@@ -3,33 +3,13 @@ import { Activity, Download, Filter, Gauge, Timer, ShieldCheck } from 'lucide-re
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
+import { StatCard } from '@/components/StatCard';
 
 const formatValue = (value, unit) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
     if (unit === 'score') return Number(value).toFixed(3);
     return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(Number(value));
 };
-
-function MetricCard({ title, value, helper, tone = 'primary', icon: Icon = Gauge }) {
-    const tones = {
-        primary: 'gradient-primary',
-        accent: 'gradient-accent',
-        success: 'gradient-success',
-        warm: 'gradient-warm',
-    };
-
-    return (
-        <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card-lg ${tones[tone] ?? tones.primary}`}>
-            <div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" />
-            <div className="absolute right-3 top-3 h-9 w-9 rounded-full bg-white/16 grid place-items-center">
-                <Icon className="w-4 h-4" />
-            </div>
-            <p className="text-sm text-white/85">{title}</p>
-            <p className="mt-1 text-4xl leading-none font-bold">{value}</p>
-            <p className="mt-2 text-xs text-white/85">{helper}</p>
-        </div>
-    );
-}
 
 export default function PerformanceLogs({ files = [], selected_file, entries = [], summary, mocked }) {
     const handleFileChange = (event) => {
@@ -88,10 +68,10 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <MetricCard title="LCP" value={metricValue('LCP')} helper="Largest Contentful Paint" tone="primary" icon={Gauge} />
-                    <MetricCard title="CLS" value={metricValue('CLS')} helper="Cumulative Layout Shift" tone="accent" icon={Gauge} />
-                    <MetricCard title="TBT" value={metricValue('TBT')} helper="Total Blocking Time" tone="warm" icon={Timer} />
-                    <MetricCard title="FCP" value={metricValue('FCP')} helper="First Contentful Paint" tone="success" icon={ShieldCheck} />
+                    <StatCard title="LCP" value={metricValue('LCP')} change="Largest Contentful Paint" icon={Gauge} gradient="primary" />
+                    <StatCard title="CLS" value={metricValue('CLS')} change="Cumulative Layout Shift" icon={Gauge} gradient="accent" />
+                    <StatCard title="TBT" value={metricValue('TBT')} change="Total Blocking Time" icon={Timer} gradient="warm" />
+                    <StatCard title="FCP" value={metricValue('FCP')} change="First Contentful Paint" icon={ShieldCheck} gradient="success" />
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

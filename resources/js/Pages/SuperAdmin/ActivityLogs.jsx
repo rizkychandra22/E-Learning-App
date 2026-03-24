@@ -1,7 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
     Search,
-    Clock3,
     Activity,
     PlusCircle,
     RefreshCw,
@@ -44,14 +43,14 @@ function MiniStat({ title, value, icon: Icon, tone = 'primary' }) {
     };
 
     return (
-        <div className="panel-card p-3 min-h-[92px]">
+        <div className="panel-card p-3.5 min-h-[108px]">
             <div className="flex items-center gap-2">
-                <span className={`h-7 w-7 rounded-lg grid place-items-center ${toneClass[tone] ?? toneClass.primary}`}>
+                <span className={`h-8 w-8 rounded-xl grid place-items-center ${toneClass[tone] ?? toneClass.primary}`}>
                     <Icon className="w-4 h-4" />
                 </span>
-                <p className="text-xs text-muted-foreground">{title}</p>
+                <p className="text-sm text-muted-foreground">{title}</p>
             </div>
-            <p className="mt-2 text-2xl font-bold leading-none">{value}</p>
+            <p className="mt-3 text-3xl leading-none font-bold">{value}</p>
         </div>
     );
 }
@@ -102,7 +101,7 @@ export default function ActivityLogs({ logs, filters, mocked }) {
                     <MiniStat title="Admin" value={totals.adminCount} icon={Shield} tone="primary" />
                 </div>
 
-                <div className="panel-card p-4">
+                <div className="panel-card p-3 sm:p-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                         <h3 className="font-semibold text-xl">Riwayat Aktivitas</h3>
                         <form onSubmit={submitFilter} className="relative w-full md:w-72">
