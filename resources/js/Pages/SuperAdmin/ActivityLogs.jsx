@@ -1,49 +1,87 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Search, Filter, Clock3, Activity, PlusCircle, RefreshCw, Trash2 } from 'lucide-react';
+import {
+    Search,
+    Clock3,
+    Activity,
+    PlusCircle,
+    RefreshCw,
+    Trash2,
+    LogIn,
+    BookOpen,
+    Shield,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { StatCard } from '@/components/StatCard';
-import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 const typeStyles = {
-    create: 'bg-success/15 text-success',
-    update: 'bg-info/15 text-info',
-    delete: 'bg-destructive/15 text-destructive',
+    create: { badge: 'bg-success/15 text-success', icon: PlusCircle },
+    update: { badge: 'bg-info/15 text-info', icon: RefreshCw },
+    delete: { badge: 'bg-destructive/15 text-destructive', icon: Trash2 },
 };
+
+function relativeTime(value, locale) {
+    if (!value) return '-';
+    const date = new Date(value);
+    const diffMs = Date.now() - date.getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'Baru saja';
+    if (min < 60) return `${min} menit lalu`;
+    const hour = Math.floor(min / 60);
+    if (hour < 24) return `${hour} jam lalu`;
+    const day = Math.floor(hour / 24);
+    return `${day} hari lalu`;
+}
+
+function MiniStat({ title, value, icon: Icon, tone = 'primary' }) {
+    const toneClass = {
+        primary: 'text-primary bg-primary/12',
+        success: 'text-success bg-success/12',
+        warning: 'text-warning bg-warning/12',
+        info: 'text-info bg-info/12',
+        accent: 'text-accent-foreground bg-accent/25',
+    };
+
+    return (
+        <div className="panel-card p-3 min-h-[92px]">
+            <div className="flex items-center gap-2">
+                <span className={`h-7 w-7 rounded-lg grid place-items-center ${toneClass[tone] ?? toneClass.primary}`}>
+                    <Icon className="w-4 h-4" />
+                </span>
+                <p className="text-xs text-muted-foreground">{title}</p>
+            </div>
+            <p className="mt-2 text-2xl font-bold leading-none">{value}</p>
+        </div>
+    );
+}
 
 export default function ActivityLogs({ logs, filters, mocked }) {
     const { props } = usePage();
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const [query, setQuery] = useState(filters?.q ?? '');
-    const [type, setType] = useState(filters?.type ?? 'all');
 
     const totals = useMemo(() => {
-        return {
-            all: logs.length,
-            create: logs.filter((item) => item.type === 'create').length,
-            update: logs.filter((item) => item.type === 'update').length,
-            delete: logs.filter((item) => item.type === 'delete').length,
-        };
+        const loginCount = logs.filter((item) => String(item.message ?? '').toLowerCase().includes('login')).length;
+        const createCount = logs.filter((item) => item.type === 'create').length;
+        const updateCount = logs.filter((item) => item.type === 'update').length;
+        const deleteCount = logs.filter((item) => item.type === 'delete').length;
+        const enrollCount = logs.filter((item) => String(item.message ?? '').toLowerCase().includes('kursus')).length;
+        const adminCount = logs.filter((item) => String(item.module ?? '').toLowerCase().includes('users')).length;
+
+        return { loginCount, createCount, updateCount, deleteCount, enrollCount, adminCount };
     }, [logs]);
 
     const submitFilter = (event) => {
         event.preventDefault();
-        router.get('/activity-logs', { q: query, type }, { preserveState: true, preserveScroll: true, replace: true });
-    };
-
-    const resetFilter = () => {
-        setQuery('');
-        setType('all');
-        router.get('/activity-logs', {}, { preserveState: true, preserveScroll: true, replace: true });
+        router.get('/activity-logs', { q: query, type: 'all' }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
     return (
         <ProtectedLayout>
             <Head title="Log Aktivitas" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Log Aktivitas" description="Pantau aktivitas perubahan data terbaru pada sistem" />
+                <PageHeroBanner title="Log Aktivitas" description="Rekam jejak seluruh aktivitas pengguna di platform" />
 
                 {mocked && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
@@ -55,71 +93,62 @@ export default function ActivityLogs({ logs, filters, mocked }) {
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard title="Total Log" value={totals.all} icon={Activity} gradient="primary" delay={0} />
-                    <StatCard title="Create" value={totals.create} icon={PlusCircle} gradient="success" delay={80} />
-                    <StatCard title="Update" value={totals.update} icon={RefreshCw} gradient="accent" delay={160} />
-                    <StatCard title="Delete" value={totals.delete} icon={Trash2} gradient="warm" delay={240} />
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                    <MiniStat title="Login" value={totals.loginCount} icon={LogIn} tone="info" />
+                    <MiniStat title="Buat" value={totals.createCount} icon={PlusCircle} tone="success" />
+                    <MiniStat title="Edit" value={totals.updateCount} icon={RefreshCw} tone="primary" />
+                    <MiniStat title="Hapus" value={totals.deleteCount} icon={Trash2} tone="warning" />
+                    <MiniStat title="Enroll" value={totals.enrollCount} icon={BookOpen} tone="accent" />
+                    <MiniStat title="Admin" value={totals.adminCount} icon={Shield} tone="primary" />
                 </div>
 
                 <div className="panel-card p-4">
-                    <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-3">
-                        <div className="relative flex-1">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                        <h3 className="font-semibold text-xl">Riwayat Aktivitas</h3>
+                        <form onSubmit={submitFilter} className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <input
                                 type="text"
                                 value={query}
                                 onChange={(event) => setQuery(event.target.value)}
-                                placeholder="Cari log..."
+                                placeholder="Cari aktivitas..."
                                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                             />
-                        </div>
-                        <div className="relative md:w-56">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                            <select
-                                value={type}
-                                onChange={(event) => setType(event.target.value)}
-                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                                <option value="all">Semua Tipe</option>
-                                <option value="create">Create</option>
-                                <option value="update">Update</option>
-                                <option value="delete">Delete</option>
-                            </select>
-                        </div>
-                        <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                        <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
-                    </form>
-                </div>
+                        </form>
+                    </div>
 
-                <DataCardList
-                    items={logs}
-                    emptyText="Tidak ada aktivitas yang sesuai filter."
-                    renderCard={(item) => {
-                        const accentColors = { create: 'hsl(var(--success))', update: 'hsl(var(--info))', delete: 'hsl(var(--destructive))' };
-                        return (
-                            <DataCard key={item.id} accentColor={accentColors[item.type] ?? 'hsl(var(--muted-foreground))'}>
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 sm:w-44">
-                                        <Clock3 className="w-3.5 h-3.5" />
-                                        {new Date(item.time).toLocaleString(intlLocale)}
-                                    </div>
-                                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 min-w-0">
-                                        <CardField label="Modul" value={item.module} />
-                                        <CardField label="Aktor" value={item.actor} />
-                                        <div className="min-w-0">
-                                            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Aksi</p>
-                                            <CardBadge className={typeStyles[item.type] ?? 'bg-secondary text-secondary-foreground'}>{item.type}</CardBadge>
+                    <div className="space-y-2">
+                        {logs.length === 0 && (
+                            <div className="panel-subcard p-3 text-sm text-muted-foreground">Tidak ada aktivitas yang sesuai filter.</div>
+                        )}
+
+                        {logs.map((item) => {
+                            const style = typeStyles[item.type] ?? { badge: 'bg-secondary text-secondary-foreground', icon: Activity };
+                            const Icon = style.icon;
+                            return (
+                                <div key={item.id} className="panel-subcard p-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`h-8 w-8 rounded-xl grid place-items-center ${style.badge}`}>
+                                                    <Icon className="w-4 h-4" />
+                                                </span>
+                                                <p className="font-semibold truncate">{item.actor}</p>
+                                                <span className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground capitalize">{item.module}</span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">{item.message}</p>
+                                        </div>
+                                        <div className="text-right text-xs text-muted-foreground whitespace-nowrap">
+                                            <p>{relativeTime(item.time, intlLocale)}</p>
+                                            <p>{new Date(item.time).toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     </div>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-2">{item.message}</p>
-                            </DataCard>
-                        );
-                    }}
-                />
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         </ProtectedLayout>
     );
 }
-
