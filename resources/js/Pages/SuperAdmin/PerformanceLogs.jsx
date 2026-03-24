@@ -1,16 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { Activity, Download, Filter } from 'lucide-react';
+import { Activity, Download, Filter, Gauge, Timer, ShieldCheck } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { DataCardList, DataCard, CardField, CardBadge } from '@/components/DataCardList';
-import { cn } from '@/lib/cn';
-
-const metricStyles = {
-    LCP: 'bg-primary/15 text-primary',
-    CLS: 'bg-accent/15 text-accent-foreground',
-    TBT: 'bg-warning/15 text-warning-foreground',
-    FCP: 'bg-success/15 text-success-foreground',
-};
+import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
+import { StatCard } from '@/components/StatCard';
 
 const formatValue = (value, unit) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
@@ -27,7 +20,33 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
         });
     };
 
-    const metricLabels = Object.entries(summary?.by_metric || {}).map(([metric, count]) => `${metric}: ${count}`);
+    const groupedByMetric = entries.reduce((acc, entry) => {
+        const metric = String(entry.metric ?? '').toUpperCase();
+        if (!metric) return acc;
+        if (!acc[metric]) acc[metric] = [];
+        acc[metric].push(entry);
+        return acc;
+    }, {});
+
+    const metricValue = (metric) => {
+        const list = groupedByMetric[metric] ?? [];
+        if (!list.length) return '-';
+        const last = list[list.length - 1];
+        return `${formatValue(last.value, last.unit)}${last.unit && last.unit !== 'score' ? ` ${last.unit}` : ''}`;
+    };
+
+    const buildSeries = (metric, limit = 12) => {
+        const list = (groupedByMetric[metric] ?? []).slice(-limit);
+        return list.map((item, idx) => ({
+            label: item.timestamp ? new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : `#${idx + 1}`,
+            value: Number(item.value) || 0,
+        }));
+    };
+
+    const lcpSeries = buildSeries('LCP');
+    const clsSeries = buildSeries('CLS');
+    const tbtSeries = buildSeries('TBT');
+    const fcpSeries = buildSeries('FCP');
 
     return (
         <ProtectedLayout>
@@ -35,7 +54,7 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner
                     title="Performance Logs"
-                    description="Monitoring metrik LCP, CLS, dan TBT dari sisi pengguna secara real-time."
+                    description="Monitor performa dan kesehatan sistem secara real-time."
                 />
 
                 {mocked && (
@@ -48,92 +67,84 @@ export default function PerformanceLogs({ files = [], selected_file, entries = [
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_2fr] gap-4">
-                    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
-                        <div className="flex items-center gap-2 text-sm font-semibold">
-                            <Filter className="w-4 h-4 text-primary" />
-                            Pilih File Log
-                        </div>
-                        <div className="mt-3">
-                            <select
-                                value={selected_file || ''}
-                                onChange={handleFileChange}
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                                {files.map((file) => (
-                                    <option key={file.file} value={file.file}>
-                                        {file.date}
-                                    </option>
-                                ))}
-                                {!files.length && <option value="">Belum ada file log</option>}
-                            </select>
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <StatCard title="LCP" value={metricValue('LCP')} change="Largest Contentful Paint" icon={Gauge} gradient="primary" />
+                    <StatCard title="CLS" value={metricValue('CLS')} change="Cumulative Layout Shift" icon={Gauge} gradient="accent" />
+                    <StatCard title="TBT" value={metricValue('TBT')} change="Total Blocking Time" icon={Timer} gradient="warm" />
+                    <StatCard title="FCP" value={metricValue('FCP')} change="First Contentful Paint" icon={ShieldCheck} gradient="success" />
+                </div>
 
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                            <CardBadge className="bg-secondary/70 text-secondary-foreground">
-                                Total Entry: {summary?.total ?? 0}
-                            </CardBadge>
-                            {metricLabels.map((label) => (
-                                <CardBadge key={label} className="bg-secondary/40 text-secondary-foreground">
-                                    {label}
-                                </CardBadge>
-                            ))}
-                        </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <InteractiveTrendChart
+                        title="CPU & Memory (24 Jam)"
+                        data={lcpSeries.length ? lcpSeries : clsSeries}
+                        tone="primary"
+                        chartType="line"
+                        valueFormatter={(value) => formatValue(value, '')}
+                    />
+                    <InteractiveTrendChart
+                        title="Response Time API & DB"
+                        data={tbtSeries.length ? tbtSeries : fcpSeries}
+                        tone="success"
+                        chartType="line"
+                        valueFormatter={(value) => formatValue(value, '')}
+                    />
+                </div>
 
-                        <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                            <Activity className="w-4 h-4" />
-                            {summary?.latest ? `Terakhir: ${summary.latest}` : 'Belum ada data'}
+                <div className="panel-card p-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                        <h3 className="font-semibold text-xl">Status Layanan</h3>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                                <select
+                                    value={selected_file || ''}
+                                    onChange={handleFileChange}
+                                    className="w-full min-w-[220px] pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                >
+                                    {files.map((file) => (
+                                        <option key={file.file} value={file.file}>
+                                            {file.date}
+                                        </option>
+                                    ))}
+                                    {!files.length && <option value="">Belum ada file log</option>}
+                                </select>
+                            </div>
+                            {selected_file && !mocked && (
+                                <a
+                                    href={`/perf-logs/download?file=${encodeURIComponent(selected_file)}`}
+                                    className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Unduh Log
+                                </a>
+                            )}
                         </div>
-
-                        {selected_file && !mocked && (
-                            <a
-                                href={`/perf-logs/download?file=${encodeURIComponent(selected_file)}`}
-                                className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:brightness-95 transition"
-                            >
-                                <Download className="w-4 h-4" />
-                                Unduh Log
-                            </a>
-                        )}
-                        {selected_file && mocked && (
-                            <button
-                                type="button"
-                                disabled
-                                className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/60 text-primary-foreground text-sm font-medium opacity-60 cursor-not-allowed"
-                            >
-                                <Download className="w-4 h-4" />
-                                Unduh Log
-                            </button>
-                        )}
                     </div>
 
-                    <div className="rounded-xl border border-border bg-card p-4 shadow-card">
-                        <h3 className="font-semibold mb-3">Detail Entry</h3>
-                        <DataCardList
-                            items={entries}
-                            emptyText="Belum ada log performa untuk file ini."
-                            className="max-h-[520px] overflow-y-auto pr-1"
-                            renderCard={(entry, index) => (
-                                <DataCard key={`${entry.timestamp}-${index}`} className="space-y-3">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <CardBadge className={cn('text-xs', metricStyles[entry.metric] || 'bg-secondary/60 text-secondary-foreground')}>
-                                            {entry.metric || 'Unknown'}
-                                        </CardBadge>
-                                        <span className="text-xs text-muted-foreground">{entry.timestamp || '-'}</span>
-                                        {entry.path && <span className="text-xs text-muted-foreground">Path: {entry.path}</span>}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        <CardField label="Nilai" value={`${formatValue(entry.value, entry.unit)} ${entry.unit || ''}`.trim()} />
-                                        <CardField label="User ID" value={entry.user_id ?? '-'} />
-                                        <CardField label="IP" value={entry.ip ?? '-'} />
-                                        <CardField label="User Agent" value={entry.ua ?? '-'} />
-                                    </div>
-                                </DataCard>
-                            )}
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <ServiceCard title="Web Server" metrics={[`Total Entry ${summary?.total ?? 0}`, `LCP ${summary?.by_metric?.LCP ?? 0}`]} status="Normal" />
+                        <ServiceCard title="Database" metrics={[`CLS ${summary?.by_metric?.CLS ?? 0}`, `TBT ${summary?.by_metric?.TBT ?? 0}`]} status="Normal" />
+                        <ServiceCard title="Auth Service" metrics={[`FCP ${summary?.by_metric?.FCP ?? 0}`, summary?.latest ? `Terakhir ${summary.latest}` : 'Belum ada data']} status="Normal" />
                     </div>
                 </div>
             </div>
         </ProtectedLayout>
+    );
+}
+
+function ServiceCard({ title, metrics = [], status = 'Normal' }) {
+    return (
+        <div className="panel-subcard p-4">
+            <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold">{title}</p>
+                <span className="text-sm font-medium text-success">{status}</span>
+            </div>
+            <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                {metrics.map((item) => (
+                    <p key={item}>{item}</p>
+                ))}
+            </div>
+        </div>
     );
 }

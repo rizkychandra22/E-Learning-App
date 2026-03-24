@@ -6,9 +6,10 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
 
 const UI = {
-    panel: 'rounded-2xl border border-border bg-card p-4 shadow-card',
+    panel: 'panel-card p-4',
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
@@ -42,6 +43,41 @@ export default function StudentGrades() {
     const records = props?.records ?? [];
     const summary = props?.summary ?? { average: 0, graded_count: 0, assignment_avg: 0, quiz_avg: 0 };
     const migrationRequired = props?.migrationRequired;
+
+    const gradeTrendData = useMemo(() => {
+        if (!records.length) return [];
+        return records
+            .slice()
+            .sort((a, b) => {
+                const aTime = a?.graded_at ? new Date(a.graded_at).getTime() : 0;
+                const bTime = b?.graded_at ? new Date(b.graded_at).getTime() : 0;
+                return aTime - bTime;
+            })
+            .slice(-8)
+            .map((item, index) => {
+                const score = Number(item?.score) || 0;
+                const maxScore = Number(item?.max_score) || 0;
+                const percent = maxScore > 0 ? (score / maxScore) * 100 : 0;
+                const labelDate = item?.graded_at
+                    ? new Date(item.graded_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+                    : `Sesi ${index + 1}`;
+                return {
+                    label: labelDate,
+                    value: Number(percent.toFixed(1)),
+                };
+            });
+    }, [records]);
+
+    const gradeTypeDistribution = useMemo(() => {
+        if (!records.length) return [];
+        const grouped = records.reduce((acc, item) => {
+            const rawType = String(item?.type ?? 'lainnya').toLowerCase();
+            const type = rawType === 'assignment' ? 'Assignment' : rawType === 'quiz' ? 'Quiz' : 'Lainnya';
+            acc[type] = (acc[type] ?? 0) + 1;
+            return acc;
+        }, {});
+        return Object.entries(grouped).map(([label, value]) => ({ label, value }));
+    }, [records]);
 
     return (
         <ProtectedLayout>
@@ -81,6 +117,24 @@ export default function StudentGrades() {
                     <ScoreCard label="Rata-rata quiz" value={summary.quiz_avg} helper="Skor dari kuis yang sudah dinilai" />
                 </div>
 
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <InteractiveTrendChart
+                        title="Tren Nilai Terbaru"
+                        data={gradeTrendData}
+                        tone="primary"
+                        chartType="line"
+                        valueFormatter={(value) => `${new Intl.NumberFormat(intlLocale).format(value)}%`}
+                    />
+                    <InteractiveTrendChart
+                        title="Komposisi Jenis Penilaian"
+                        data={gradeTypeDistribution}
+                        tone="accent"
+                        chartType="donut"
+                        showTrend={false}
+                        valueFormatter={(value) => `${new Intl.NumberFormat(intlLocale).format(value)} item`}
+                    />
+                </div>
+
                 <div className={UI.panel}>
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold flex items-center gap-2">
@@ -90,12 +144,12 @@ export default function StudentGrades() {
                     </div>
                     <div className="mt-4 space-y-3">
                         {records.length === 0 && (
-                            <div className="rounded-xl border border-border bg-background p-3 text-sm text-muted-foreground">
+                            <div className="panel-subcard p-3 text-sm text-muted-foreground">
                                 Belum ada nilai yang dipublikasikan.
                             </div>
                         )}
                         {records.map((item, index) => (
-                            <div key={`${item.type}-${item.title}-${index}`} className="flex items-center justify-between rounded-xl border border-border bg-background p-3 text-sm">
+                            <div key={`${item.type}-${item.title}-${index}`} className="flex items-center justify-between panel-subcard p-3 text-sm">
                                 <div>
                                     <p className="font-medium">{item.title}</p>
                                     <p className="text-xs text-muted-foreground">{item?.course?.title ?? 'Tanpa kursus'} - {item.type}</p>

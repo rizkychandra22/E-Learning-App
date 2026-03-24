@@ -29,7 +29,7 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
     const svgHeight = paddingY * 2 + data.length * (barHeight + barGap) - barGap;
 
     return (
-        <div className="bg-card rounded-xl border border-border p-4 shadow-card animate-fade-in">
+        <div className="panel-card p-4 animate-fade-in">
             <div className="flex items-center justify-between gap-4 mb-4">
                 <h3 className="font-semibold flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-primary" />
@@ -41,7 +41,7 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-background/55 p-4">
+            <div className="panel-subcard p-4">
                 <div className="w-full max-h-[320px] overflow-x-auto overflow-y-auto">
                     <svg
                         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -174,3 +174,4 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
         </div>
     );
 }
+

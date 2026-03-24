@@ -48,6 +48,7 @@ export default function Statistics({ summary, monthly_users, role_distribution, 
                         title="Pertumbuhan User 6 Bulan"
                         data={monthlyData}
                         tone="primary"
+                        chartType="line"
                         valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
                     />
                     <InteractiveTrendChart
@@ -55,6 +56,7 @@ export default function Statistics({ summary, monthly_users, role_distribution, 
                         data={roleData}
                         tone="accent"
                         showTrend={false}
+                        chartType="donut"
                         valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
                     />
                 </div>

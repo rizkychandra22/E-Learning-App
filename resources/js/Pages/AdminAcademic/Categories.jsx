@@ -85,7 +85,7 @@ export default function Categories({ fakultas, mocked }) {
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4">
+                    <div className="panel-card p-4">
                         <h2 className="font-semibold mb-4">{editingFakultasId ? 'Edit Fakultas' : 'Tambah Fakultas'}</h2>
                         <form onSubmit={saveFakultas} className="space-y-3">
                             <Field label="Nama Fakultas" value={fakultasForm.data.name} error={fakultasForm.errors.name} onChange={(value) => fakultasForm.setData('name', value)} />
@@ -104,7 +104,7 @@ export default function Categories({ fakultas, mocked }) {
                         </form>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4">
+                    <div className="panel-card p-4">
                         <h2 className="font-semibold mb-4">{editingJurusanId ? 'Edit Jurusan' : 'Tambah Jurusan'}</h2>
                         <form onSubmit={saveJurusan} className="space-y-3">
                             <label className="block">
@@ -140,7 +140,7 @@ export default function Categories({ fakultas, mocked }) {
                     </div>
                 </div>
 
-                <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                <div className="panel-card overflow-hidden">
                     <div className="p-4 border-b border-border flex items-center gap-2">
                         <FolderTree className="w-4 h-4 text-primary" />
                         <h2 className="font-semibold">Struktur Fakultas & Jurusan</h2>
@@ -230,5 +230,6 @@ function Field({ label, value, onChange, error }) {
         </label>
     );
 }
+
 
 

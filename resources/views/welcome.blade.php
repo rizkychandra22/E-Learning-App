@@ -28,6 +28,8 @@
                             radial-gradient(900px 500px at 10% 10%, rgba(99, 102, 241, 0.12), transparent 60%),
                             #f1f5f9;
                 min-height: 100vh;
+                display: flex;
+                flex-direction: column;
             }
             a { color: inherit; text-decoration: none; }
             img { max-width: 100%; display: block; }
@@ -36,6 +38,9 @@
                 width: min(1160px, 92%);
                 margin: 0 auto;
                 position: relative;
+            }
+            .page-main {
+                flex: 1;
             }
             .bg-grid {
                 position: absolute;
@@ -306,13 +311,34 @@
                 padding: 0;
             }
 
-            footer {
-                padding: 50px 0 50px;
-                color: var(--muted);
-                font-size: 0.9rem;
-                text-align: center;
+            .site-footer {
+                border-top: 1px solid #dbe2ea;
+                background: rgba(255, 255, 255, 0.55);
+                backdrop-filter: blur(2px);
                 position: relative;
                 z-index: 1;
+            }
+            .site-footer-inner {
+                min-height: 50px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 18px;
+                color: #667085;
+                font-size: 0.9rem;
+            }
+            .site-footer-links {
+                display: inline-flex;
+                align-items: center;
+                gap: 22px;
+                white-space: nowrap;
+            }
+            .site-footer-links a {
+                color: #667085;
+                transition: color .2s ease;
+            }
+            .site-footer-links a:hover {
+                color: #4f46e5;
             }
 
             @keyframes float {
@@ -344,13 +370,25 @@
             @media (max-width: 640px) {
                 .insight-panel { width: 100%; }
                 .insight-grid { grid-template-columns: 1fr; }
+                .site-footer-inner {
+                    min-height: auto;
+                    padding: 16px 0 20px;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 10px;
+                }
+                .site-footer-links {
+                    gap: 16px;
+                    flex-wrap: wrap;
+                }
             }
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="bg-grid"></div>
-            <header class="nav">
+        <main class="page-main">
+            <div class="container">
+                <div class="bg-grid"></div>
+                <header class="nav">
                 <div class="brand">
                     <div class="brand-badge" aria-hidden="true">
                         <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -373,9 +411,9 @@
                         @endauth
                     @endif
                 </div>
-            </header>
+                </header>
 
-            <section class="hero">
+                <section class="hero">
                 <div class="hero-copy">
                     <div class="hero-badge"><span class="hero-badge-dot"></span>Platform belajar terintegrasi</div>
                     <h1 class="hero-title">E-Learning yang terasa <span class="accent">hidup</span>, fokus, dan siap tumbuh.</h1>
@@ -409,11 +447,17 @@
                     <img src="{{ asset('images/Photoroom.png') }}" alt="Team Development" class="team-illustration">
                     <div class="glow-bar"></div>
                 </div>
-            </section>
-
-            <footer>
-                Smart Learning - Sistem E-Learning terpadu untuk kampus yang adaptif.
-            </footer>
-        </div>
+                </section>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container site-footer-inner">
+                <div>&copy; 2026 Smart-Learning. Semua hak dilindungi.</div>
+                <div class="site-footer-links">
+                    <a href="#">Kebijakan Privasi</a>
+                    <a href="#">Syarat &amp; Ketentuan</a>
+                </div>
+            </div>
+        </footer>
     </body>
 </html>

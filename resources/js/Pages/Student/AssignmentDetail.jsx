@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const UI = {
-    panel: 'rounded-2xl border border-border bg-card p-4 shadow-card',
+    panel: 'panel-card p-4',
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
@@ -139,10 +139,10 @@ export default function AssignmentDetail() {
                                 <p className="font-semibold">{assignment?.submission?.status ?? 'belum dikumpulkan'}</p>
                                 <p className="text-xs text-muted-foreground">Dikumpulkan: {assignment?.submission?.submitted_at ? new Date(assignment.submission.submitted_at).toLocaleString('id-ID') : '-'}</p>
                                 <p className="text-xs text-muted-foreground">Dinilai: {assignment?.submission?.graded_at ? new Date(assignment.submission.graded_at).toLocaleString('id-ID') : '-'}</p>
-                                <div className="rounded-xl border border-border bg-background p-3 text-sm">
+                                <div className="panel-subcard p-3 text-sm">
                                     Nilai: {assignment?.submission?.score ?? '-'} / {assignment.max_score ?? 100}
                                 </div>
-                                <div className="rounded-xl border border-border bg-background p-3 text-xs text-muted-foreground">
+                                <div className="panel-subcard p-3 text-xs text-muted-foreground">
                                     {assignment?.submission?.feedback ?? 'Belum ada feedback dari dosen.'}
                                 </div>
                             </div>
@@ -153,3 +153,5 @@ export default function AssignmentDetail() {
         </ProtectedLayout>
     );
 }
+
+

@@ -79,7 +79,7 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="xl:col-span-2 panel-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
                                 <div className="relative flex-1">
@@ -161,7 +161,7 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                    <div className="panel-card p-4 h-fit">
                         <h2 className="font-semibold mb-4">Input Pembayaran</h2>
                         <form onSubmit={submitForm} className="space-y-3">
                             <SelectField label="Invoice" value={form.data.invoice_id} error={form.errors.invoice_id} onChange={(value) => form.setData('invoice_id', value)}>
@@ -246,4 +246,5 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+
 

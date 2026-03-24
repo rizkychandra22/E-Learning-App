@@ -5,7 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { KPI_CARD_BASE_CLASS, KPI_CARD_HEIGHT_CLASS, WARM_STRIP_CLASS } from '@/lib/card';
+import { StatCard } from '@/components/StatCard';
 import { DataCardList, DataCard, CardBadge, CardField } from '@/components/DataCardList';
 
 export default function Reports({ migrationRequired, summary, top_unpaid, cashflow, filters, mocked }) {
@@ -48,7 +48,7 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                     </div>
                 )}
 
-                <div className="bg-card border border-border rounded-xl shadow-card p-4">
+                <div className="panel-card p-4">
                     <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2 md:items-end">
                         <label className="block md:w-52">
                             <span className="text-sm font-medium">Tanggal Dari</span>
@@ -63,10 +63,10 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <SummaryCard title="Pemasukan Tervalidasi" value={summary?.verified_income ?? 0} icon={Wallet} variant="success" />
-                    <SummaryCard title="Nominal Pending" value={summary?.pending_amount ?? 0} icon={Clock3} variant="warm" />
-                    <SummaryCard title="Piutang Aktif" value={summary?.receivables ?? 0} icon={BadgeAlert} variant="accent" />
-                    <SummaryCard title="Total Invoice" value={summary?.total_invoices ?? 0} plain icon={FileText} variant="primary" />
+                    <StatCard title="Pemasukan Tervalidasi" value={`Rp ${new Intl.NumberFormat(intlLocale).format(summary?.verified_income ?? 0)}`} icon={Wallet} gradient="success" delay={0} />
+                    <StatCard title="Nominal Pending" value={`Rp ${new Intl.NumberFormat(intlLocale).format(summary?.pending_amount ?? 0)}`} icon={Clock3} gradient="warm" delay={80} />
+                    <StatCard title="Piutang Aktif" value={`Rp ${new Intl.NumberFormat(intlLocale).format(summary?.receivables ?? 0)}`} icon={BadgeAlert} gradient="accent" delay={160} />
+                    <StatCard title="Total Invoice" value={summary?.total_invoices ?? 0} icon={FileText} gradient="primary" delay={240} />
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -74,10 +74,11 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
                         title="Cashflow 6 Bulan (Verified)"
                         data={cashflowData}
                         tone="success"
+                        chartType="bar"
                         valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
                     />
 
-                    <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="panel-card overflow-hidden">
                         <div className="p-4 border-b border-border flex items-center gap-2">
                             <BadgeAlert className="w-4 h-4 text-primary" />
                             <h2 className="font-semibold">Top Piutang</h2>
@@ -113,34 +114,3 @@ export default function Reports({ migrationRequired, summary, top_unpaid, cashfl
     );
 }
 
-function SummaryCard({ title, value, plain = false, icon: Icon, variant = 'primary' }) {
-    const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
-    const stripClass = {
-        primary: WARM_STRIP_CLASS,
-        accent: WARM_STRIP_CLASS,
-        warm: WARM_STRIP_CLASS,
-        success: WARM_STRIP_CLASS,
-    };
-
-    const variantClass = {
-        primary: 'gradient-primary text-primary-foreground',
-        accent: 'gradient-accent text-accent-foreground',
-        warm: 'gradient-warm text-foreground',
-        success: 'gradient-success text-success-foreground',
-    };
-
-    return (
-        <div className={`${KPI_CARD_BASE_CLASS} ${KPI_CARD_HEIGHT_CLASS}`}>
-            <div className={`absolute inset-x-0 top-0 h-1.5 opacity-90 ${stripClass[variant] ?? stripClass.primary}`} />
-            <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground truncate">{title}</p>
-                {Icon && (
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-card ${variantClass[variant] ?? variantClass.primary}`}>
-                        <Icon className="w-4 h-4" />
-                    </div>
-                )}
-            </div>
-            <p className="text-3xl leading-none font-bold tracking-tight">{plain ? value : new Intl.NumberFormat(intlLocale).format(value ?? 0)}</p>
-        </div>
-    );
-}

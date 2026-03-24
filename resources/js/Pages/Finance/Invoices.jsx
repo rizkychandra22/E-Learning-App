@@ -106,7 +106,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="xl:col-span-2 panel-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
                                 <div className="relative flex-1">
@@ -183,7 +183,7 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                    <div className="panel-card p-4 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="font-semibold">{isEditing ? 'Edit Tagihan' : 'Buat Tagihan'}</h2>
                             {isEditing && (
@@ -279,3 +279,4 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+

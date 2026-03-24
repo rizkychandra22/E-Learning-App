@@ -24,7 +24,7 @@ export default function Courses() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {courses.map((course, index) => (
-                        <div key={course.id} className="bg-card border border-border rounded-xl overflow-hidden shadow-card hover:shadow-card-lg transition-all duration-300 animate-fade-in group" style={{ animationDelay: `${index * 60}ms` }}>
+                        <div key={course.id} className="panel-card overflow-hidden hover:shadow-card-lg transition-all duration-300 animate-fade-in group" style={{ animationDelay: `${index * 60}ms` }}>
                             <div className={cn('h-32 flex items-end p-4', gradients[index % gradients.length])}>
                                 <span className="text-xs font-medium px-2 py-1 rounded-md bg-background/20 text-primary-foreground backdrop-blur-sm">{course.category}</span>
                             </div>

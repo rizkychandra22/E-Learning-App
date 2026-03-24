@@ -11,7 +11,7 @@ export default function MaintenanceNotice() {
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
             <Head title={isEnglish ? 'Maintenance Mode' : 'Mode Maintenance'} />
-            <div className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-card p-6 md:p-8">
+            <div className="w-full max-w-2xl panel-card p-6 md:p-8">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/15 text-warning text-xs font-semibold mb-5">
                     <Wrench className="w-3.5 h-3.5" />
                     {isEnglish ? 'System Maintenance' : 'Maintenance Sistem'}

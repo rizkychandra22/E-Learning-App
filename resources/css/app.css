@@ -49,11 +49,11 @@
         --primary: 234 85% 65%;
         --secondary: 224 20% 16%;
         --muted: 224 20% 16%;
-        --muted-foreground: 220 10% 55%;
+        --muted-foreground: 220 12% 72%;
         --accent: 234 40% 18%;
         --accent-foreground: 234 85% 75%;
         --destructive: 0 62% 40%;
-        --border: 224 20% 16%;
+        --border: 224 18% 24%;
         --ring: 234 85% 65%;
     }
 
@@ -72,6 +72,18 @@
     .gradient-success { background: var(--gradient-success); }
     .shadow-card { box-shadow: var(--shadow-md); }
     .shadow-card-lg { box-shadow: var(--shadow-lg); }
+}
+
+@layer components {
+    .panel-card {
+        @apply relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-card;
+        color: hsl(var(--foreground));
+    }
+
+    .panel-subcard {
+        @apply rounded-xl border border-border/70 bg-background/70;
+        color: hsl(var(--foreground));
+    }
 }
 
 @layer base {

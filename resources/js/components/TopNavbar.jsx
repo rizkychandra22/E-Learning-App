@@ -173,7 +173,7 @@ export function TopNavbar({ onOpenMobileSidebar }) {
                     </button>
 
                     {openNotificationMenu && (
-                        <div className="absolute right-0 mt-2 w-80 max-w-[90vw] rounded-xl border border-border bg-card shadow-card z-30 overflow-hidden">
+                        <div className="absolute right-0 mt-2 w-80 max-w-[90vw] panel-card z-30 overflow-hidden">
                             <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
                                 <div>
                                     <p className="text-sm font-semibold">Notifikasi</p>
@@ -242,7 +242,7 @@ export function TopNavbar({ onOpenMobileSidebar }) {
                     </button>
 
                     {openProfileMenu && (
-                        <div className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-card shadow-card z-30 overflow-hidden">
+                        <div className="absolute right-0 mt-2 w-56 panel-card z-30 overflow-hidden">
                             <div className="px-4 py-3 border-b border-border">
                                 <p className="text-sm font-semibold truncate">{user.name}</p>
                                 <p className="text-xs text-muted-foreground truncate">{roleLabels[user.role] ?? user.role}</p>
@@ -276,3 +276,4 @@ export function TopNavbar({ onOpenMobileSidebar }) {
         </header>
     );
 }
+

@@ -183,6 +183,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::put('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::put('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::get('/help-center', function () {
+        return Inertia::render('Help/Center');
+    });
 
     $placeholderRoutes = [];
 

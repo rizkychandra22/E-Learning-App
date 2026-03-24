@@ -150,7 +150,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                 )}
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 bg-card border border-border rounded-xl shadow-card overflow-hidden">
+                    <div className="xl:col-span-2 panel-card overflow-hidden">
                         <div className="p-4 border-b border-border">
                             <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
                                 <div className="relative flex-1">
@@ -248,7 +248,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-card border border-border rounded-xl shadow-card p-4 h-fit">
+                        <div className="panel-card p-4 h-fit">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="font-semibold">{isEditing ? 'Edit Kursus' : 'Tambah Kursus'}</h2>
                                 {isEditing && (
@@ -319,7 +319,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                             </form>
                         </div>
 
-                        <div className="bg-card border border-border rounded-xl shadow-card p-4">
+                        <div className="panel-card p-4">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="font-semibold">Materi Kursus</h2>
                                 {isEditing && <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">{selectedCourseMaterials.length} file</span>}
@@ -468,3 +468,4 @@ function formatBytes(bytes) {
 
     return `${sized.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
+

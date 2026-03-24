@@ -31,7 +31,7 @@ export default function Settings({ settings, migrationRequired }) {
                     </div>
                 )}
 
-                <form onSubmit={submit} className="bg-card border border-border rounded-xl shadow-card p-4 space-y-4">
+                <form onSubmit={submit} className="panel-card p-4 space-y-4">
                     <Field label="Default Due Days" type="number" value={form.data.default_due_days} onChange={(value) => form.setData('default_due_days', value)} error={form.errors.default_due_days} />
                     <Field label="Overdue Reminder Days" type="number" value={form.data.overdue_reminder_days} onChange={(value) => form.setData('overdue_reminder_days', value)} error={form.errors.overdue_reminder_days} />
                     <label className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background cursor-pointer">
@@ -63,5 +63,6 @@ function Field({ label, value, onChange, error, type = 'text' }) {
         </label>
     );
 }
+
 
 
