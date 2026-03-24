@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity, Bell
+    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity, Bell, CircleHelp
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -90,7 +90,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                     </button>
                 </div>
 
-                <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+                <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-hidden">
                     {navItems.map((item) => {
                         const isActive = currentPath === item.url;
                         return (
@@ -99,7 +99,7 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                                 href={item.url}
                                 onClick={onCloseMobile}
                                 className={cn(
-                                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
                                     isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                                 )}
                             >
@@ -109,6 +109,35 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                         );
                     })}
                 </nav>
+
+                <div className="mx-2 mt-2 mb-2 pt-2 border-t border-sidebar-border/80">
+                    {showLabel ? (
+                        <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/85 p-2.5">
+                            <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 text-sidebar-primary grid place-items-center mb-2">
+                                <CircleHelp className="w-4 h-4" />
+                            </div>
+                            <p className="font-semibold text-sm text-sidebar-primary-foreground">Pusat Bantuan</p>
+                            <p className="text-xs text-sidebar-foreground/80 mt-0.5">Butuh bantuan? Hubungi kami.</p>
+                            <Link
+                                href="/help-center"
+                                onClick={onCloseMobile}
+                                className="mt-2 w-full inline-flex items-center justify-center rounded-lg bg-sidebar-primary/20 hover:bg-sidebar-primary/30 text-sidebar-primary-foreground px-2.5 py-1.5 text-xs font-semibold transition-colors"
+                            >
+                                Buka Bantuan
+                            </Link>
+                        </div>
+                    ) : (
+                        <Link
+                            href="/help-center"
+                            onClick={onCloseMobile}
+                            className="hidden lg:flex h-10 w-10 mx-auto rounded-xl bg-sidebar-accent border border-sidebar-border items-center justify-center text-sidebar-primary hover:text-sidebar-primary-foreground transition-colors"
+                            title="Pusat Bantuan"
+                            aria-label="Pusat Bantuan"
+                        >
+                            <CircleHelp className="w-5 h-5" />
+                        </Link>
+                    )}
+                </div>
 
                 <button
                     type="button"
