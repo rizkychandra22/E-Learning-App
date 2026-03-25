@@ -25,6 +25,7 @@ const navByRole = {
         { title: 'Kelola Kursus', url: '/manage-courses', icon: BookOpen },
         { title: 'Persetujuan Akun', url: '/approvals', icon: UserCheck },
         { title: 'Kategori', url: '/categories', icon: FolderOpen },
+        { title: 'Laporan Akademik', url: '/academic-reports', icon: BarChart3 },
         { title: 'Notifikasi', url: '/notifications', icon: Bell },
         { title: 'Pengaturan', url: '/settings', icon: Settings },
     ],
