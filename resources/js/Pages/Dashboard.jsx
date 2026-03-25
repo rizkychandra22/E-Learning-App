@@ -400,20 +400,22 @@ function BarColumnChart({ title, data = [], valueFormatter = (value) => String(v
     return (
         <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '360ms' }}>
             <SectionTitle icon={BarChart3}>{title}</SectionTitle>
-            <div className="mt-4 panel-subcard p-4">
-                <div className="grid grid-cols-6 gap-2 h-44 items-end">
+            <div className="mt-4 panel-subcard p-3">
+                <div className="grid grid-cols-6 gap-2">
                     {data.map((item) => {
                         const value = Number(item.value) || 0;
-                        const height = Math.max((value / maxValue) * 100, 8);
+                        const height = Math.max((value / maxValue) * 100, 12);
                         return (
                             <div key={item.label} className="flex flex-col items-center gap-2">
-                                <div className="w-full rounded-t-md gradient-primary transition-all duration-500" style={{ height: `${height}%` }} />
+                                <div className="h-44 w-full flex items-end">
+                                    <div className="w-full rounded-t-md gradient-primary transition-all duration-500" style={{ height: `${height}%` }} />
+                                </div>
                                 <span className="text-[11px] text-muted-foreground">{item.label}</span>
                             </div>
                         );
                     })}
                 </div>
-                <div className="mt-3 text-xs text-muted-foreground">
+                <div className="mt-2 text-xs text-muted-foreground">
                     Tertinggi: <span className="font-semibold text-foreground">{valueFormatter(maxValue)}</span>
                 </div>
             </div>
@@ -761,6 +763,12 @@ export default function Dashboard() {
         { label: 'Language', value: 20 },
         { label: 'Science', value: 23 },
     ];
+    const adminLatestCourses = [
+        { title: 'React JS Fundamental', instructor: 'Budi Santoso', students: 124, status: 'published' },
+        { title: 'UI/UX Design Masterclass', instructor: 'Siti Rahayu', students: 98, status: 'published' },
+        { title: 'Data Science Python', instructor: 'Reza Prasetyo', students: 87, status: 'draft' },
+        { title: 'Business Analytics', instructor: 'Diana Chen', students: 65, status: 'published' },
+    ];
 
     const financeSeriesData = (financeChartData.length ? financeChartData : fallbackMonthlyData).map((item) => {
         const income = Number(item.value) || 0;
@@ -874,6 +882,60 @@ export default function Dashboard() {
                         <div className="xl:col-span-4 space-y-4 sm:space-y-6">
                             <HorizontalMetricChart title="Distribusi Role" data={roleDistributionData} />
                             <RecentActivity title="Notifikasi Sistem" intlLocale={intlLocale} activities={superAdmin?.recent_activities ?? []} />
+                        </div>
+                    </div>
+                ) : user.role === 'admin' ? (
+                    <div className="space-y-4 sm:space-y-6">
+                        <div className={cn(UI.panelClass, 'animate-fade-in')}>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <SectionTitle icon={Shield}>Admin Universitas Dashboard</SectionTitle>
+                                    <p className="text-sm text-muted-foreground mt-1">Kelola kursus, dosen, dan mahasiswa universitas</p>
+                                </div>
+                                <a href="/manage-courses" className="inline-flex items-center justify-center px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold no-underline">
+                                    + Tambah
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
+                            <div className="xl:col-span-8">
+                                <BarColumnChart title="Tren Enrollment" data={adminEnrollmentData} />
+                            </div>
+                            <div className="xl:col-span-4">
+                                <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />
+                            </div>
+                            <div className="xl:col-span-12">
+                                <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '420ms' }}>
+                                    <SectionTitle icon={BookOpen}>Daftar Kursus Terbaru</SectionTitle>
+                                    <div className="mt-4 overflow-x-auto">
+                                        <table className="w-full min-w-[760px] text-sm">
+                                            <thead>
+                                                <tr className="text-left text-muted-foreground border-b border-border">
+                                                    <th className="py-2 px-2 font-medium">Kursus</th>
+                                                    <th className="py-2 px-2 font-medium">Instruktur</th>
+                                                    <th className="py-2 px-2 font-medium">Mahasiswa</th>
+                                                    <th className="py-2 px-2 font-medium">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {adminLatestCourses.map((course) => (
+                                                    <tr key={course.title} className="border-b border-border/70">
+                                                        <td className="py-2.5 px-2 font-medium">{course.title}</td>
+                                                        <td className="py-2.5 px-2 text-muted-foreground">{course.instructor}</td>
+                                                        <td className="py-2.5 px-2">{course.students}</td>
+                                                        <td className="py-2.5 px-2">
+                                                            <span className={cn('inline-flex px-2.5 py-1 rounded-full text-xs font-medium', course.status === 'published' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground')}>
+                                                                {course.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 ) : (
