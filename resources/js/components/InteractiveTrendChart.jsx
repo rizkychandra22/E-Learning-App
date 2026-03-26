@@ -40,8 +40,12 @@ function LineChart({
     chartHeightClass,
 }) {
     const values = data.map((item) => Number(item.value) || 0);
-    const maxValue = Math.max(...values, 1);
-    const minValue = Math.min(...values, 0);
+    const rawMax = Math.max(...values, 1);
+    const rawMin = Math.min(...values);
+    // Use data-driven Y bounds so line charts don't leave large empty space.
+    const verticalPadding = Math.max((rawMax - rawMin) * 0.12, 1);
+    const maxValue = rawMax + verticalPadding;
+    const minValue = rawMin - verticalPadding;
     const range = Math.max(maxValue - minValue, 1);
 
     const points = data.map((item, index) => {
@@ -125,7 +129,7 @@ function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeCol
     );
 }
 
-function PieChart({ data, activeIndex, onSetActive, valueFormatter }) {
+function PieChart({ data, activeIndex, onSetActive, valueFormatter, compact = false }) {
     const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
     const radius = 82;
     const cx = 110;
@@ -166,6 +170,44 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter }) {
 
     const safeActiveIndex = Math.min(Math.max(activeIndex, 0), Math.max(data.length - 1, 0));
     const active = segments[safeActiveIndex];
+
+    if (compact) {
+        return (
+            <div className="space-y-3">
+                <div className="mx-auto relative h-[170px] w-[170px]">
+                    <svg viewBox="0 0 220 220" className="h-full w-full">
+                        {segments.map((segment) => (
+                            <path
+                                key={segment.label}
+                                d={describeArcSlice(cx, cy, radius, segment.startAngle, segment.endAngle)}
+                                fill={segment.color}
+                                className="transition-all duration-200"
+                            />
+                        ))}
+                    </svg>
+                    <div className="absolute inset-0 grid place-items-center text-center">
+                        <p className="text-xs text-muted-foreground">Total</p>
+                        <p className="text-lg font-bold">{valueFormatter(total)}</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {segments.map((segment) => (
+                        <div key={segment.label} className="rounded-lg border border-border bg-background px-2.5 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: segment.color }} />
+                                    <span className="text-sm font-medium truncate">{segment.label}</span>
+                                </div>
+                                <span className="text-xs text-muted-foreground">{(segment.fraction * 100).toFixed(1)}%</span>
+                            </div>
+                            <p className="text-sm font-semibold mt-1">{valueFormatter(segment.value)}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="grid grid-cols-1 2xl:grid-cols-[200px_minmax(0,1fr)] gap-4 items-center">
@@ -292,7 +334,7 @@ export function InteractiveTrendChart({
 
             <div className="mt-4 panel-subcard p-3">
                 {chartType === 'donut' ? (
-                    <PieChart data={data} activeIndex={clampedActiveIndex} onSetActive={setActiveIndex} valueFormatter={valueFormatter} />
+                    <PieChart data={data} activeIndex={clampedActiveIndex} onSetActive={setActiveIndex} valueFormatter={valueFormatter} compact={compact} />
                 ) : (
                     <div className="w-full overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setActiveIndex(data.length ? data.length - 1 : 0)}>
                         {chartType === 'bar' ? (
