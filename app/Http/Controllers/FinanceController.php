@@ -77,6 +77,13 @@ class FinanceController extends Controller
         return Inertia::render('Finance/Payments', $this->service->getPaymentsData($search, $status));
     }
 
+    public function verifications(Request $request): Response
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        return Inertia::render('Finance/Verifications', $this->service->getVerificationData($search));
+    }
+
     public function storePayment(StorePaymentRequest $request): RedirectResponse
     {
         if (!$this->service->hasFinanceTables()) {

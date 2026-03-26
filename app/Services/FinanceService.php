@@ -267,6 +267,91 @@ class FinanceService
         ];
     }
 
+    public function getVerificationData(string $search = ''): array
+    {
+        if (!$this->hasFinanceTables()) {
+            $mockStudents = $this->mockStudents();
+            $mockInvoices = $this->mockInvoices($mockStudents, $this->mockFeeComponents());
+            $mockPayments = collect($this->mockPayments($mockStudents, $mockInvoices))
+                ->merge([
+                    [
+                        'id' => 903,
+                        'payment_no' => 'PAY-202603-0003',
+                        'status' => 'pending',
+                        'amount' => 300000,
+                        'method' => 'bank_transfer',
+                        'paid_at' => now()->subHours(2)->toISOString(),
+                        'invoice_id' => $mockInvoices[1]['id'] ?? 802,
+                        'student_id' => $mockStudents[1]['id'] ?? 602,
+                        'invoice' => $mockInvoices[1] ?? null,
+                        'student' => $mockStudents[1] ?? null,
+                        'is_mock' => true,
+                    ],
+                ])
+                ->filter(fn (array $item) => ($item['status'] ?? '') === 'pending')
+                ->values()
+                ->all();
+
+            return [
+                'migrationRequired' => true,
+                'mocked' => true,
+                'filters' => ['search' => $search],
+                'summary' => [
+                    'pending' => count($mockPayments),
+                    'verified' => 0,
+                    'rejected' => 0,
+                ],
+                'verifications' => $mockPayments,
+            ];
+        }
+
+        $pendingQuery = Payment::query()
+            ->with([
+                'student:id,name,code',
+                'invoice:id,invoice_no,title,status,due_date,amount',
+            ])
+            ->where('status', 'pending')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery
+                        ->where('payment_no', 'like', '%' . $search . '%')
+                        ->orWhere('method', 'like', '%' . $search . '%')
+                        ->orWhereHas('student', fn ($studentQ) => $studentQ->where('name', 'like', '%' . $search . '%'))
+                        ->orWhereHas('invoice', fn ($invoiceQ) => $invoiceQ->where('invoice_no', 'like', '%' . $search . '%'));
+                });
+            });
+
+        $pending = $pendingQuery->latest('id')->get();
+        $summary = [
+            'pending' => Payment::query()->where('status', 'pending')->count(),
+            'verified' => Payment::query()->where('status', 'verified')->count(),
+            'rejected' => Payment::query()->where('status', 'rejected')->count(),
+        ];
+
+        $mocked = false;
+        if ($pending->isEmpty() && $summary['pending'] === 0 && $summary['verified'] === 0 && $summary['rejected'] === 0) {
+            $mocked = true;
+            $mockStudents = $this->mockStudents();
+            $mockInvoices = $this->mockInvoices($mockStudents, $this->mockFeeComponents());
+            $pending = collect($this->mockPayments($mockStudents, $mockInvoices))
+                ->filter(fn (array $item) => ($item['status'] ?? '') === 'pending')
+                ->values();
+            $summary = [
+                'pending' => $pending->count(),
+                'verified' => 0,
+                'rejected' => 0,
+            ];
+        }
+
+        return [
+            'migrationRequired' => false,
+            'mocked' => $mocked,
+            'filters' => ['search' => $search],
+            'summary' => $summary,
+            'verifications' => $pending,
+        ];
+    }
+
     public function createPayment(array $payload): void
     {
         DB::transaction(function () use ($payload) {
@@ -406,6 +491,11 @@ class FinanceService
             'default_due_days' => 14,
             'auto_verify_payment' => false,
             'overdue_reminder_days' => 3,
+            'nominal_spp' => 2500000,
+            'late_fee_per_day' => 50000,
+            'grace_period_days' => 7,
+            'auto_invoice_enabled' => true,
+            'auto_reminder_enabled' => true,
         ];
 
         if (!Schema::hasTable('system_settings')) {
@@ -421,6 +511,11 @@ class FinanceService
             'default_due_days' => (int) ($stored[$prefix . 'default_due_days'] ?? $defaults['default_due_days']),
             'auto_verify_payment' => ($stored[$prefix . 'auto_verify_payment'] ?? ($defaults['auto_verify_payment'] ? '1' : '0')) === '1',
             'overdue_reminder_days' => (int) ($stored[$prefix . 'overdue_reminder_days'] ?? $defaults['overdue_reminder_days']),
+            'nominal_spp' => (int) ($stored[$prefix . 'nominal_spp'] ?? $defaults['nominal_spp']),
+            'late_fee_per_day' => (int) ($stored[$prefix . 'late_fee_per_day'] ?? $defaults['late_fee_per_day']),
+            'grace_period_days' => (int) ($stored[$prefix . 'grace_period_days'] ?? $defaults['grace_period_days']),
+            'auto_invoice_enabled' => ($stored[$prefix . 'auto_invoice_enabled'] ?? ($defaults['auto_invoice_enabled'] ? '1' : '0')) === '1',
+            'auto_reminder_enabled' => ($stored[$prefix . 'auto_reminder_enabled'] ?? ($defaults['auto_reminder_enabled'] ? '1' : '0')) === '1',
         ];
     }
 

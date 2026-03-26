@@ -107,6 +107,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/finance-invoices/{invoice}', [FinanceController::class, 'destroyInvoice']);
 
         Route::get('/finance-payments', [FinanceController::class, 'payments']);
+        Route::get('/finance-verifications', [FinanceController::class, 'verifications']);
         Route::post('/finance-payments', [FinanceController::class, 'storePayment']);
         Route::put('/finance-payments/{payment}/verify', [FinanceController::class, 'verifyPayment']);
         Route::put('/finance-payments/{payment}/reject', [FinanceController::class, 'rejectPayment']);
