@@ -94,6 +94,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/categories/jurusan/{jurusan}', [AdminAcademicController::class, 'updateJurusan']);
         Route::delete('/categories/jurusan/{jurusan}', [AdminAcademicController::class, 'destroyJurusan']);
 
+        Route::get('/academic-reports', [AdminAcademicController::class, 'academicReport']);
+        Route::get('/academic-reports/export', [AdminAcademicController::class, 'exportAcademicReport']);
+
         Route::put('/settings/admin-academic', [AdminAcademicController::class, 'updateSettings']);
     });
 
@@ -104,6 +107,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/finance-invoices/{invoice}', [FinanceController::class, 'destroyInvoice']);
 
         Route::get('/finance-payments', [FinanceController::class, 'payments']);
+        Route::get('/finance-verifications', [FinanceController::class, 'verifications']);
         Route::post('/finance-payments', [FinanceController::class, 'storePayment']);
         Route::put('/finance-payments/{payment}/verify', [FinanceController::class, 'verifyPayment']);
         Route::put('/finance-payments/{payment}/reject', [FinanceController::class, 'rejectPayment']);

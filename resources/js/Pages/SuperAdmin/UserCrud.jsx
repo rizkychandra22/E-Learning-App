@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Search, Pencil, Trash2, Plus, X, Users, UserCheck, GraduationCap, ShieldCheck } from 'lucide-react';
+import { Search, Pencil, Trash2, Plus, Users, UserCheck, GraduationCap, ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const emptyForm = {
     name: '',
@@ -192,42 +193,37 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                         </div>
                     </div>
 
-                    {showForm && (
-                        <div className="panel-subcard p-4 mb-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <p className="font-semibold">{isEditing ? `Edit ${meta.label}` : `Tambah ${meta.label}`}</p>
-                                <button type="button" onClick={hideForm} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Tutup form">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                            {isEditing && selectedUser && (
-                                <p className="text-xs text-muted-foreground mb-3">
-                                    Mengubah data untuk <span className="font-medium text-foreground">{selectedUser.name}</span>
-                                </p>
-                            )}
-                            <form onSubmit={submitForm} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-                                <Field label="Nama" value={form.data.name} error={form.errors.name} onChange={(value) => form.setData('name', value)} />
-                                <Field label="Email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
-                                <Field label="Username" value={form.data.username} error={form.errors.username} onChange={(value) => form.setData('username', value)} />
-                                <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                    <CreateFormModal
+                        open={showForm}
+                        title={isEditing ? `Edit ${meta.label}` : `Tambah ${meta.label}`}
+                        onClose={hideForm}
+                        onSubmit={submitForm}
+                        submitLabel={isEditing ? 'Simpan' : 'Simpan'}
+                        processing={form.processing}
+                        disableSubmit={mocked}
+                    >
+                        {isEditing && selectedUser && (
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Mengubah data untuk <span className="font-medium text-foreground">{selectedUser.name}</span>
+                            </p>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Field label="Nama Lengkap" value={form.data.name} error={form.errors.name} onChange={(value) => form.setData('name', value)} />
+                            <Field label="Email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
+                            <Field label="Username" value={form.data.username} error={form.errors.username} onChange={(value) => form.setData('username', value)} />
+                            <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                            <div className="md:col-span-2">
                                 <Field
-                                    label={isEditing ? 'Password Baru (Opsional)' : 'Password'}
+                                    label={isEditing ? 'Password Baru (Opsional)' : 'Password Sementara'}
                                     type="password"
                                     value={form.data.password}
                                     error={form.errors.password}
                                     onChange={(value) => form.setData('password', value)}
+                                    placeholder="Min. 8 karakter"
                                 />
-                                <div className="md:col-span-2 xl:col-span-5 flex justify-end gap-2">
-                                    <button type="button" onClick={hideForm} className="px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-secondary/60 transition-colors">
-                                        Batal
-                                    </button>
-                                    <button type="submit" disabled={form.processing || mocked} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                                        {form.processing ? 'Menyimpan...' : (isEditing ? 'Simpan Perubahan' : `Tambah ${meta.label}`)}
-                                    </button>
-                                </div>
-                            </form>
+                            </div>
                         </div>
-                    )}
+                    </CreateFormModal>
 
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm min-w-[820px]">
@@ -301,15 +297,16 @@ export default function UserCrud({ title, description, target, endpoint, users, 
     );
 }
 
-function Field({ label, value, onChange, error, type = 'text' }) {
+function Field({ label, value, onChange, error, type = 'text', placeholder = '' }) {
     return (
         <label className="block">
-            <span className="text-sm font-medium">{label}</span>
+            <span className="text-sm font-medium text-foreground">{label}</span>
             <input
                 type={type}
                 value={value}
+                placeholder={placeholder}
                 onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
         </label>

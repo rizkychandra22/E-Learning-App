@@ -37,10 +37,15 @@ function LineChart({
     gradientId,
     activeIndex,
     onSetActive,
+    chartHeightClass,
 }) {
     const values = data.map((item) => Number(item.value) || 0);
-    const maxValue = Math.max(...values, 1);
-    const minValue = Math.min(...values, 0);
+    const rawMax = Math.max(...values, 1);
+    const rawMin = Math.min(...values);
+    // Use data-driven Y bounds so line charts don't leave large empty space.
+    const verticalPadding = Math.max((rawMax - rawMin) * 0.12, 1);
+    const maxValue = rawMax + verticalPadding;
+    const minValue = rawMin - verticalPadding;
     const range = Math.max(maxValue - minValue, 1);
 
     const points = data.map((item, index) => {
@@ -58,7 +63,7 @@ function LineChart({
     const clampedActiveIndex = Math.min(Math.max(activeIndex, 0), Math.max(data.length - 1, 0));
 
     return (
-        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-[220px]">
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className={cn('w-full', chartHeightClass)}>
             <defs>
                 <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor={strokeColor} stopOpacity="0.35" />
@@ -88,7 +93,7 @@ function LineChart({
     );
 }
 
-function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeColor, activeIndex, onSetActive }) {
+function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeColor, activeIndex, onSetActive, chartHeightClass }) {
     const values = data.map((item) => Number(item.value) || 0);
     const maxValue = Math.max(...values, 1);
     const baselineY = chartHeight - paddingY;
@@ -97,7 +102,7 @@ function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeCol
     const barWidth = Math.max(16, unitWidth * 0.56);
 
     return (
-        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-[220px]">
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className={cn('w-full', chartHeightClass)}>
             {[0.2, 0.4, 0.6, 0.8].map((ratio) => {
                 const y = paddingY + (chartHeight - paddingY * 2) * ratio;
                 return <line key={ratio} x1={paddingX} y1={y} x2={chartWidth - paddingX} y2={y} stroke="hsl(var(--border))" strokeDasharray="4 6" />;
@@ -124,7 +129,7 @@ function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeCol
     );
 }
 
-function PieChart({ data, activeIndex, onSetActive, valueFormatter }) {
+function PieChart({ data, activeIndex, onSetActive, valueFormatter, compact = false }) {
     const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
     const radius = 82;
     const cx = 110;
@@ -166,8 +171,53 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter }) {
     const safeActiveIndex = Math.min(Math.max(activeIndex, 0), Math.max(data.length - 1, 0));
     const active = segments[safeActiveIndex];
 
+    if (compact) {
+        return (
+            <div className="space-y-2.5">
+                <div className="mx-auto relative h-[150px] w-[150px]">
+                    <svg viewBox="0 0 220 220" className="h-full w-full">
+                        {segments.map((segment) => (
+                            <path
+                                key={segment.label}
+                                d={describeArcSlice(cx, cy, radius, segment.startAngle, segment.endAngle)}
+                                fill={segment.color}
+                                className="transition-all duration-200"
+                            />
+                        ))}
+                    </svg>
+                    <div className="absolute inset-0 grid place-items-center text-center">
+                        <p className="text-xs text-muted-foreground">Total</p>
+                        <p className="text-base font-bold">{valueFormatter(total)}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    {segments.map((segment) => (
+                        <div
+                            key={segment.label}
+                            className={cn(
+                                'rounded-lg px-2 py-1.5 transition-colors',
+                                segment.index === safeActiveIndex ? 'bg-primary/10' : 'hover:bg-secondary/60'
+                            )}
+                            onMouseEnter={() => onSetActive(segment.index)}
+                        >
+                            <div className="flex items-center justify-between gap-2 text-sm">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: segment.color }} />
+                                    <span className="font-medium truncate">{segment.label}</span>
+                                </div>
+                                <span className="font-semibold">{valueFormatter(segment.value)}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{(segment.fraction * 100).toFixed(1)}%</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 items-center">
+        <div className="grid grid-cols-1 2xl:grid-cols-[200px_minmax(0,1fr)] gap-4 items-center">
             <div className="mx-auto relative h-[190px] w-[190px]">
                 <svg viewBox="0 0 220 220" className="h-full w-full">
                     {segments.map((segment) => (
@@ -192,7 +242,7 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter }) {
                 </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
                 {segments.map((segment) => {
                     const percent = segment.fraction * 100;
                     const isActive = segment.index === safeActiveIndex;
@@ -221,7 +271,7 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter }) {
             </div>
 
             {active && (
-                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div className="2xl:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                     <SummaryTile label="Kategori Aktif" value={active.label} />
                     <SummaryTile label="Nilai" value={valueFormatter(active.value)} />
                     <SummaryTile label="Kontribusi" value={`${(active.fraction * 100).toFixed(1)}%`} />
@@ -238,6 +288,7 @@ export function InteractiveTrendChart({
     tone = 'primary',
     showTrend = true,
     chartType = 'line',
+    compact = false,
 }) {
     const gradientId = useId();
     const [activeIndex, setActiveIndex] = useState(data.length ? data.length - 1 : 0);
@@ -268,6 +319,8 @@ export function InteractiveTrendChart({
 
     if (!data.length) return null;
 
+    const chartHeightClass = compact ? 'h-[180px]' : 'h-[220px]';
+
     return (
         <div className="panel-card p-4 animate-fade-in">
             <div className="flex items-center justify-between gap-4">
@@ -288,7 +341,7 @@ export function InteractiveTrendChart({
 
             <div className="mt-4 panel-subcard p-3">
                 {chartType === 'donut' ? (
-                    <PieChart data={data} activeIndex={clampedActiveIndex} onSetActive={setActiveIndex} valueFormatter={valueFormatter} />
+                    <PieChart data={data} activeIndex={clampedActiveIndex} onSetActive={setActiveIndex} valueFormatter={valueFormatter} compact={compact} />
                 ) : (
                     <div className="w-full overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setActiveIndex(data.length ? data.length - 1 : 0)}>
                         {chartType === 'bar' ? (
@@ -301,6 +354,7 @@ export function InteractiveTrendChart({
                                 strokeColor={toneColor}
                                 activeIndex={clampedActiveIndex}
                                 onSetActive={setActiveIndex}
+                                chartHeightClass={chartHeightClass}
                             />
                         ) : (
                             <LineChart
@@ -313,34 +367,39 @@ export function InteractiveTrendChart({
                                 gradientId={gradientId}
                                 activeIndex={clampedActiveIndex}
                                 onSetActive={setActiveIndex}
+                                chartHeightClass={chartHeightClass}
                             />
                         )}
                     </div>
                 )}
 
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                    <SummaryTile label="Nilai Aktif" value={activeItem ? valueFormatter(activeItem.value) : '-'} />
-                    <SummaryTile label="Periode / Label" value={activeItem?.label ?? '-'} />
-                    <SummaryTile label="Titik Tertinggi" value={valueFormatter(maxValue)} />
-                </div>
+                {chartType !== 'donut' && !compact && (
+                    <>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                            <SummaryTile label="Nilai Aktif" value={activeItem ? valueFormatter(activeItem.value) : '-'} />
+                            <SummaryTile label="Periode / Label" value={activeItem?.label ?? '-'} />
+                            <SummaryTile label="Titik Tertinggi" value={valueFormatter(maxValue)} />
+                        </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                    {data.map((item, index) => (
-                        <button
-                            key={`${item.label}-${index}`}
-                            type="button"
-                            onClick={() => setActiveIndex(index)}
-                            className={cn(
-                                'text-xs px-2.5 py-1 rounded-full border transition-colors',
-                                index === clampedActiveIndex ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-secondary'
-                            )}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
-                </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {data.map((item, index) => (
+                                <button
+                                    key={`${item.label}-${index}`}
+                                    type="button"
+                                    onClick={() => setActiveIndex(index)}
+                                    className={cn(
+                                        'text-xs px-2.5 py-1 rounded-full border transition-colors',
+                                        index === clampedActiveIndex ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:bg-secondary'
+                                    )}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
 
-                {chartType === 'line' && (
+                {chartType === 'line' && !compact && (
                     <p className="mt-2 text-xs text-muted-foreground">
                         Rentang data: {valueFormatter(minValue)} - {valueFormatter(maxValue)}
                     </p>

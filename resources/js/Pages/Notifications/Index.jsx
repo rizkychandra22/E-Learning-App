@@ -1,7 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import { Bell, CheckCheck, Search, Trash2 } from 'lucide-react';
+import { Bell, CheckCheck, Megaphone, Search, Trash2, Info, TriangleAlert, CircleCheckBig, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FILTERS = [
     { key: 'all', label: 'Semua' },
@@ -31,6 +32,13 @@ function normalizeType(type = '') {
     return 'info';
 }
 
+function iconByType(type) {
+    if (type === 'warning') return TriangleAlert;
+    if (type === 'success') return CircleCheckBig;
+    if (type === 'broadcast') return Send;
+    return Info;
+}
+
 function relativeTime(value) {
     if (!value) return '-';
     const date = new Date(value);
@@ -45,6 +53,7 @@ function relativeTime(value) {
 }
 
 export default function NotificationIndex({ notifications = [], summary = { total: 0, unread: 0 } }) {
+    const { user } = useAuth();
     const [activeFilter, setActiveFilter] = useState('all');
     const [search, setSearch] = useState('');
 
@@ -58,11 +67,7 @@ export default function NotificationIndex({ notifications = [], summary = { tota
     };
 
     const mapped = useMemo(
-        () =>
-            notifications.map((item) => ({
-                ...item,
-                kind: normalizeType(item.type),
-            })),
+        () => notifications.map((item) => ({ ...item, kind: normalizeType(item.type) })),
         [notifications]
     );
 
@@ -79,12 +84,13 @@ export default function NotificationIndex({ notifications = [], summary = { tota
 
             const keyword = search.trim().toLowerCase();
             if (!keyword) return true;
-
             return [item.title, item.message, item.type]
                 .filter(Boolean)
                 .some((value) => String(value).toLowerCase().includes(keyword));
         });
     }, [mapped, activeFilter, search]);
+
+    const isAdminAcademic = user?.role === 'admin';
 
     return (
         <ProtectedLayout>
@@ -100,19 +106,23 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                                     {summary.unread} baru
                                 </span>
                             </div>
-                            <p className="mt-2 text-muted-foreground">Pusat notifikasi dan peringatan sistem</p>
+                            <p className="mt-2 text-muted-foreground">{isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : 'Pusat notifikasi dan peringatan sistem'}</p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={markAllRead}
-                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary transition-colors text-sm font-medium"
-                        >
-                            <CheckCheck className="w-4 h-4" />
-                            Tandai Semua Dibaca
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <button type="button" onClick={markAllRead} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium">
+                                <CheckCheck className="w-4 h-4" />
+                                Tandai Dibaca
+                            </button>
+                            {isAdminAcademic && (
+                                <button type="button" onClick={() => window.alert('Fitur broadcast akan disambungkan ke modul pengumuman.')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
+                                    <Megaphone className="w-4 h-4" />
+                                    Kirim Broadcast
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap items-center gap-2">
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
                         {FILTERS.map((filter) => (
                             <button
                                 key={filter.key}
@@ -136,7 +146,7 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Cari notifikasi..."
-                            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
                         />
                     </div>
                 </section>
@@ -146,36 +156,36 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                         <div className="panel-card p-4 text-sm text-muted-foreground">Tidak ada notifikasi untuk filter ini.</div>
                     )}
 
-                    {filteredNotifications.map((notification) => (
-                        <article
-                            key={notification.id}
-                            className={`panel-card p-4 border ${typeClass[notification.kind] ?? typeClass.info} ${!notification.read_at ? 'ring-1 ring-primary/20' : ''}`}
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => markRead(notification)}
-                                    className="text-left flex-1 min-w-0"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-semibold text-lg truncate">{notification.title}</h3>
-                                        {!notification.read_at && <span className="w-2 h-2 rounded-full bg-primary" />}
-                                    </div>
-                                    <p className="mt-1 text-muted-foreground">{notification.message}</p>
-                                    <p className="mt-2 text-sm text-muted-foreground">{relativeTime(notification.created_at)}</p>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => markRead(notification)}
-                                    className="mt-1 p-2 rounded-lg border border-border hover:bg-secondary transition-colors"
-                                    title="Tandai dibaca"
-                                >
-                                    <Trash2 className="w-4 h-4 text-muted-foreground" />
-                                </button>
-                            </div>
-                        </article>
-                    ))}
+                    {filteredNotifications.map((notification) => {
+                        const Icon = iconByType(notification.kind);
+                        return (
+                            <article
+                                key={notification.id}
+                                className={`panel-card p-4 border ${typeClass[notification.kind] ?? typeClass.info} ${!notification.read_at ? 'ring-1 ring-primary/20' : ''}`}
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <button type="button" onClick={() => markRead(notification)} className="text-left flex-1 min-w-0">
+                                        <div className="flex items-center gap-3">
+                                            <span className="h-9 w-9 rounded-xl bg-background/70 border border-border grid place-items-center">
+                                                <Icon className="w-4 h-4 text-primary" />
+                                            </span>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold text-lg truncate">{notification.title}</h3>
+                                                    {!notification.read_at && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                                </div>
+                                                <p className="text-muted-foreground">{notification.message}</p>
+                                                <p className="text-sm text-muted-foreground mt-1">{relativeTime(notification.created_at)}</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button type="button" onClick={() => markRead(notification)} className="mt-1 p-2 rounded-lg border border-border hover:bg-secondary" title="Tandai dibaca">
+                                        <Trash2 className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                </div>
+                            </article>
+                        );
+                    })}
                 </div>
             </div>
         </ProtectedLayout>

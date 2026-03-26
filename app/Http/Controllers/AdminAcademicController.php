@@ -222,6 +222,20 @@ class AdminAcademicController extends Controller
         ]);
     }
 
+    public function academicReport(Request $request): Response
+    {
+        $period = trim((string) $request->query('period', 'monthly'));
+
+        return Inertia::render('AdminAcademic/AcademicReport', $this->service->getAcademicReportData($period));
+    }
+
+    public function exportAcademicReport(Request $request): StreamedResponse
+    {
+        $period = trim((string) $request->query('period', 'monthly'));
+
+        return $this->service->exportAcademicReportCsv($period);
+    }
+
     public function updateSettings(UpdateSettingsRequest $request): RedirectResponse
     {
         $updated = $this->service->updateSettings((int) auth()->id(), $request->validated());
