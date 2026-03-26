@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, FolderTree, Laptop, Palette, Briefcase, FlaskConi
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const fakultasDefault = { name: '', code: '' };
 const jurusanDefault = { fakultas_id: '', name: '', code: '' };
@@ -93,24 +94,30 @@ export default function Categories({ fakultas, mocked }) {
                     <StatCard title="Kategori Aktif" value={fakultas.length} icon={FolderTree} gradient="accent" />
                 </div>
 
-                {showForm && (
+                <CreateFormModal
+                    open={showForm}
+                    title="Tambah Kategori"
+                    onClose={() => setShowForm(false)}
+                    hideFooter
+                    maxWidthClass="max-w-4xl"
+                >
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                        <div className="panel-card p-4">
+                        <div className="panel-subcard p-4">
                             <h3 className="font-semibold mb-3">{editingFakultasId ? 'Edit Kategori' : 'Tambah Kategori'}</h3>
                             <form onSubmit={saveFakultas} className="space-y-3">
                                 <Field label="Nama Kategori" value={fakultasForm.data.name} error={fakultasForm.errors.name} onChange={(value) => fakultasForm.setData('name', value)} />
                                 <Field label="Kode" value={fakultasForm.data.code} error={fakultasForm.errors.code} onChange={(value) => fakultasForm.setData('code', value)} />
                                 <div className="flex gap-2">
-                                    <button type="submit" disabled={fakultasForm.processing || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                                    <button type="submit" disabled={fakultasForm.processing || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                         <Plus className="w-4 h-4" />
                                         {editingFakultasId ? 'Simpan' : 'Tambah'}
                                     </button>
-                                    {editingFakultasId && <button type="button" onClick={resetFakultasForm} className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Batal</button>}
+                                    {editingFakultasId && <button type="button" onClick={resetFakultasForm} className="px-4 py-2 rounded-xl border border-border bg-background text-sm">Batal</button>}
                                 </div>
                             </form>
                         </div>
 
-                        <div className="panel-card p-4">
+                        <div className="panel-subcard p-4">
                             <h3 className="font-semibold mb-3">{editingJurusanId ? 'Edit Subkategori' : 'Tambah Subkategori'}</h3>
                             <form onSubmit={saveJurusan} className="space-y-3">
                                 <SelectField label="Kategori" value={jurusanForm.data.fakultas_id} error={jurusanForm.errors.fakultas_id} onChange={(value) => jurusanForm.setData('fakultas_id', value)}>
@@ -122,16 +129,16 @@ export default function Categories({ fakultas, mocked }) {
                                 <Field label="Nama Subkategori" value={jurusanForm.data.name} error={jurusanForm.errors.name} onChange={(value) => jurusanForm.setData('name', value)} />
                                 <Field label="Kode" value={jurusanForm.data.code} error={jurusanForm.errors.code} onChange={(value) => jurusanForm.setData('code', value)} />
                                 <div className="flex gap-2">
-                                    <button type="submit" disabled={jurusanForm.processing || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
+                                    <button type="submit" disabled={jurusanForm.processing || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
                                         <Plus className="w-4 h-4" />
                                         {editingJurusanId ? 'Simpan' : 'Tambah'}
                                     </button>
-                                    {editingJurusanId && <button type="button" onClick={resetJurusanForm} className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Batal</button>}
+                                    {editingJurusanId && <button type="button" onClick={resetJurusanForm} className="px-4 py-2 rounded-xl border border-border bg-background text-sm">Batal</button>}
                                 </div>
                             </form>
                         </div>
                     </div>
-                )}
+                </CreateFormModal>
 
                 <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     {fakultas.map((item, index) => {
@@ -179,7 +186,7 @@ function Field({ label, value, onChange, error }) {
     return (
         <label className="block">
             <span className="text-sm font-medium">{label}</span>
-            <input type="text" value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+            <input type="text" value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
         </label>
     );
@@ -189,7 +196,7 @@ function SelectField({ label, value, onChange, error, children }) {
     return (
         <label className="block">
             <span className="text-sm font-medium">{label}</span>
-            <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">
+            <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
                 {children}
             </select>
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}

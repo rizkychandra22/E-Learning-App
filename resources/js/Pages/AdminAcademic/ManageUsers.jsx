@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Search, Pencil, Trash2, Plus, X, Mail, MoreVertical, UserCheck, UserX } from 'lucide-react';
+import { Search, Pencil, Trash2, Plus, Mail, MoreVertical, UserCheck, UserX } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const emptyForm = {
     name: '',
@@ -198,46 +199,43 @@ export default function ManageUsers({ users, filters, mocked }) {
                         </div>
                     </div>
 
-                    {showForm && (
-                        <div className="panel-subcard p-4 mb-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-semibold">{isEditing ? 'Edit User' : 'Tambah User'}</h4>
-                                <button type="button" onClick={closeForm} className="p-1.5 rounded-md hover:bg-secondary">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                            {isEditing && selectedUser && (
-                                <p className="text-xs text-muted-foreground mb-3">
-                                    Mengubah data untuk <span className="font-medium text-foreground">{selectedUser.name}</span>
-                                </p>
-                            )}
-                            <form onSubmit={submitForm} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
-                                <Field label="Nama" value={form.data.name} error={form.errors.name} onChange={(value) => form.setData('name', value)} />
-                                <Field label="Email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
-                                <Field label="Username" value={form.data.username} error={form.errors.username} onChange={(value) => form.setData('username', value)} />
-                                <SelectField label="Role" value={form.data.role} error={form.errors.role} onChange={(value) => form.setData('role', value)}>
-                                    <option value="admin">Admin</option>
-                                    <option value="finance">Finance</option>
-                                    <option value="teacher">Dosen</option>
-                                    <option value="student">Mahasiswa</option>
-                                </SelectField>
-                                <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                    <CreateFormModal
+                        open={showForm}
+                        title={isEditing ? 'Edit User' : 'Tambah User'}
+                        onClose={closeForm}
+                        onSubmit={submitForm}
+                        submitLabel="Simpan"
+                        processing={form.processing}
+                        disableSubmit={mocked}
+                    >
+                        {isEditing && selectedUser && (
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Mengubah data untuk <span className="font-medium text-foreground">{selectedUser.name}</span>
+                            </p>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Field label="Nama Lengkap" value={form.data.name} error={form.errors.name} onChange={(value) => form.setData('name', value)} />
+                            <Field label="Email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
+                            <Field label="Username" value={form.data.username} error={form.errors.username} onChange={(value) => form.setData('username', value)} />
+                            <SelectField label="Role" value={form.data.role} error={form.errors.role} onChange={(value) => form.setData('role', value)}>
+                                <option value="admin">Admin Universitas</option>
+                                <option value="finance">Admin Finance</option>
+                                <option value="teacher">Dosen</option>
+                                <option value="student">Mahasiswa</option>
+                            </SelectField>
+                            <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                            <div className="md:col-span-2">
                                 <Field
-                                    label={isEditing ? 'Password Baru (Opsional)' : 'Password'}
+                                    label={isEditing ? 'Password Baru (Opsional)' : 'Password Sementara'}
                                     type="password"
                                     value={form.data.password}
                                     error={form.errors.password}
                                     onChange={(value) => form.setData('password', value)}
+                                    placeholder="Min. 8 karakter"
                                 />
-                                <div className="md:col-span-2 xl:col-span-6 flex justify-end gap-2">
-                                    <button type="button" onClick={closeForm} className="px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium">Batal</button>
-                                    <button type="submit" disabled={form.processing || mocked} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                                        {form.processing ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Tambah User'}
-                                    </button>
-                                </div>
-                            </form>
+                            </div>
                         </div>
-                    )}
+                    </CreateFormModal>
 
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[980px] text-sm">
@@ -327,7 +325,7 @@ function Field({ label, value, onChange, error, type = 'text' }) {
                 type={type}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
         </label>
@@ -341,7 +339,7 @@ function SelectField({ label, value, onChange, error, children }) {
             <select
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
                 {children}
             </select>

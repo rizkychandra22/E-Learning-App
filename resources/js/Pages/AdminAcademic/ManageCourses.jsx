@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, X, Upload, Download, BookOpen, Users, Star, Clock3 } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Upload, Download, BookOpen, Users, Star, Clock3 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const emptyForm = {
     title: '',
@@ -212,60 +213,55 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                         </div>
                     </div>
 
-                    {showForm && (
-                        <div className="panel-subcard p-4 mb-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-semibold">{isEditing ? 'Edit Kursus' : 'Tambah Kursus'}</h4>
-                                <button type="button" onClick={closeForm} className="p-1.5 rounded-md hover:bg-secondary"><X className="w-4 h-4" /></button>
-                            </div>
-
-                            <form onSubmit={submitForm} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                                <Field label="Judul" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                                <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
-                                <Field label="Kategori" value={form.data.category} error={form.errors.category} onChange={(value) => form.setData('category', value)} />
-                                <Field label="Tags" value={form.data.tags} error={form.errors.tags} onChange={(value) => form.setData('tags', value)} placeholder="react, laravel" />
-                                <SelectField label="Jurusan" value={form.data.jurusan_id} error={form.errors.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)}>
-                                    <option value="">Pilih Jurusan</option>
-                                    {jurusans.map((item) => (
-                                        <option key={item.id} value={item.id}>{item.name}</option>
-                                    ))}
-                                </SelectField>
-                                <SelectField label="Dosen" value={form.data.lecturer_id} error={form.errors.lecturer_id} onChange={(value) => form.setData('lecturer_id', value)}>
-                                    <option value="">Pilih Dosen</option>
-                                    {lecturers.map((item) => (
-                                        <option key={item.id} value={item.id}>{item.name}</option>
-                                    ))}
-                                </SelectField>
-                                <SelectField label="Level" value={form.data.level} error={form.errors.level} onChange={(value) => form.setData('level', value)}>
-                                    <option value="dasar">Pemula</option>
-                                    <option value="menengah">Menengah</option>
-                                    <option value="lanjutan">Lanjutan</option>
-                                </SelectField>
-                                <SelectField label="Status" value={form.data.status} error={form.errors.status} onChange={(value) => form.setData('status', value)}>
-                                    <option value="draft">Draft</option>
-                                    <option value="active">Aktif</option>
-                                    <option value="archived">Arsip</option>
-                                </SelectField>
-                                <Field label="Semester" type="number" value={form.data.semester} error={form.errors.semester} onChange={(value) => form.setData('semester', value)} />
-                                <Field label="SKS" type="number" value={form.data.credit_hours} error={form.errors.credit_hours} onChange={(value) => form.setData('credit_hours', value)} />
-                                <label className="md:col-span-2 xl:col-span-4 block">
-                                    <span className="text-sm font-medium">Deskripsi</span>
-                                    <textarea
-                                        rows={3}
-                                        value={form.data.description}
-                                        onChange={(event) => form.setData('description', event.target.value)}
-                                        className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm"
-                                    />
-                                </label>
-                                <div className="md:col-span-2 xl:col-span-4 flex justify-end gap-2">
-                                    <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Reset Filter</button>
-                                    <button type="submit" disabled={form.processing || mocked || migrationRequired} className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                                        {form.processing ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Tambah Kursus'}
-                                    </button>
-                                </div>
-                            </form>
+                    <CreateFormModal
+                        open={showForm}
+                        title={isEditing ? 'Edit Kursus' : 'Tambah Kursus'}
+                        onClose={closeForm}
+                        onSubmit={submitForm}
+                        submitLabel="Simpan"
+                        processing={form.processing}
+                        disableSubmit={mocked || migrationRequired}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Field label="Nama Kursus" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
+                            <Field label="Kode Kursus" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                            <Field label="Kategori" value={form.data.category} error={form.errors.category} onChange={(value) => form.setData('category', value)} />
+                            <Field label="Tags" value={form.data.tags} error={form.errors.tags} onChange={(value) => form.setData('tags', value)} placeholder="react, laravel" />
+                            <SelectField label="Program Studi" value={form.data.jurusan_id} error={form.errors.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)}>
+                                <option value="">Pilih Jurusan</option>
+                                {jurusans.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </SelectField>
+                            <SelectField label="Dosen Pengampu" value={form.data.lecturer_id} error={form.errors.lecturer_id} onChange={(value) => form.setData('lecturer_id', value)}>
+                                <option value="">Pilih Dosen</option>
+                                {lecturers.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </SelectField>
+                            <SelectField label="Level" value={form.data.level} error={form.errors.level} onChange={(value) => form.setData('level', value)}>
+                                <option value="dasar">Pemula</option>
+                                <option value="menengah">Menengah</option>
+                                <option value="lanjutan">Lanjutan</option>
+                            </SelectField>
+                            <SelectField label="Status" value={form.data.status} error={form.errors.status} onChange={(value) => form.setData('status', value)}>
+                                <option value="draft">Draft</option>
+                                <option value="active">Aktif</option>
+                                <option value="archived">Arsip</option>
+                            </SelectField>
+                            <Field label="Semester" type="number" value={form.data.semester} error={form.errors.semester} onChange={(value) => form.setData('semester', value)} />
+                            <Field label="SKS" type="number" value={form.data.credit_hours} error={form.errors.credit_hours} onChange={(value) => form.setData('credit_hours', value)} />
+                            <label className="md:col-span-2 block">
+                                <span className="text-sm font-medium">Deskripsi</span>
+                                <textarea
+                                    rows={3}
+                                    value={form.data.description}
+                                    onChange={(event) => form.setData('description', event.target.value)}
+                                    className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm"
+                                />
+                            </label>
                         </div>
-                    )}
+                    </CreateFormModal>
 
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
                         {courses.map((course, idx) => {
@@ -353,7 +349,7 @@ function Field({ label, value, onChange, error, type = 'text', placeholder = '' 
                 value={value}
                 placeholder={placeholder}
                 onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
         </label>
@@ -364,7 +360,7 @@ function SelectField({ label, value, onChange, error, children }) {
     return (
         <label className="block">
             <span className="text-sm font-medium">{label}</span>
-            <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
                 {children}
             </select>
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
