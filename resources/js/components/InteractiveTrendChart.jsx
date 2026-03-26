@@ -173,8 +173,8 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter, compact = fa
 
     if (compact) {
         return (
-            <div className="space-y-3">
-                <div className="mx-auto relative h-[170px] w-[170px]">
+            <div className="space-y-2.5">
+                <div className="mx-auto relative h-[150px] w-[150px]">
                     <svg viewBox="0 0 220 220" className="h-full w-full">
                         {segments.map((segment) => (
                             <path
@@ -187,21 +187,28 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter, compact = fa
                     </svg>
                     <div className="absolute inset-0 grid place-items-center text-center">
                         <p className="text-xs text-muted-foreground">Total</p>
-                        <p className="text-lg font-bold">{valueFormatter(total)}</p>
+                        <p className="text-base font-bold">{valueFormatter(total)}</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
                     {segments.map((segment) => (
-                        <div key={segment.label} className="rounded-lg border border-border bg-background px-2.5 py-2">
-                            <div className="flex items-center justify-between gap-2">
+                        <div
+                            key={segment.label}
+                            className={cn(
+                                'rounded-lg px-2 py-1.5 transition-colors',
+                                segment.index === safeActiveIndex ? 'bg-primary/10' : 'hover:bg-secondary/60'
+                            )}
+                            onMouseEnter={() => onSetActive(segment.index)}
+                        >
+                            <div className="flex items-center justify-between gap-2 text-sm">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: segment.color }} />
-                                    <span className="text-sm font-medium truncate">{segment.label}</span>
+                                    <span className="font-medium truncate">{segment.label}</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground">{(segment.fraction * 100).toFixed(1)}%</span>
+                                <span className="font-semibold">{valueFormatter(segment.value)}</span>
                             </div>
-                            <p className="text-sm font-semibold mt-1">{valueFormatter(segment.value)}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{(segment.fraction * 100).toFixed(1)}%</p>
                         </div>
                     ))}
                 </div>

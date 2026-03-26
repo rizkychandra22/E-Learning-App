@@ -396,25 +396,29 @@ function ModernTrendChart({ title, data = [], valueFormatter = (value) => String
 function BarColumnChart({ title, data = [], valueFormatter = (value) => String(value) }) {
     if (!data.length) return null;
     const maxValue = Math.max(...data.map((item) => Number(item.value) || 0), 1);
+    const minBarHeightPercent = 28;
 
     return (
         <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '360ms' }}>
             <SectionTitle icon={BarChart3}>{title}</SectionTitle>
             <div className="mt-4 panel-subcard p-3">
-                <div className="grid grid-cols-6 gap-2">
+                <div className="grid grid-cols-6 gap-2.5">
                     {data.map((item) => {
                         const value = Number(item.value) || 0;
-                        const height = Math.max((value / maxValue) * 100, 12);
+                        const height = Math.max((value / maxValue) * 100, minBarHeightPercent);
                         return (
                             <div key={item.label} className="flex flex-col items-center gap-2">
-                                <div className="h-40 w-full flex items-end">
-                                    <div className="w-full rounded-t-md gradient-primary transition-all duration-500" style={{ height: `${height}%` }} />
+                                <div className="h-[180px] w-full flex items-end">
+                                    <div className="w-full rounded-t-xl gradient-primary transition-all duration-500" style={{ height: `${height}%` }} />
                                 </div>
                                 <span className="text-[11px] text-muted-foreground">{item.label}</span>
                             </div>
                         );
                     })}
                 </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                    Tertinggi: <span className="font-semibold text-foreground">{valueFormatter(maxValue)}</span>
+                </p>
             </div>
         </div>
     );
@@ -897,7 +901,7 @@ export default function Dashboard() {
                                     <p className="text-sm text-muted-foreground mt-1">Kelola kursus, dosen, dan mahasiswa universitas</p>
                                 </div>
                                 <a href="/manage-courses" className="inline-flex items-center justify-center px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold no-underline">
-                                    + Tambah
+                                    + Tambah Kursus
                                 </a>
                             </div>
                         </div>
