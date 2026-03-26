@@ -40,7 +40,7 @@ export default function AcademicReport({
             <Head title="Laporan Akademik" />
 
             <div className="space-y-6 w-full max-w-none">
-                <section className="panel-card p-5 sm:p-6">
+                <section className="dashboard-hero-panel">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -80,7 +80,7 @@ export default function AcademicReport({
                     <StatCard title="Rata-rata Nilai" value={summary?.average_score ?? 0} change="+3.2 dari periode lalu" icon={Trophy} gradient="accent" />
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
                     <div className="xl:col-span-8">
                         <InteractiveTrendChart
                             title="Tren Pendaftaran"
