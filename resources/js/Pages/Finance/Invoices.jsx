@@ -1,10 +1,9 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, X, TriangleAlert } from 'lucide-react';
+import { Eye, FileText, Plus, Search, Send, Trash2, TriangleAlert } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
-import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { DataCardList, DataCard, CardBadge, CardField, CardActions } from '@/components/DataCardList';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const emptyForm = {
     student_id: '',
@@ -16,46 +15,56 @@ const emptyForm = {
     status: 'unpaid',
 };
 
-const statusBadge = {
-    unpaid: 'bg-warning/20 text-warning',
-    partial: 'bg-info/20 text-info',
-    paid: 'bg-success/15 text-success',
-    overdue: 'bg-destructive/15 text-destructive',
-    cancelled: 'bg-secondary text-secondary-foreground',
-};
+const STATUS_OPTIONS = [
+    { key: 'all', label: 'Semua' },
+    { key: 'paid', label: 'Lunas' },
+    { key: 'unpaid', label: 'Belum' },
+    { key: 'partial', label: 'Sebagian' },
+    { key: 'overdue', label: 'Terlambat' },
+];
 
-export default function Invoices({ migrationRequired, invoices, students, feeComponents, filters, mocked }) {
+export default function Invoices({ migrationRequired, invoices = [], students = [], feeComponents = [], filters, mocked }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
+    const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const form = useForm(emptyForm);
-    const isEditing = editingId !== null;
 
-    const selectedInvoice = useMemo(() => invoices.find((item) => item.id === editingId) ?? null, [invoices, editingId]);
+    const summary = useMemo(() => {
+        const total = invoices.length;
+        const paid = invoices.filter((item) => item.status === 'paid').length;
+        const unpaid = invoices.filter((item) => item.status === 'unpaid' || item.status === 'overdue').length;
+        const partial = invoices.filter((item) => item.status === 'partial').length;
+        return { total, paid, unpaid, partial };
+    }, [invoices]);
 
     const submitFilter = (event) => {
         event.preventDefault();
         router.get('/finance-invoices', { search, status: statusFilter }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
-    const resetFilter = () => {
-        setSearch('');
-        setStatusFilter('all');
-        router.get('/finance-invoices', {}, { preserveState: true, preserveScroll: true, replace: true });
+    const submitForm = (event) => {
+        event.preventDefault();
+        if (editingId) {
+            form.put(`/finance-invoices/${editingId}`, { preserveScroll: true, onSuccess: () => closeForm() });
+            return;
+        }
+        form.post('/finance-invoices', { preserveScroll: true, onSuccess: () => closeForm() });
     };
 
-    const beginCreate = () => {
+    const openCreate = () => {
         setEditingId(null);
         form.setData(emptyForm);
         form.clearErrors();
+        setShowForm(true);
     };
 
-    const beginEdit = (invoice) => {
+    const openEdit = (invoice) => {
         setEditingId(invoice.id);
         form.setData({
-            student_id: invoice.student_id ? String(invoice.student_id) : '',
-            fee_component_id: invoice.fee_component_id ? String(invoice.fee_component_id) : '',
+            student_id: String(invoice.student_id ?? ''),
+            fee_component_id: String(invoice.fee_component_id ?? ''),
             title: invoice.title ?? '',
             description: invoice.description ?? '',
             amount: invoice.amount ?? '',
@@ -63,19 +72,17 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
             status: invoice.status ?? 'unpaid',
         });
         form.clearErrors();
+        setShowForm(true);
     };
 
-    const submitForm = (event) => {
-        event.preventDefault();
-        if (isEditing) {
-            form.put(`/finance-invoices/${editingId}`, { preserveScroll: true });
-            return;
-        }
-        form.post('/finance-invoices', { preserveScroll: true });
+    const closeForm = () => {
+        setShowForm(false);
+        setEditingId(null);
+        form.setData(emptyForm);
     };
 
-    const destroyInvoice = (invoice) => {
-        if (!window.confirm(`Hapus invoice ${invoice.invoice_no}?`)) return;
+    const removeInvoice = (invoice) => {
+        if (!window.confirm(`Hapus tagihan ${invoice.invoice_no}?`)) return;
         router.delete(`/finance-invoices/${invoice.id}`, { preserveScroll: true });
     };
 
@@ -83,14 +90,20 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
         <ProtectedLayout>
             <Head title="Tagihan" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Tagihan" description="Kelola invoice/tagihan mahasiswa" />
+                <section className="dashboard-hero-panel">
+                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                        <FileText className="w-6 h-6 text-primary" />
+                        Tagihan
+                    </h1>
+                    <p className="text-muted-foreground mt-1">Kelola tagihan pembayaran mahasiswa</p>
+                </section>
 
                 {mocked && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
                         <TriangleAlert className="w-5 h-5 mt-0.5" />
                         <div className="text-sm">
                             <p className="font-semibold">Mode data mock aktif.</p>
-                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                            <p>Data contoh dipakai untuk preview tampilan.</p>
                         </div>
                     </div>
                 )}
@@ -105,147 +118,151 @@ export default function Invoices({ migrationRequired, invoices, students, feeCom
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 panel-card overflow-hidden">
-                        <div className="p-4 border-b border-border">
-                            <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(event) => setSearch(event.target.value)}
-                                        placeholder="Cari invoice..."
-                                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    />
-                                </div>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(event) => setStatusFilter(event.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-border bg-background text-sm md:w-48 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                >
-                                    <option value="all">Semua Status</option>
-                                    <option value="unpaid">Unpaid</option>
-                                    <option value="partial">Partial</option>
-                                    <option value="paid">Paid</option>
-                                    <option value="overdue">Overdue</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
-                                <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                                <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
-                            </form>
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <StatCard title="Total Tagihan" value={summary.total} tone="gradient-primary" />
+                    <StatCard title="Lunas" value={summary.paid} tone="gradient-success" />
+                    <StatCard title="Belum Bayar" value={summary.unpaid} tone="bg-gradient-to-r from-pink-600 to-rose-500" />
+                    <StatCard title="Sebagian" value={summary.partial} tone="gradient-warm" />
+                </div>
 
-                        <div className="p-4">
-                            <DataCardList
-                                items={invoices}
-                                emptyText="Belum ada data tagihan."
-                                renderCard={(invoice) => (
-                                    <DataCard key={invoice.id} accentColor={`hsl(var(--primary))`}>
-                                        <div className="flex flex-col gap-3">
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-semibold">{invoice.title}</p>
-                                                    <p className="text-xs text-muted-foreground">{invoice.invoice_no}</p>
-                                                </div>
-                                                <CardBadge className={statusBadge[invoice.status] ?? 'bg-secondary text-secondary-foreground'}>{invoice.status}</CardBadge>
-                                            </div>
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                <CardField label="Mahasiswa" value={invoice.student?.name ?? '-'} />
-                                                <CardField label="Komponen" value={invoice.fee_component?.name ?? '-'} />
-                                                <CardField label="Jatuh Tempo" value={invoice.due_date ?? '-'} />
-                                                <CardField label="Amount" value={new Intl.NumberFormat(intlLocale).format(invoice.amount ?? 0)} />
-                                            </div>
-                                        </div>
-                                        <CardActions>
-                                            <button
-                                                type="button"
-                                                onClick={() => beginEdit(invoice)}
-                                                disabled={mocked || invoice.is_mock}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
-                                            >
-                                                <Pencil className="w-3.5 h-3.5" />
-                                                Edit
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => destroyInvoice(invoice)}
-                                                disabled={mocked || invoice.is_mock}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                Hapus
-                                            </button>
-                                        </CardActions>
-                                    </DataCard>
-                                )}
-                            />
+                <section className="panel-card p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h2 className="font-semibold text-xl">Daftar Tagihan</h2>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="inline-flex items-center rounded-lg border border-border bg-background p-1">
+                                {STATUS_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.key}
+                                        type="button"
+                                        onClick={() => setStatusFilter(option.key)}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium ${statusFilter === option.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <form onSubmit={submitFilter} className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    placeholder="Cari tagihan..."
+                                    className="pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm w-[220px]"
+                                />
+                            </form>
+                            <button
+                                type="button"
+                                onClick={openCreate}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Buat Tagihan
+                            </button>
                         </div>
                     </div>
 
-                    <div className="panel-card p-4 h-fit">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-semibold">{isEditing ? 'Edit Tagihan' : 'Buat Tagihan'}</h2>
-                            {isEditing && (
-                                <button type="button" onClick={beginCreate} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Batalkan edit">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
-
-                        {isEditing && selectedInvoice && (
-                            <p className="text-xs text-muted-foreground mb-4">
-                                Mengubah invoice <span className="font-medium text-foreground">{selectedInvoice.invoice_no}</span>
-                            </p>
-                        )}
-
-                        <form onSubmit={submitForm} className="space-y-3">
-                            <SelectField label="Mahasiswa" value={form.data.student_id} error={form.errors.student_id} onChange={(value) => form.setData('student_id', value)}>
-                                <option value="">Pilih Mahasiswa</option>
-                                {students.map((student) => (
-                                    <option key={student.id} value={student.id}>
-                                        {student.name} ({student.code})
-                                    </option>
-                                ))}
+                    <CreateFormModal
+                        open={showForm}
+                        title={editingId ? 'Edit Tagihan' : 'Tambah Tagihan'}
+                        onClose={closeForm}
+                        onSubmit={submitForm}
+                        submitLabel="Simpan"
+                        processing={form.processing}
+                        disableSubmit={mocked || migrationRequired}
+                        maxWidthClass="max-w-4xl"
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <SelectField label="Mahasiswa" value={form.data.student_id} onChange={(value) => form.setData('student_id', value)} error={form.errors.student_id}>
+                                <option value="">Pilih mahasiswa</option>
+                                {students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}
                             </SelectField>
-                            <SelectField label="Komponen Biaya" value={form.data.fee_component_id} error={form.errors.fee_component_id} onChange={(value) => form.setData('fee_component_id', value)}>
-                                <option value="">Pilih Komponen</option>
-                                {feeComponents.map((component) => (
-                                    <option key={component.id} value={component.id}>
-                                        {component.name} ({new Intl.NumberFormat(intlLocale).format(component.amount)})
-                                    </option>
-                                ))}
+                            <SelectField label="Komponen" value={form.data.fee_component_id} onChange={(value) => form.setData('fee_component_id', value)} error={form.errors.fee_component_id}>
+                                <option value="">Pilih komponen</option>
+                                {feeComponents.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                             </SelectField>
-                            <Field label="Judul Tagihan" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                            <Field label="Amount" type="number" value={form.data.amount} error={form.errors.amount} onChange={(value) => form.setData('amount', value)} />
-                            <Field label="Jatuh Tempo" type="date" value={form.data.due_date} error={form.errors.due_date} onChange={(value) => form.setData('due_date', value)} />
-                            <SelectField label="Status" value={form.data.status} error={form.errors.status} onChange={(value) => form.setData('status', value)}>
-                                <option value="unpaid">Unpaid</option>
-                                <option value="partial">Partial</option>
-                                <option value="paid">Paid</option>
-                                <option value="overdue">Overdue</option>
-                                <option value="cancelled">Cancelled</option>
+                            <Field label="Jenis Tagihan" value={form.data.title} onChange={(value) => form.setData('title', value)} error={form.errors.title} />
+                            <Field label="Jumlah" type="number" value={form.data.amount} onChange={(value) => form.setData('amount', value)} error={form.errors.amount} />
+                            <Field label="Jatuh Tempo" type="date" value={form.data.due_date} onChange={(value) => form.setData('due_date', value)} error={form.errors.due_date} />
+                            <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}>
+                                <option value="unpaid">Belum Bayar</option>
+                                <option value="partial">Sebagian</option>
+                                <option value="paid">Lunas</option>
+                                <option value="overdue">Terlambat</option>
+                                <option value="cancelled">Dibatalkan</option>
                             </SelectField>
-                            <label className="block">
-                                <span className="text-sm font-medium">Deskripsi</span>
+                            <label className="md:col-span-2 block">
+                                <span className="text-sm font-medium">Catatan</span>
                                 <textarea
+                                    rows={3}
                                     value={form.data.description}
                                     onChange={(event) => form.setData('description', event.target.value)}
-                                    rows={3}
-                                    className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm"
+                                    placeholder="Opsional"
                                 />
-                                {form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}
                             </label>
+                        </div>
+                    </CreateFormModal>
 
-                            <button type="submit" disabled={form.processing || migrationRequired || mocked} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                                <Plus className="w-4 h-4" />
-                                {isEditing ? 'Simpan Perubahan' : 'Buat Tagihan'}
-                            </button>
-                        </form>
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[980px] text-sm">
+                            <thead>
+                                <tr className="text-left text-muted-foreground border-b border-border">
+                                    <th className="py-2 px-2">ID Tagihan</th>
+                                    <th className="py-2 px-2">Mahasiswa</th>
+                                    <th className="py-2 px-2">Jenis</th>
+                                    <th className="py-2 px-2">Jumlah</th>
+                                    <th className="py-2 px-2">Jatuh Tempo</th>
+                                    <th className="py-2 px-2">Status</th>
+                                    <th className="py-2 px-2">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invoices.map((invoice) => (
+                                    <tr key={invoice.id} className="border-b border-border/70">
+                                        <td className="py-2.5 px-2 text-xs text-muted-foreground font-semibold">{invoice.invoice_no}</td>
+                                        <td className="py-2.5 px-2">
+                                            <p className="font-medium">{invoice.student?.name ?? '-'}</p>
+                                            <p className="text-xs text-muted-foreground">NIM: {invoice.student?.code ?? '-'}</p>
+                                        </td>
+                                        <td className="py-2.5 px-2 font-medium">{invoice.title}</td>
+                                        <td className="py-2.5 px-2 text-success font-semibold">Rp {new Intl.NumberFormat(intlLocale).format(Number(invoice.amount ?? 0))}</td>
+                                        <td className="py-2.5 px-2 text-muted-foreground">{formatDate(invoice.due_date)}</td>
+                                        <td className="py-2.5 px-2">{statusBadge(invoice.status)}</td>
+                                        <td className="py-2.5 px-2">
+                                            <div className="inline-flex items-center gap-2">
+                                                <button type="button" onClick={() => window.alert(`Detail ${invoice.invoice_no}`)} className="text-muted-foreground hover:text-foreground">
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => window.alert(`Kirim pengingat ${invoice.invoice_no}`)} className="text-info hover:opacity-80">
+                                                    <Send className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => openEdit(invoice)} disabled={mocked || invoice.is_mock} className="text-primary hover:opacity-80 disabled:opacity-50">
+                                                    <FileText className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => removeInvoice(invoice)} disabled={mocked || invoice.is_mock} className="text-destructive hover:opacity-80 disabled:opacity-50">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                </section>
             </div>
         </ProtectedLayout>
+    );
+}
+
+function StatCard({ title, value, tone }) {
+    return (
+        <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card ${tone}`}>
+            <div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" />
+            <p className="text-sm text-white/85">{title}</p>
+            <p className="mt-1 text-4xl leading-none font-bold">{value}</p>
+        </div>
     );
 }
 
@@ -257,7 +274,7 @@ function Field({ label, value, onChange, error, type = 'text' }) {
                 type={type}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
         </label>
@@ -268,11 +285,7 @@ function SelectField({ label, value, onChange, error, children }) {
     return (
         <label className="block">
             <span className="text-sm font-medium">{label}</span>
-            <select
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
+            <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
                 {children}
             </select>
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
@@ -280,3 +293,27 @@ function SelectField({ label, value, onChange, error, children }) {
     );
 }
 
+function formatDate(value) {
+    if (!value) return '-';
+    return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function statusBadge(status) {
+    const map = {
+        paid: 'bg-success/15 text-success',
+        unpaid: 'bg-destructive/15 text-destructive',
+        partial: 'bg-warning/20 text-warning',
+        overdue: 'bg-destructive/15 text-destructive',
+        cancelled: 'bg-secondary text-secondary-foreground',
+    };
+
+    const labelMap = {
+        paid: 'Lunas',
+        unpaid: 'Belum Bayar',
+        partial: 'Sebagian',
+        overdue: 'Belum Bayar',
+        cancelled: 'Dibatalkan',
+    };
+
+    return <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${map[status] ?? map.cancelled}`}>{labelMap[status] ?? status}</span>;
+}

@@ -327,7 +327,7 @@ function ModernTrendChart({ title, data = [], valueFormatter = (value) => String
                     </p>
                 </div>
             </div>
-            <div className="mt-4 panel-subcard p-3">
+            <div className="mt-3 panel-subcard p-3">
                 <div className="w-full overflow-hidden" onMouseMove={handleMouseMove} onMouseLeave={() => setActiveIndex(data.length ? data.length - 1 : 0)}>
                     <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className={cn('w-full', UI.chartHeightClass)}>
                         <defs>
@@ -407,16 +407,13 @@ function BarColumnChart({ title, data = [], valueFormatter = (value) => String(v
                         const height = Math.max((value / maxValue) * 100, 12);
                         return (
                             <div key={item.label} className="flex flex-col items-center gap-2">
-                                <div className="h-44 w-full flex items-end">
+                                <div className="h-40 w-full flex items-end">
                                     <div className="w-full rounded-t-md gradient-primary transition-all duration-500" style={{ height: `${height}%` }} />
                                 </div>
                                 <span className="text-[11px] text-muted-foreground">{item.label}</span>
                             </div>
                         );
                     })}
-                </div>
-                <div className="mt-2 text-xs text-muted-foreground">
-                    Tertinggi: <span className="font-semibold text-foreground">{valueFormatter(maxValue)}</span>
                 </div>
             </div>
         </div>
@@ -785,6 +782,13 @@ export default function Dashboard() {
         { label: 'E-Wallet', value: 12 },
         { label: 'Kartu Kredit', value: 4 },
     ];
+    const financeRecentTransactions = [
+        { name: 'Andi Pratama', type: 'Pembayaran SPP', amount: 2500000, date: '22 Mar 2026', status: 'verified' },
+        { name: 'Sari Dewi', type: 'Pembayaran SPP', amount: 2500000, date: '22 Mar 2026', status: 'verified' },
+        { name: 'Budi Kurniawan', type: 'Tunggakan Semester 2', amount: 5000000, date: '20 Mar 2026', status: 'pending' },
+        { name: 'Maya Sari', type: 'Pembayaran Kursus', amount: 750000, date: '19 Mar 2026', status: 'verified' },
+        { name: 'Riko Febrian', type: 'Pembayaran SPP', amount: 2500000, date: '18 Mar 2026', status: 'rejected' },
+    ];
 
     const dosenRadarData = [
         { label: 'Kehadiran', value: 82 },
@@ -855,10 +859,10 @@ export default function Dashboard() {
                 {user.role === 'finance' && (
                     <KpiGrid
                         cards={[
-                            { title: 'Total Tagihan', value: financeData?.summary?.total_invoices ?? 0, icon: FileText, gradient: 'primary', delay: 0 },
-                            { title: 'Pembayaran Pending', value: financeData?.summary?.pending_payments ?? 0, icon: Clock, gradient: 'warm', delay: 80 },
-                            { title: 'Pembayaran Terverifikasi', value: financeData?.summary?.verified_payments ?? 0, icon: Shield, gradient: 'accent', delay: 160 },
-                            { title: 'Pendapatan Bulan Ini', value: new Intl.NumberFormat(intlLocale).format(financeData?.summary?.income_month ?? 0), icon: TrendingUp, gradient: 'success', delay: 240 },
+                            { title: 'Total Pendapatan', value: `Rp ${new Intl.NumberFormat(intlLocale).format(financeData?.summary?.income_month ?? 0)}`, change: '+18%', icon: Wallet, gradient: 'accent', delay: 0 },
+                            { title: 'Pembayaran Bulan Ini', value: `Rp ${new Intl.NumberFormat(intlLocale).format(Math.max((financeData?.summary?.income_month ?? 0) * 0.15, 0))}`, change: '+7%', icon: FileText, gradient: 'primary', delay: 80 },
+                            { title: 'Tagihan Tertunggak', value: `Rp ${new Intl.NumberFormat(intlLocale).format(financeData?.summary?.outstanding ?? 0)}`, change: `${financeData?.summary?.pending_payments ?? 0} mahasiswa`, icon: Clock, gradient: 'warm', delay: 160 },
+                            { title: 'Beasiswa Disalurkan', value: `Rp ${new Intl.NumberFormat(intlLocale).format(Math.max((financeData?.summary?.income_month ?? 0) * 0.05, 0))}`, change: `${Math.max(Math.round((financeData?.summary?.verified_payments ?? 0) * 0.35), 0)} penerima`, icon: Award, gradient: 'success', delay: 240 },
                         ]}
                     />
                 )}
@@ -898,7 +902,7 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
                             <div className="xl:col-span-8">
                                 <BarColumnChart title="Tren Enrollment" data={adminEnrollmentData} />
                             </div>
@@ -938,6 +942,64 @@ export default function Dashboard() {
                             </div>
                         </div>
                     </div>
+                ) : user.role === 'finance' ? (
+                    <div className="space-y-4 sm:space-y-6">
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
+                            <div className="xl:col-span-8">
+                                {financeSeriesData.length > 0 ? (
+                                    <FinanceCompareChart
+                                        title="Pemasukan vs Pengeluaran"
+                                        data={financeSeriesData}
+                                        valueFormatter={(value) => `${new Intl.NumberFormat(intlLocale).format(value)}`}
+                                    />
+                                ) : (
+                                    <TrendEmptyState title="Pemasukan vs Pengeluaran" />
+                                )}
+                            </div>
+                            <div className="xl:col-span-4">
+                                <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} />
+                            </div>
+                        </div>
+
+                        <div className={cn(UI.panelClass, 'animate-fade-in')}>
+                            <SectionTitle icon={Wallet}>Transaksi Terbaru</SectionTitle>
+                            <div className="mt-4 overflow-x-auto">
+                                <table className="w-full min-w-[760px] text-sm">
+                                    <thead>
+                                        <tr className="text-left text-muted-foreground border-b border-border">
+                                            <th className="py-2 px-2 font-medium">Nama</th>
+                                            <th className="py-2 px-2 font-medium">Jenis</th>
+                                            <th className="py-2 px-2 font-medium">Jumlah</th>
+                                            <th className="py-2 px-2 font-medium">Tanggal</th>
+                                            <th className="py-2 px-2 font-medium">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {financeRecentTransactions.map((tx) => (
+                                            <tr key={`${tx.name}-${tx.date}-${tx.amount}`} className="border-b border-border/70">
+                                                <td className="py-2.5 px-2 font-medium">{tx.name}</td>
+                                                <td className="py-2.5 px-2 text-muted-foreground">{tx.type}</td>
+                                                <td className="py-2.5 px-2 text-success font-semibold">Rp {new Intl.NumberFormat(intlLocale).format(tx.amount)}</td>
+                                                <td className="py-2.5 px-2 text-muted-foreground">{tx.date}</td>
+                                                <td className="py-2.5 px-2">
+                                                    <span
+                                                        className={cn(
+                                                            'inline-flex px-2.5 py-1 rounded-full text-xs font-medium',
+                                                            tx.status === 'verified' && 'bg-success/15 text-success',
+                                                            tx.status === 'pending' && 'bg-warning/20 text-warning',
+                                                            tx.status === 'rejected' && 'bg-destructive/15 text-destructive'
+                                                        )}
+                                                    >
+                                                        {tx.status === 'verified' ? 'Berhasil' : tx.status === 'pending' ? 'Menunggu' : 'Gagal'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -946,20 +1008,6 @@ export default function Dashboard() {
                             <>
                                 <BarColumnChart title="Tren Enrollment" data={adminEnrollmentData} />
                                 <RecentActivity title="Aktivitas Akademik" intlLocale={intlLocale} activities={adminAcademic?.recent_activities ?? []} />
-                            </>
-                        )}
-
-                        {user.role === 'finance' && (
-                            <>
-                                {financeSeriesData.length > 0
-                                    ? (
-                                        <FinanceCompareChart
-                                            title="Pemasukan vs Pengeluaran"
-                                            data={financeSeriesData}
-                                            valueFormatter={(value) => new Intl.NumberFormat(intlLocale).format(value)}
-                                        />
-                                    ) : <TrendEmptyState title="Pemasukan vs Pengeluaran" />}
-                                <RecentActivity title="Transaksi Terbaru" intlLocale={intlLocale} activities={financeData?.recent_activities ?? []} />
                             </>
                         )}
 
@@ -991,7 +1039,6 @@ export default function Dashboard() {
                         </div>
                         <div className="space-y-4 sm:space-y-6">
                         {user.role === 'admin' && <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />}
-                        {user.role === 'finance' && <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} />}
                         {user.role === 'dosen' && <RadarPerformanceChart title="Rata-rata Nilai Kelas" data={dosenRadarData} />}
                         {(user.role === 'mahasiswa' || user.role === 'dosen') && <CourseProgress />}
                         <UpcomingSchedule />

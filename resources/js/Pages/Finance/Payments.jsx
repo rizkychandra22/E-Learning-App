@@ -1,69 +1,64 @@
-import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { Search, Plus, CheckCircle2, XCircle, TriangleAlert } from 'lucide-react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { Download, Search, TriangleAlert, Wallet } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
-import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { DataCardList, DataCard, CardBadge, CardField, CardActions } from '@/components/DataCardList';
 
-const emptyForm = {
-    invoice_id: '',
-    student_id: '',
-    amount: '',
-    method: 'bank_transfer',
-    paid_at: '',
-    status: 'pending',
-    notes: '',
-};
+const FILTERS = [
+    { key: 'all', label: 'Semua' },
+    { key: 'verified', label: 'Berhasil' },
+    { key: 'pending', label: 'Menunggu' },
+    { key: 'rejected', label: 'Gagal' },
+];
 
-const statusBadge = {
-    pending: 'bg-warning/20 text-warning',
-    verified: 'bg-success/15 text-success',
-    rejected: 'bg-destructive/15 text-destructive',
-};
-
-export default function Payments({ migrationRequired, payments, invoices, students, filters, mocked }) {
+export default function Payments({ migrationRequired, payments = [], filters, mocked }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
-    const form = useForm(emptyForm);
+
+    const summary = useMemo(() => {
+        const total = payments.length;
+        const verified = payments.filter((item) => item.status === 'verified').length;
+        const pending = payments.filter((item) => item.status === 'pending').length;
+        const rejected = payments.filter((item) => item.status === 'rejected').length;
+        return { total, verified, pending, rejected };
+    }, [payments]);
 
     const submitFilter = (event) => {
         event.preventDefault();
         router.get('/finance-payments', { search, status: statusFilter }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
-    const resetFilter = () => {
-        setSearch('');
-        setStatusFilter('all');
-        router.get('/finance-payments', {}, { preserveState: true, preserveScroll: true, replace: true });
-    };
-
-    const submitForm = (event) => {
-        event.preventDefault();
-        form.post('/finance-payments', { preserveScroll: true, onSuccess: () => form.reset() });
-    };
-
-    const verifyPayment = (payment) => {
-        router.put(`/finance-payments/${payment.id}/verify`, {}, { preserveScroll: true });
-    };
-
-    const rejectPayment = (payment) => {
-        router.put(`/finance-payments/${payment.id}/reject`, {}, { preserveScroll: true });
-    };
-
     return (
         <ProtectedLayout>
             <Head title="Pembayaran" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Pembayaran" description="Catat dan verifikasi pembayaran mahasiswa" />
+                <section className="dashboard-hero-panel">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                                <Wallet className="w-6 h-6 text-primary" />
+                                Pembayaran
+                            </h1>
+                            <p className="text-muted-foreground mt-1">Riwayat dan verifikasi semua transaksi pembayaran</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => window.alert('Export transaksi akan dihubungkan ke file CSV/PDF.')}
+                            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium"
+                        >
+                            <Download className="w-4 h-4" />
+                            Export
+                        </button>
+                    </div>
+                </section>
 
                 {mocked && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
                         <TriangleAlert className="w-5 h-5 mt-0.5" />
                         <div className="text-sm">
                             <p className="font-semibold">Mode data mock aktif.</p>
-                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
+                            <p>Data contoh ditampilkan untuk meninjau template terbaru.</p>
                         </div>
                     </div>
                 )}
@@ -78,173 +73,128 @@ export default function Payments({ migrationRequired, payments, invoices, studen
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 panel-card overflow-hidden">
-                        <div className="p-4 border-b border-border">
-                            <form onSubmit={submitFilter} className="flex flex-col md:flex-row gap-2">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(event) => setSearch(event.target.value)}
-                                        placeholder="Cari pembayaran..."
-                                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    />
-                                </div>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(event) => setStatusFilter(event.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-border bg-background text-sm md:w-44 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                >
-                                    <option value="all">Semua Status</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="verified">Verified</option>
-                                    <option value="rejected">Rejected</option>
-                                </select>
-                                <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                                <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <StatCard title="Total Transaksi" value={summary.total} tone="gradient-primary" />
+                    <StatCard title="Berhasil" value={summary.verified} tone="gradient-success" />
+                    <StatCard title="Menunggu" value={summary.pending} tone="gradient-warm" />
+                    <StatCard title="Gagal" value={summary.rejected} tone="bg-gradient-to-r from-pink-600 to-rose-500" />
+                </div>
+
+                <section className="panel-card p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h2 className="font-semibold text-xl">Riwayat Transaksi</h2>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="inline-flex items-center rounded-lg border border-border bg-background p-1">
+                                {FILTERS.map((option) => (
+                                    <button
+                                        key={option.key}
+                                        type="button"
+                                        onClick={() => setStatusFilter(option.key)}
+                                        className={`px-3 py-1.5 rounded-md text-xs font-medium ${statusFilter === option.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <form onSubmit={submitFilter} className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    placeholder="Cari transaksi..."
+                                    className="pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm w-[220px]"
+                                />
                             </form>
                         </div>
-
-                        <div className="p-4">
-                            <DataCardList
-                                items={payments}
-                                emptyText="Belum ada data pembayaran."
-                                renderCard={(payment) => {
-                                    const accentColors = { pending: 'hsl(var(--warning))', verified: 'hsl(var(--success))', rejected: 'hsl(var(--destructive))' };
-                                    return (
-                                        <DataCard key={payment.id} accentColor={accentColors[payment.status] ?? 'hsl(var(--primary))'}>
-                                            <div className="flex flex-col gap-3">
-                                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold">{payment.payment_no}</p>
-                                                        <p className="text-xs text-muted-foreground">{payment.paid_at ? new Date(payment.paid_at).toLocaleString(intlLocale) : '-'}</p>
-                                                    </div>
-                                                    <CardBadge className={statusBadge[payment.status] ?? 'bg-secondary text-secondary-foreground'}>{payment.status}</CardBadge>
-                                                </div>
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                    <CardField label="Invoice" value={payment.invoice?.invoice_no ?? '-'} />
-                                                    <CardField label="Mahasiswa" value={payment.student?.name ?? '-'} />
-                                                    <CardField label="Amount" value={new Intl.NumberFormat(intlLocale).format(payment.amount ?? 0)} />
-                                                    <CardField label="Metode" value={payment.method} />
-                                                </div>
-                                            </div>
-                                            <CardActions>
-                                                {payment.status !== 'verified' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => verifyPayment(payment)}
-                                                        disabled={mocked || payment.is_mock}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-success/15 text-success text-xs font-medium disabled:opacity-60"
-                                                    >
-                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                        Verify
-                                                    </button>
-                                                )}
-                                                {payment.status !== 'rejected' && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => rejectPayment(payment)}
-                                                        disabled={mocked || payment.is_mock}
-                                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
-                                                    >
-                                                        <XCircle className="w-3.5 h-3.5" />
-                                                        Reject
-                                                    </button>
-                                                )}
-                                            </CardActions>
-                                        </DataCard>
-                                    );
-                                }}
-                            />
-                        </div>
                     </div>
 
-                    <div className="panel-card p-4 h-fit">
-                        <h2 className="font-semibold mb-4">Input Pembayaran</h2>
-                        <form onSubmit={submitForm} className="space-y-3">
-                            <SelectField label="Invoice" value={form.data.invoice_id} error={form.errors.invoice_id} onChange={(value) => form.setData('invoice_id', value)}>
-                                <option value="">Pilih Invoice</option>
-                                {invoices.map((invoice) => (
-                                    <option key={invoice.id} value={invoice.id}>
-                                        {invoice.invoice_no} - {invoice.title}
-                                    </option>
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[980px] text-sm">
+                            <thead>
+                                <tr className="text-left text-muted-foreground border-b border-border">
+                                    <th className="py-2 px-2">ID Transaksi</th>
+                                    <th className="py-2 px-2">Mahasiswa</th>
+                                    <th className="py-2 px-2">Jenis</th>
+                                    <th className="py-2 px-2">Jumlah</th>
+                                    <th className="py-2 px-2">Metode</th>
+                                    <th className="py-2 px-2">Tanggal</th>
+                                    <th className="py-2 px-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {payments.map((payment) => (
+                                    <tr key={payment.id} className="border-b border-border/70">
+                                        <td className="py-2.5 px-2 text-xs text-muted-foreground font-semibold">{payment.payment_no}</td>
+                                        <td className="py-2.5 px-2">
+                                            <p className="font-medium">{payment.student?.name ?? '-'}</p>
+                                            <p className="text-xs text-muted-foreground">{payment.student?.code ?? '-'}</p>
+                                        </td>
+                                        <td className="py-2.5 px-2">{payment.invoice?.title ?? '-'}</td>
+                                        <td className="py-2.5 px-2 text-success font-semibold">Rp {new Intl.NumberFormat(intlLocale).format(Number(payment.amount ?? 0))}</td>
+                                        <td className="py-2.5 px-2">{methodBadge(payment.method)}</td>
+                                        <td className="py-2.5 px-2 text-muted-foreground">{formatDateTime(payment.paid_at)}</td>
+                                        <td className="py-2.5 px-2">{statusBadge(payment.status)}</td>
+                                    </tr>
                                 ))}
-                            </SelectField>
-                            <SelectField label="Mahasiswa" value={form.data.student_id} error={form.errors.student_id} onChange={(value) => form.setData('student_id', value)}>
-                                <option value="">Pilih Mahasiswa</option>
-                                {students.map((student) => (
-                                    <option key={student.id} value={student.id}>
-                                        {student.name} ({student.code})
-                                    </option>
-                                ))}
-                            </SelectField>
-                            <Field label="Amount" type="number" value={form.data.amount} error={form.errors.amount} onChange={(value) => form.setData('amount', value)} />
-                            <SelectField label="Metode" value={form.data.method} error={form.errors.method} onChange={(value) => form.setData('method', value)}>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="virtual_account">Virtual Account</option>
-                                <option value="cash">Cash</option>
-                                <option value="ewallet">E-Wallet</option>
-                            </SelectField>
-                            <Field label="Tanggal Bayar" type="datetime-local" value={form.data.paid_at} error={form.errors.paid_at} onChange={(value) => form.setData('paid_at', value)} />
-                            <SelectField label="Status" value={form.data.status} error={form.errors.status} onChange={(value) => form.setData('status', value)}>
-                                <option value="pending">Pending</option>
-                                <option value="verified">Verified</option>
-                                <option value="rejected">Rejected</option>
-                            </SelectField>
-                            <label className="block">
-                                <span className="text-sm font-medium">Catatan</span>
-                                <textarea
-                                    value={form.data.notes}
-                                    onChange={(event) => form.setData('notes', event.target.value)}
-                                    rows={3}
-                                    className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                />
-                                {form.errors.notes && <span className="text-xs text-destructive mt-1 block">{form.errors.notes}</span>}
-                            </label>
-
-                            <button type="submit" disabled={form.processing || migrationRequired || mocked} className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60">
-                                <Plus className="w-4 h-4" />
-                                Simpan Pembayaran
-                            </button>
-                        </form>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                </section>
             </div>
         </ProtectedLayout>
     );
 }
 
-function Field({ label, value, onChange, error, type = 'text' }) {
+function StatCard({ title, value, tone }) {
     return (
-        <label className="block">
-            <span className="text-sm font-medium">{label}</span>
-            <input
-                type={type}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
-        </label>
+        <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card ${tone}`}>
+            <div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" />
+            <p className="text-sm text-white/85">{title}</p>
+            <p className="mt-1 text-4xl leading-none font-bold">{value}</p>
+        </div>
     );
 }
 
-function SelectField({ label, value, onChange, error, children }) {
-    return (
-        <label className="block">
-            <span className="text-sm font-medium">{label}</span>
-            <select
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-                {children}
-            </select>
-            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
-        </label>
-    );
+function methodBadge(value) {
+    const map = {
+        bank_transfer: 'bg-info/15 text-info',
+        virtual_account: 'bg-primary/15 text-primary',
+        ewallet: 'bg-success/15 text-success',
+        cash: 'bg-warning/20 text-warning',
+        card: 'bg-warning/20 text-warning',
+    };
+    const labelMap = {
+        bank_transfer: 'Transfer Bank',
+        virtual_account: 'Virtual Account',
+        ewallet: 'E-Wallet',
+        cash: 'Tunai',
+        card: 'Kartu Kredit',
+    };
+    return <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${map[value] ?? 'bg-secondary text-secondary-foreground'}`}>{labelMap[value] ?? value ?? '-'}</span>;
 }
 
+function statusBadge(status) {
+    const classes = {
+        verified: 'bg-success/15 text-success',
+        pending: 'bg-warning/20 text-warning',
+        rejected: 'bg-destructive/15 text-destructive',
+    };
+    const label = {
+        verified: 'Berhasil',
+        pending: 'Menunggu',
+        rejected: 'Gagal',
+    };
+    return <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${classes[status] ?? 'bg-secondary text-secondary-foreground'}`}>{label[status] ?? status}</span>;
+}
 
+function formatDateTime(value) {
+    if (!value) return '-';
+    return new Date(value).toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
