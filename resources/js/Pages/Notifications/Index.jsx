@@ -91,6 +91,7 @@ export default function NotificationIndex({ notifications = [], summary = { tota
     }, [mapped, activeFilter, search]);
 
     const isAdminAcademic = user?.role === 'admin';
+    const isTeacher = user?.role === 'teacher';
 
     return (
         <ProtectedLayout>
@@ -106,12 +107,14 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                                     {summary.unread} baru
                                 </span>
                             </div>
-                            <p className="mt-2 text-muted-foreground">{isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : 'Pusat notifikasi dan peringatan sistem'}</p>
+                            <p className="mt-2 text-muted-foreground">
+                                {isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : isTeacher ? 'Aktivitas terbaru di kelas Anda' : 'Pusat notifikasi dan peringatan sistem'}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                             <button type="button" onClick={markAllRead} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium">
                                 <CheckCheck className="w-4 h-4" />
-                                Tandai Dibaca
+                                Tandai Semua Dibaca
                             </button>
                             {isAdminAcademic && (
                                 <button type="button" onClick={() => window.alert('Fitur broadcast akan disambungkan ke modul pengumuman.')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
@@ -122,33 +125,37 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                         </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {FILTERS.map((filter) => (
-                            <button
-                                key={filter.key}
-                                type="button"
-                                onClick={() => setActiveFilter(filter.key)}
-                                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                    activeFilter === filter.key
-                                        ? 'bg-primary text-primary-foreground border-primary'
-                                        : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-secondary'
-                                }`}
-                            >
-                                {filter.label}
-                            </button>
-                        ))}
-                    </div>
+                    {!isTeacher && (
+                        <>
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                {FILTERS.map((filter) => (
+                                    <button
+                                        key={filter.key}
+                                        type="button"
+                                        onClick={() => setActiveFilter(filter.key)}
+                                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                                            activeFilter === filter.key
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-secondary'
+                                        }`}
+                                    >
+                                        {filter.label}
+                                    </button>
+                                ))}
+                            </div>
 
-                    <div className="mt-4 relative w-full sm:w-[360px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Cari notifikasi..."
-                            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
-                        />
-                    </div>
+                            <div className="mt-4 relative w-full sm:w-[360px]">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    placeholder="Cari notifikasi..."
+                                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
+                                />
+                            </div>
+                        </>
+                    )}
                 </section>
 
                 <div className="space-y-3">
