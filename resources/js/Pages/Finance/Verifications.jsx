@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { CheckCircle2, Clock3, Eye, Search, ShieldCheck, TriangleAlert, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const cardTone = {
     pending: 'gradient-warm',
@@ -34,17 +35,11 @@ export default function Verifications({ migrationRequired, mocked, filters, summ
         <ProtectedLayout>
             <Head title="Verifikasi Pembayaran" />
             <div className="space-y-6 w-full max-w-none">
-                <section className="dashboard-hero-panel">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                                <ShieldCheck className="w-6 h-6 text-primary" />
-                                Verifikasi Pembayaran
-                            </h1>
-                            <p className="text-muted-foreground mt-1">Tinjau dan verifikasi bukti pembayaran manual dari mahasiswa</p>
-                        </div>
-                    </div>
-                </section>
+                <PageHeroBanner
+                    title="Verifikasi Pembayaran"
+                    description="Tinjau dan verifikasi bukti pembayaran manual dari mahasiswa"
+                    icon={ShieldCheck}
+                />
 
                 {mocked && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">

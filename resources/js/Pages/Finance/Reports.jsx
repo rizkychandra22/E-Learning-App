@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const PERIOD_OPTIONS = [
     { key: 'monthly', label: 'Bulanan', days: 30 },
@@ -95,17 +96,12 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
         <ProtectedLayout>
             <Head title="Laporan Keuangan" />
             <div className="space-y-6 w-full max-w-none">
-                <section className="dashboard-hero-panel">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                                <BarChart3 className="w-6 h-6 text-primary" />
-                                Laporan Keuangan
-                            </h1>
-                            <p className="text-muted-foreground mt-1">Ringkasan finansial dan analisis pendapatan platform</p>
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap">
+                <PageHeroBanner
+                    title="Laporan Keuangan"
+                    description="Ringkasan finansial dan analisis pendapatan platform"
+                    icon={BarChart3}
+                    action={(
+                        <>
                             <div className="inline-flex items-center rounded-lg border border-border bg-background p-1">
                                 {PERIOD_OPTIONS.map((option) => (
                                     <button
@@ -126,9 +122,9 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
                                 <Download className="w-4 h-4" />
                                 Export PDF
                             </button>
-                        </div>
-                    </div>
-                </section>
+                        </>
+                    )}
+                />
 
                 {mocked && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">

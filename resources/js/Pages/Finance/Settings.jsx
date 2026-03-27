@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { Bell, Building2, CreditCard, Lock, Save, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const TABS = [
     { key: 'payment', label: 'Pembayaran', icon: CreditCard },
@@ -45,13 +46,11 @@ export default function Settings({ settings, migrationRequired }) {
         <ProtectedLayout>
             <Head title="Pengaturan" />
             <div className="space-y-6 w-full max-w-none">
-                <section className="dashboard-hero-panel">
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <ShieldCheck className="w-6 h-6 text-primary" />
-                        Pengaturan
-                    </h1>
-                    <p className="text-muted-foreground mt-1">Konfigurasi sistem keuangan dan pembayaran</p>
-                </section>
+                <PageHeroBanner
+                    title="Pengaturan"
+                    description="Konfigurasi sistem keuangan dan pembayaran"
+                    icon={ShieldCheck}
+                />
 
                 {migrationRequired && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
