@@ -1,9 +1,9 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2, X, Search, Award } from 'lucide-react';
+import { HelpCircle, Plus, Search, Trash2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { DataCardList, DataCard, CardField, CardActions, CardBadge } from '@/components/DataCardList';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const emptyForm = {
     title: '',
@@ -15,38 +15,33 @@ const emptyForm = {
     status: 'draft',
 };
 
-const statusBadge = {
-    draft: 'bg-warning/20 text-warning',
-    active: 'bg-success/15 text-success',
-    closed: 'bg-secondary text-secondary-foreground',
-};
-
 export default function Quizzes({ quizzes, courses, filters, migrationRequired, mocked }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const [courseFilter, setCourseFilter] = useState(filters?.course ? String(filters.course) : '');
     const [editingId, setEditingId] = useState(null);
-
+    const [showForm, setShowForm] = useState(false);
     const form = useForm(emptyForm);
     const isEditing = editingId !== null;
-    const selectedQuiz = useMemo(() => quizzes.find((item) => item.id === editingId) ?? null, [quizzes, editingId]);
+
+    const summary = useMemo(() => {
+        const total = quizzes.length;
+        const active = quizzes.filter((item) => item.status === 'active').length;
+        const draft = quizzes.filter((item) => item.status === 'draft').length;
+        const averageScore = quizzes.length ? Math.round(quizzes.reduce((sum, q) => sum + (Number(q.avg_score) || 0), 0) / quizzes.length) : 0;
+        return { total, active, draft, averageScore };
+    }, [quizzes]);
 
     const submitFilter = (event) => {
         event.preventDefault();
         router.get('/quizzes', { search, status: statusFilter, course: courseFilter }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
-    const resetFilter = () => {
-        setSearch('');
-        setStatusFilter('all');
-        setCourseFilter('');
-        router.get('/quizzes', {}, { preserveState: true, preserveScroll: true, replace: true });
-    };
-
     const beginCreate = () => {
         setEditingId(null);
         form.setData(emptyForm);
         form.clearErrors();
+        setShowForm(true);
     };
 
     const beginEdit = (quiz) => {
@@ -61,17 +56,23 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
             status: quiz.status ?? 'draft',
         });
         form.clearErrors();
+        setShowForm(true);
+    };
+
+    const closeForm = () => {
+        setShowForm(false);
+        setEditingId(null);
+        form.setData(emptyForm);
+        form.clearErrors();
     };
 
     const submitForm = (event) => {
         event.preventDefault();
-
         if (isEditing) {
-            form.put(`/quizzes/${editingId}`, { preserveScroll: true });
+            form.put(`/quizzes/${editingId}`, { preserveScroll: true, onSuccess: closeForm });
             return;
         }
-
-        form.post('/quizzes', { preserveScroll: true });
+        form.post('/quizzes', { preserveScroll: true, onSuccess: closeForm });
     };
 
     const destroyQuiz = (quiz) => {
@@ -83,224 +84,82 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
         <ProtectedLayout>
             <Head title="Kuis" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Kuis" description="Siapkan kuis dan ujian online yang terstruktur untuk mahasiswa." />
+                <PageHeroBanner title="Kuis" description="Buat dan kelola kuis untuk evaluasi mahasiswa" />
 
-                {mocked && (
-                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
-                        <Award className="w-5 h-5 mt-0.5" />
-                        <div className="text-sm">
-                            <p className="font-semibold">Mode data mock aktif.</p>
-                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
-                        </div>
-                    </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <StatCard title="Total Kuis" value={summary.total} tone="gradient-primary" />
+                    <StatCard title="Aktif" value={summary.active} tone="gradient-success" />
+                    <StatCard title="Draft" value={summary.draft} tone="gradient-warm" />
+                    <StatCard title="Rata-rata Skor" value={`${summary.averageScore}%`} tone="bg-gradient-to-r from-sky-500 to-blue-600" />
+                </div>
 
-                {migrationRequired && (
-                    <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
-                        <Award className="w-5 h-5 mt-0.5" />
-                        <div className="text-sm">
-                            <p className="font-semibold">Tabel quizzes belum tersedia.</p>
-                            <p>Jalankan migrasi dulu: <code className="font-mono">php artisan migrate</code></p>
-                        </div>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 panel-card overflow-hidden">
-                        <div className="p-4 border-b border-border">
-                            <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
+                <section className="panel-card overflow-hidden">
+                    <div className="p-4 border-b border-border">
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2">
+                            <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2 flex-1">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input
-                                        type="text"
-                                        value={search}
-                                        onChange={(event) => setSearch(event.target.value)}
-                                        placeholder="Cari judul kuis..."
-                                        className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    />
+                                    <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari kuis..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(event) => setStatusFilter(event.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-40 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                >
-                                    <option value="all">Semua Status</option>
-                                    <option value="draft">Draft</option>
-                                    <option value="active">Active</option>
-                                    <option value="closed">Closed</option>
-                                </select>
-                                <select
-                                    value={courseFilter}
-                                    onChange={(event) => setCourseFilter(event.target.value)}
-                                    className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-52 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                >
-                                    <option value="">Semua Kursus</option>
-                                    {courses.map((course) => (
-                                        <option key={course.id} value={course.id}>{course.title}</option>
-                                    ))}
-                                </select>
-                                <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                                <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
+                                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="all">Semua</option><option value="active">Aktif</option><option value="draft">Draft</option><option value="closed">Ditutup</option></select>
+                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
+                                <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
                             </form>
-                        </div>
-
-                        <div className="p-4">
-                            <DataCardList
-                                items={quizzes}
-                                emptyText="Belum ada kuis untuk kursus Anda."
-                                renderCard={(quiz) => (
-                                    <DataCard key={quiz.id} accentColor="hsl(var(--primary))">
-                                        <div className="flex flex-col gap-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-semibold truncate">{quiz.title}</p>
-                                                    <p className="text-xs text-muted-foreground truncate">{quiz.course?.title ?? 'Tanpa kursus'}</p>
-                                                </div>
-                                                <CardBadge className={statusBadge[quiz.status] ?? 'bg-secondary text-secondary-foreground'}>
-                                                    {quiz.status}
-                                                </CardBadge>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                <CardField label="Durasi" value={quiz.duration_minutes ? `${quiz.duration_minutes} menit` : '-'} />
-                                                <CardField label="Jumlah Soal" value={quiz.total_questions ?? '-'} />
-                                                <CardField label="Jadwal" value={formatDateTime(quiz.scheduled_at)} />
-                                            </div>
-                                            {quiz.description && (
-                                                <p className="text-sm text-muted-foreground break-words">{quiz.description}</p>
-                                            )}
-                                        </div>
-                                        <CardActions>
-                                            <button
-                                                type="button"
-                                                onClick={() => beginEdit(quiz)}
-                                                disabled={quiz.is_mock || mocked}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
-                                            >
-                                                <Pencil className="w-3.5 h-3.5" />
-                                                Edit
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => destroyQuiz(quiz)}
-                                                disabled={quiz.is_mock || mocked}
-                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
-                                            >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                                Hapus
-                                            </button>
-                                        </CardActions>
-                                    </DataCard>
-                                )}
-                            />
+                            <button type="button" onClick={beginCreate} disabled={migrationRequired || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"><Plus className="w-4 h-4" /> Buat Kuis</button>
                         </div>
                     </div>
 
-                    <div className="panel-card p-4 h-fit">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-semibold">{isEditing ? 'Edit Kuis' : 'Tambah Kuis'}</h2>
-                            {isEditing && (
-                                <button type="button" onClick={beginCreate} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Batalkan edit">
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
-                        </div>
-
-                        {isEditing && selectedQuiz && (
-                            <p className="text-xs text-muted-foreground mb-4">
-                                Mengubah kuis <span className="font-medium text-foreground">{selectedQuiz.title}</span>
-                            </p>
-                        )}
-
-                        <form onSubmit={submitForm} className="space-y-3">
-                            <Field label="Judul Kuis" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                            <label className="block">
-                                <span className="text-sm font-medium">Deskripsi</span>
-                                <textarea
-                                    value={form.data.description}
-                                    onChange={(event) => form.setData('description', event.target.value)}
-                                    rows={3}
-                                    className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                />
-                                {form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}
-                            </label>
-                            <SelectField label="Kursus" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}>
-                                <option value="">Tanpa Kursus</option>
-                                {courses.map((course) => (
-                                    <option key={course.id} value={course.id}>{course.title}</option>
-                                ))}
-                            </SelectField>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Field label="Durasi (menit)" type="number" value={form.data.duration_minutes} error={form.errors.duration_minutes} onChange={(value) => form.setData('duration_minutes', value)} />
-                                <Field label="Jumlah Soal" type="number" value={form.data.total_questions} error={form.errors.total_questions} onChange={(value) => form.setData('total_questions', value)} />
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {quizzes.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-10">Belum ada kuis.</div>}
+                        {quizzes.map((quiz) => (
+                            <div key={quiz.id} className="panel-subcard p-4 space-y-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="inline-flex h-8 w-8 rounded-xl gradient-primary items-center justify-center text-white"><HelpCircle className="w-4 h-4" /></span>
+                                    <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary">{mapStatus(quiz.status)}</span>
+                                </div>
+                                <div>
+                                    <p className="font-semibold">{quiz.title}</p>
+                                    <p className="text-xs text-muted-foreground">{quiz.course?.title ?? '-'}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                    <p>{quiz.total_questions ?? 0} soal</p>
+                                    <p>{quiz.duration_minutes ?? 0} menit</p>
+                                    <p>{quiz.participants_count ?? 0} peserta</p>
+                                    <p>Avg: {quiz.avg_score ?? '-'}%</p>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Jatuh tempo: {formatDate(quiz.scheduled_at)}</p>
+                                <div className="flex items-center gap-2">
+                                    <button type="button" onClick={() => beginEdit(quiz)} disabled={quiz.is_mock || mocked} className="text-xs px-2.5 py-1 rounded-lg border border-border">Edit</button>
+                                    <button type="button" onClick={() => destroyQuiz(quiz)} disabled={quiz.is_mock || mocked} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                </div>
                             </div>
-                            <Field label="Jadwal" type="datetime-local" value={form.data.scheduled_at} error={form.errors.scheduled_at} onChange={(value) => form.setData('scheduled_at', value)} />
-                            <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}>
-                                <option value="draft">Draft</option>
-                                <option value="active">Active</option>
-                                <option value="closed">Closed</option>
-                            </SelectField>
-
-                            <button
-                                type="submit"
-                                disabled={form.processing || migrationRequired || mocked}
-                                className="w-full inline-flex justify-center items-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60"
-                            >
-                                <Plus className="w-4 h-4" />
-                                {isEditing ? 'Simpan Perubahan' : 'Tambah Kuis'}
-                            </button>
-                        </form>
+                        ))}
                     </div>
-                </div>
+                </section>
+
+                <CreateFormModal open={showForm} title={isEditing ? 'Edit Kuis' : 'Tambah Kuis'} onClose={closeForm} onSubmit={submitForm} submitLabel={isEditing ? 'Simpan' : 'Tambah'} processing={form.processing} disableSubmit={migrationRequired || mocked} maxWidthClass="max-w-3xl">
+                    <div className="space-y-3">
+                        <Field label="Judul Kuis" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
+                        <label className="block"><span className="text-sm font-medium">Deskripsi</span><textarea value={form.data.description} onChange={(event) => form.setData('description', event.target.value)} rows={3} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}</label>
+                        <SelectField label="Kursus" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Field label="Durasi (menit)" type="number" value={form.data.duration_minutes} error={form.errors.duration_minutes} onChange={(value) => form.setData('duration_minutes', value)} />
+                            <Field label="Jumlah Soal" type="number" value={form.data.total_questions} error={form.errors.total_questions} onChange={(value) => form.setData('total_questions', value)} />
+                        </div>
+                        <Field label="Jadwal" type="datetime-local" value={form.data.scheduled_at} error={form.errors.scheduled_at} onChange={(value) => form.setData('scheduled_at', value)} />
+                        <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}><option value="draft">Draft</option><option value="active">Aktif</option><option value="closed">Ditutup</option></SelectField>
+                    </div>
+                </CreateFormModal>
             </div>
         </ProtectedLayout>
     );
 }
 
-function Field({ label, value, onChange, error, type = 'text' }) {
-    return (
-        <label className="block">
-            <span className="text-sm font-medium">{label}</span>
-            <input
-                type={type}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
-        </label>
-    );
+function StatCard({ title, value, tone }) {
+    return <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card ${tone}`}><div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" /><p className="text-sm text-white/85">{title}</p><p className="mt-1 text-[42px] leading-none font-bold">{value}</p></div>;
 }
-
-function SelectField({ label, value, onChange, error, children }) {
-    return (
-        <label className="block">
-            <span className="text-sm font-medium">{label}</span>
-            <select
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-                {children}
-            </select>
-            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
-        </label>
-    );
-}
-
-function formatDateTime(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleString('id-ID');
-}
-
-function toInputDateTime(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return '';
-    const offset = date.getTimezoneOffset();
-    const local = new Date(date.getTime() - offset * 60000);
-    return local.toISOString().slice(0, 16);
-}
-
-
+function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
+function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
+function mapStatus(value) { if (value === 'active') return 'Aktif'; if (value === 'closed') return 'Ditutup'; return 'Draft'; }
+function formatDate(value) { if (!value) return '-'; return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+function toInputDateTime(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return ''; const offset = date.getTimezoneOffset(); const local = new Date(date.getTime() - offset * 60000); return local.toISOString().slice(0, 16); }
