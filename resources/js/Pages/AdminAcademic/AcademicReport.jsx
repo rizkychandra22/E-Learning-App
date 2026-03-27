@@ -1,14 +1,109 @@
+import { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { BarChart3, Download, BookOpen, GraduationCap, Trophy, Users } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { StatCard } from '@/components/StatCard';
 import { InteractiveTrendChart } from '@/components/InteractiveTrendChart';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { cn } from '@/lib/cn';
 
 const PERIODS = [
     { value: 'monthly', label: 'Bulanan' },
     { value: 'quarterly', label: 'Kuartalan' },
     { value: 'yearly', label: 'Tahunan' },
 ];
+
+function ProgressCategoryChart({ title, data = [] }) {
+    const [activeIndex, setActiveIndex] = useState(0);
+    if (!data.length) return null;
+
+    const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0) || 1;
+    const size = 140;
+    const radius = 56;
+    const cx = size / 2;
+    const cy = size / 2;
+    const colors = ['hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))'];
+
+    const polarToCartesian = (centerX, centerY, r, angleInDegrees) => {
+        const radians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+        return {
+            x: centerX + r * Math.cos(radians),
+            y: centerY + r * Math.sin(radians),
+        };
+    };
+
+    const describeArcSlice = (centerX, centerY, r, startAngle, endAngle) => {
+        const start = polarToCartesian(centerX, centerY, r, endAngle);
+        const end = polarToCartesian(centerX, centerY, r, startAngle);
+        const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+        return `M ${centerX} ${centerY} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
+    };
+
+    let cursor = 0;
+    const segments = data.map((item, index) => {
+        const value = Number(item.value) || 0;
+        const fraction = value / total;
+        const startAngle = cursor * 360;
+        const endAngle = (cursor + fraction) * 360;
+        cursor += fraction;
+        return { item, index, value, fraction, startAngle, endAngle };
+    });
+
+    return (
+        <section className="panel-card p-4 animate-fade-in">
+            <h3 className="font-semibold flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                {title}
+            </h3>
+            <div className="mt-4 panel-subcard p-4">
+                <div className="flex flex-col items-center gap-4">
+                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                        {segments.map((segment) => {
+                            const { item, index, startAngle, endAngle } = segment;
+                            const isActive = index === activeIndex;
+                            const midAngle = (startAngle + endAngle) / 2;
+                            const tx = isActive ? Math.cos(((midAngle - 90) * Math.PI) / 180) * 3 : 0;
+                            const ty = isActive ? Math.sin(((midAngle - 90) * Math.PI) / 180) * 3 : 0;
+                            return (
+                                <path
+                                    key={item.label}
+                                    d={describeArcSlice(cx, cy, radius, startAngle, endAngle)}
+                                    fill={colors[index % colors.length]}
+                                    opacity={isActive ? 1 : 0.85}
+                                    transform={`translate(${tx}, ${ty})`}
+                                    className="transition-all duration-200 cursor-pointer"
+                                    onMouseEnter={() => setActiveIndex(index)}
+                                    onClick={() => setActiveIndex(index)}
+                                />
+                            );
+                        })}
+                    </svg>
+
+                    <div className="w-full space-y-2">
+                        {segments.map((segment) => (
+                            <button
+                                key={segment.item.label}
+                                type="button"
+                                onMouseEnter={() => setActiveIndex(segment.index)}
+                                onClick={() => setActiveIndex(segment.index)}
+                                className={cn(
+                                    'w-full flex items-center justify-between text-sm rounded-lg px-2 py-1.5 transition-colors',
+                                    segment.index === activeIndex ? 'bg-primary/10' : 'hover:bg-secondary/60'
+                                )}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors[segment.index % colors.length] }} />
+                                    <span>{segment.item.label}</span>
+                                </div>
+                                <span className="font-semibold">{segment.value}%</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
 
 export default function AcademicReport({
     filters,
@@ -34,22 +129,26 @@ export default function AcademicReport({
         value: item.value,
         completion: completion_trend[index]?.value ?? 0,
     }));
+    const firstTrend = trendChartData[0];
+    const lastTrend = trendChartData[trendChartData.length - 1];
+    const peakTrendValue = trendChartData.length
+        ? Math.max(...trendChartData.map((item) => Number(item.value) || 0))
+        : 0;
+    const trendGrowth = firstTrend?.value > 0
+        ? (((Number(lastTrend?.value) || 0) - Number(firstTrend.value)) / Number(firstTrend.value)) * 100
+        : 0;
 
     return (
         <ProtectedLayout>
             <Head title="Laporan Akademik" />
 
             <div className="space-y-6 w-full max-w-none">
-                <section className="dashboard-hero-panel">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                                <BarChart3 className="w-6 h-6 text-primary" />
-                                Laporan Akademik
-                            </h1>
-                            <p className="text-muted-foreground mt-1">Ringkasan performa akademik dan aktivitas platform</p>
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                <PageHeroBanner
+                    title="Laporan Akademik"
+                    description="Ringkasan performa akademik dan aktivitas platform"
+                    icon={BarChart3}
+                    action={(
+                        <>
                             <div className="inline-flex items-center rounded-lg border border-border bg-background p-1">
                                 {PERIODS.map((item) => (
                                     <button
@@ -69,9 +168,9 @@ export default function AcademicReport({
                                 <Download className="w-4 h-4" />
                                 Export CSV
                             </a>
-                        </div>
-                    </div>
-                </section>
+                        </>
+                    )}
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     <StatCard title="Total Pendaftar" value={summary?.total_enrollment ?? 0} change="+14% dari periode lalu" icon={Users} gradient="primary" />
@@ -80,8 +179,8 @@ export default function AcademicReport({
                     <StatCard title="Rata-rata Nilai" value={summary?.average_score ?? 0} change="+3.2 dari periode lalu" icon={Trophy} gradient="accent" />
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
-                    <div className="xl:col-span-8">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
+                    <div className="xl:col-span-8 h-full">
                         <InteractiveTrendChart
                             title="Tren Pendaftaran"
                             data={trendChartData.map((item) => ({ label: item.label, value: item.value }))}
@@ -89,18 +188,15 @@ export default function AcademicReport({
                             chartType="line"
                             valueFormatter={(value) => new Intl.NumberFormat('id-ID').format(value)}
                             compact
+                            compactFooter={[
+                                `Periode aktif: ${firstTrend?.label ?? '-'} - ${lastTrend?.label ?? '-'}`,
+                                `Puncak pendaftaran: ${new Intl.NumberFormat('id-ID').format(peakTrendValue)} peserta`,
+                                `Ringkasan tren: ${trendGrowth >= 0 ? '+' : ''}${trendGrowth.toFixed(1)}% dari awal periode`,
+                            ]}
                         />
                     </div>
-                    <div className="xl:col-span-4">
-                        <InteractiveTrendChart
-                            title="Distribusi Progress"
-                            data={progressChartData}
-                            tone="success"
-                            chartType="donut"
-                            valueFormatter={(value) => `${value}%`}
-                            showTrend={false}
-                            compact
-                        />
+                    <div className="xl:col-span-4 h-full">
+                        <ProgressCategoryChart title="Distribusi Progress" data={progressChartData} />
                     </div>
                 </div>
 

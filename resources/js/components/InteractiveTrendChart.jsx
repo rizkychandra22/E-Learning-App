@@ -18,6 +18,30 @@ const DONUT_COLORS = [
     'hsl(var(--info))',
 ];
 
+function toNumeric(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (value === null || value === undefined) return 0;
+
+    let normalized = String(value).trim().replace(/\s+/g, '');
+    if (!normalized) return 0;
+
+    if (normalized.includes('.') && normalized.includes(',')) {
+        if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+            normalized = normalized.replace(/\./g, '').replace(',', '.');
+        } else {
+            normalized = normalized.replace(/,/g, '');
+        }
+    } else if (normalized.includes(',')) {
+        normalized = /^-?\d{1,3}(,\d{3})+$/.test(normalized) ? normalized.replace(/,/g, '') : normalized.replace(',', '.');
+    } else if (normalized.includes('.')) {
+        normalized = /^-?\d{1,3}(\.\d{3})+$/.test(normalized) ? normalized.replace(/\./g, '') : normalized;
+    }
+
+    normalized = normalized.replace(/[^\d.-]/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function SummaryTile({ label, value }) {
     return (
         <div className="rounded-lg bg-secondary/60 p-3">
@@ -39,18 +63,18 @@ function LineChart({
     onSetActive,
     chartHeightClass,
 }) {
-    const values = data.map((item) => Number(item.value) || 0);
+    const values = data.map((item) => toNumeric(item.value));
     const rawMax = Math.max(...values, 1);
     const rawMin = Math.min(...values);
-    // Use data-driven Y bounds so line charts don't leave large empty space.
-    const verticalPadding = Math.max((rawMax - rawMin) * 0.12, 1);
+    // Keep Y bounds tight so compact charts stay proportional without large empty areas.
+    const verticalPadding = Math.max((rawMax - rawMin) * 0.06, 1);
     const maxValue = rawMax + verticalPadding;
     const minValue = rawMin - verticalPadding;
     const range = Math.max(maxValue - minValue, 1);
 
     const points = data.map((item, index) => {
         const x = paddingX + (index * (chartWidth - paddingX * 2)) / Math.max(data.length - 1, 1);
-        const ratio = (Number(item.value) - minValue) / range;
+        const ratio = (toNumeric(item.value) - minValue) / range;
         const y = chartHeight - paddingY - ratio * (chartHeight - paddingY * 2);
         return { x, y, item };
     });
@@ -94,7 +118,7 @@ function LineChart({
 }
 
 function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeColor, activeIndex, onSetActive, chartHeightClass }) {
-    const values = data.map((item) => Number(item.value) || 0);
+    const values = data.map((item) => toNumeric(item.value));
     const maxValue = Math.max(...values, 1);
     const baselineY = chartHeight - paddingY;
     const innerWidth = chartWidth - paddingX * 2;
@@ -109,7 +133,7 @@ function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeCol
             })}
 
             {data.map((item, index) => {
-                const value = Number(item.value) || 0;
+                const value = toNumeric(item.value);
                 const heightRatio = value / maxValue;
                 const barHeight = Math.max(6, heightRatio * (chartHeight - paddingY * 2));
                 const x = paddingX + index * unitWidth + (unitWidth - barWidth) / 2;
@@ -130,7 +154,7 @@ function BarChart({ data, chartWidth, chartHeight, paddingX, paddingY, strokeCol
 }
 
 function PieChart({ data, activeIndex, onSetActive, valueFormatter, compact = false }) {
-    const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+    const total = data.reduce((sum, item) => sum + toNumeric(item.value), 0);
     const radius = 82;
     const cx = 110;
     const cy = 110;
@@ -152,7 +176,7 @@ function PieChart({ data, activeIndex, onSetActive, valueFormatter, compact = fa
 
     let offsetCursor = 0;
     const segments = data.map((item, index) => {
-        const value = Number(item.value) || 0;
+        const value = toNumeric(item.value);
         const fraction = total > 0 ? value / total : 0;
         const startAngle = offsetCursor * 360;
         const endAngle = (offsetCursor + fraction) * 360;
@@ -289,6 +313,7 @@ export function InteractiveTrendChart({
     showTrend = true,
     chartType = 'line',
     compact = false,
+    compactFooter = null,
 }) {
     const gradientId = useId();
     const [activeIndex, setActiveIndex] = useState(data.length ? data.length - 1 : 0);
@@ -297,7 +322,7 @@ export function InteractiveTrendChart({
     const paddingX = 24;
     const paddingY = 18;
 
-    const values = useMemo(() => data.map((item) => Number(item.value) || 0), [data]);
+    const values = useMemo(() => data.map((item) => toNumeric(item.value)), [data]);
     const maxValue = Math.max(...values, 1);
     const minValue = Math.min(...values, 0);
     const clampedActiveIndex = Math.min(Math.max(activeIndex, 0), Math.max(data.length - 1, 0));
@@ -319,7 +344,8 @@ export function InteractiveTrendChart({
 
     if (!data.length) return null;
 
-    const chartHeightClass = compact ? 'h-[180px]' : 'h-[220px]';
+    const chartHeightClass = compact ? 'h-[190px]' : 'h-[220px]';
+    const effectivePaddingY = compact ? 10 : 18;
 
     return (
         <div className="panel-card p-4 animate-fade-in">
@@ -350,7 +376,7 @@ export function InteractiveTrendChart({
                                 chartWidth={chartWidth}
                                 chartHeight={chartHeight}
                                 paddingX={paddingX}
-                                paddingY={paddingY}
+                                paddingY={effectivePaddingY}
                                 strokeColor={toneColor}
                                 activeIndex={clampedActiveIndex}
                                 onSetActive={setActiveIndex}
@@ -362,7 +388,7 @@ export function InteractiveTrendChart({
                                 chartWidth={chartWidth}
                                 chartHeight={chartHeight}
                                 paddingX={paddingX}
-                                paddingY={paddingY}
+                                paddingY={effectivePaddingY}
                                 strokeColor={toneColor}
                                 gradientId={gradientId}
                                 activeIndex={clampedActiveIndex}
@@ -403,6 +429,22 @@ export function InteractiveTrendChart({
                     <p className="mt-2 text-xs text-muted-foreground">
                         Rentang data: {valueFormatter(minValue)} - {valueFormatter(maxValue)}
                     </p>
+                )}
+
+                {compact && chartType === 'line' && compactFooter && (
+                    <div className="mt-3 border-t border-border/70 pt-3">
+                        {Array.isArray(compactFooter) ? (
+                            <div className="space-y-1.5">
+                                {compactFooter.map((text, index) => (
+                                    <p key={`compact-footer-${index}`} className="text-xs text-muted-foreground">
+                                        {text}
+                                    </p>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">{compactFooter}</p>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
