@@ -46,6 +46,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes', icon: Award },
         { title: 'Diskusi', url: '/discussions', icon: MessageSquare },
         { title: 'Mahasiswa', url: '/students', icon: Users },
+        { title: 'Penilaian', url: '/grades', icon: BarChart3 },
         { title: 'Notifikasi', url: '/notifications', icon: Bell },
     ],
     mahasiswa: [
