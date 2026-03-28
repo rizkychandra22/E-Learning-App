@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { useAuth } from '@/contexts/AuthContext';
 
-const FILTERS = [
+const FILTERS_FULL = [
     { key: 'all', label: 'Semua' },
     { key: 'unread', label: 'Belum Dibaca' },
     { key: 'warning', label: 'Warning' },
@@ -12,6 +12,12 @@ const FILTERS = [
     { key: 'info', label: 'Info' },
     { key: 'success', label: 'Success' },
     { key: 'broadcast', label: 'Broadcast' },
+];
+
+const FILTERS_SIMPLE = [
+    { key: 'all', label: 'Semua' },
+    { key: 'unread', label: 'Belum Dibaca' },
+    { key: 'read', label: 'Sudah Dibaca' },
 ];
 
 const typeClass = {
@@ -71,6 +77,12 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         [notifications]
     );
 
+    const isAdminAcademic = user?.role === 'admin';
+    const isTeacher = user?.role === 'teacher';
+    const useSimpleFilter = user?.role === 'student' || isTeacher;
+    const filters = useSimpleFilter ? FILTERS_SIMPLE : FILTERS_FULL;
+    const showSearch = !useSimpleFilter;
+
     const filteredNotifications = useMemo(() => {
         return mapped.filter((item) => {
             const byFilter =
@@ -78,7 +90,9 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                     ? true
                     : activeFilter === 'unread'
                       ? !item.read_at
-                      : item.kind === activeFilter;
+                      : activeFilter === 'read'
+                        ? Boolean(item.read_at)
+                        : item.kind === activeFilter;
 
             if (!byFilter) return false;
 
@@ -90,14 +104,12 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         });
     }, [mapped, activeFilter, search]);
 
-    const isAdminAcademic = user?.role === 'admin';
-    const isTeacher = user?.role === 'teacher';
-
     return (
         <ProtectedLayout>
             <Head title="Notifikasi" />
             <div className="space-y-5 w-full max-w-none">
-                <section className="panel-card p-4">
+                <section className="dashboard-hero-panel animate-fade-in">
+                    <div className="absolute inset-x-0 top-0 h-1.5 gradient-primary opacity-90" />
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="flex items-center gap-2">
@@ -108,7 +120,7 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                                 </span>
                             </div>
                             <p className="mt-2 text-muted-foreground">
-                                {isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : isTeacher ? 'Aktivitas terbaru di kelas Anda' : 'Pusat notifikasi dan peringatan sistem'}
+                                {isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : isTeacher ? 'Aktivitas terbaru di kelas Anda' : 'Notifikasi terbaru untuk aktivitas belajar Anda'}
                             </p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -125,36 +137,34 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                         </div>
                     </div>
 
-                    {!isTeacher && (
-                        <>
-                            <div className="mt-4 flex flex-wrap items-center gap-2">
-                                {FILTERS.map((filter) => (
-                                    <button
-                                        key={filter.key}
-                                        type="button"
-                                        onClick={() => setActiveFilter(filter.key)}
-                                        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-                                            activeFilter === filter.key
-                                                ? 'bg-primary text-primary-foreground border-primary'
-                                                : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-secondary'
-                                        }`}
-                                    >
-                                        {filter.label}
-                                    </button>
-                                ))}
-                            </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {filters.map((filter) => (
+                            <button
+                                key={filter.key}
+                                type="button"
+                                onClick={() => setActiveFilter(filter.key)}
+                                className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                                    activeFilter === filter.key
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background text-muted-foreground border-border hover:text-foreground hover:bg-secondary'
+                                }`}
+                            >
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
 
-                            <div className="mt-4 relative w-full sm:w-[360px]">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(event) => setSearch(event.target.value)}
-                                    placeholder="Cari notifikasi..."
-                                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
-                                />
-                            </div>
-                        </>
+                    {showSearch && (
+                        <div className="mt-4 relative w-full sm:w-[360px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Cari notifikasi..."
+                                className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
+                            />
+                        </div>
                     )}
                 </section>
 
