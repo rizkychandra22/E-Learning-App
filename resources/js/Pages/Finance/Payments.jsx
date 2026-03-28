@@ -3,6 +3,7 @@ import { Download, Search, TriangleAlert, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
+import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const FILTERS = [
     { key: 'all', label: 'Semua' },
@@ -33,15 +34,11 @@ export default function Payments({ migrationRequired, payments = [], filters, mo
         <ProtectedLayout>
             <Head title="Pembayaran" />
             <div className="space-y-6 w-full max-w-none">
-                <section className="dashboard-hero-panel">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                                <Wallet className="w-6 h-6 text-primary" />
-                                Pembayaran
-                            </h1>
-                            <p className="text-muted-foreground mt-1">Riwayat dan verifikasi semua transaksi pembayaran</p>
-                        </div>
+                <PageHeroBanner
+                    title="Pembayaran"
+                    description="Riwayat dan verifikasi semua transaksi pembayaran"
+                    icon={Wallet}
+                    action={(
                         <button
                             type="button"
                             onClick={() => window.alert('Export transaksi akan dihubungkan ke file CSV/PDF.')}
@@ -50,8 +47,8 @@ export default function Payments({ migrationRequired, payments = [], filters, mo
                             <Download className="w-4 h-4" />
                             Export
                         </button>
-                    </div>
-                </section>
+                    )}
+                />
 
                 {mocked && (
                     <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">

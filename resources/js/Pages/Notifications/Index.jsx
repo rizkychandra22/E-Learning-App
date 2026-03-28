@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { useAuth } from '@/contexts/AuthContext';
 
-const FILTERS = [
+const FILTERS_FULL = [
     { key: 'all', label: 'Semua' },
     { key: 'unread', label: 'Belum Dibaca' },
     { key: 'warning', label: 'Warning' },
@@ -12,6 +12,12 @@ const FILTERS = [
     { key: 'info', label: 'Info' },
     { key: 'success', label: 'Success' },
     { key: 'broadcast', label: 'Broadcast' },
+];
+
+const FILTERS_SIMPLE = [
+    { key: 'all', label: 'Semua' },
+    { key: 'unread', label: 'Belum Dibaca' },
+    { key: 'read', label: 'Sudah Dibaca' },
 ];
 
 const typeClass = {
@@ -71,6 +77,12 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         [notifications]
     );
 
+    const isAdminAcademic = user?.role === 'admin';
+    const isTeacher = user?.role === 'teacher';
+    const useSimpleFilter = user?.role === 'student' || isTeacher;
+    const filters = useSimpleFilter ? FILTERS_SIMPLE : FILTERS_FULL;
+    const showSearch = !useSimpleFilter;
+
     const filteredNotifications = useMemo(() => {
         return mapped.filter((item) => {
             const byFilter =
@@ -78,7 +90,9 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                     ? true
                     : activeFilter === 'unread'
                       ? !item.read_at
-                      : item.kind === activeFilter;
+                      : activeFilter === 'read'
+                        ? Boolean(item.read_at)
+                        : item.kind === activeFilter;
 
             if (!byFilter) return false;
 
@@ -90,13 +104,12 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         });
     }, [mapped, activeFilter, search]);
 
-    const isAdminAcademic = user?.role === 'admin';
-
     return (
         <ProtectedLayout>
             <Head title="Notifikasi" />
             <div className="space-y-5 w-full max-w-none">
-                <section className="panel-card p-4">
+                <section className="dashboard-hero-panel animate-fade-in">
+                    <div className="absolute inset-x-0 top-0 h-1.5 gradient-primary opacity-90" />
                     <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                             <div className="flex items-center gap-2">
@@ -106,12 +119,14 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                                     {summary.unread} baru
                                 </span>
                             </div>
-                            <p className="mt-2 text-muted-foreground">{isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : 'Pusat notifikasi dan peringatan sistem'}</p>
+                            <p className="mt-2 text-muted-foreground">
+                                {isAdminAcademic ? 'Kelola notifikasi dan kirim pengumuman' : isTeacher ? 'Aktivitas terbaru di kelas Anda' : 'Notifikasi terbaru untuk aktivitas belajar Anda'}
+                            </p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                             <button type="button" onClick={markAllRead} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium">
                                 <CheckCheck className="w-4 h-4" />
-                                Tandai Dibaca
+                                Tandai Semua Dibaca
                             </button>
                             {isAdminAcademic && (
                                 <button type="button" onClick={() => window.alert('Fitur broadcast akan disambungkan ke modul pengumuman.')} className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
@@ -123,7 +138,7 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {FILTERS.map((filter) => (
+                        {filters.map((filter) => (
                             <button
                                 key={filter.key}
                                 type="button"
@@ -139,16 +154,18 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                         ))}
                     </div>
 
-                    <div className="mt-4 relative w-full sm:w-[360px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Cari notifikasi..."
-                            className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
-                        />
-                    </div>
+                    {showSearch && (
+                        <div className="mt-4 relative w-full sm:w-[360px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Cari notifikasi..."
+                                className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-border bg-background text-sm"
+                            />
+                        </div>
+                    )}
                 </section>
 
                 <div className="space-y-3">

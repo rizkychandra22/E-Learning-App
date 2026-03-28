@@ -1,8 +1,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { BookOpen, Pencil, Plus, Trash2, X, Search, Tags, Layers3 } from 'lucide-react';
+import { BookOpen, Layers3, Pencil, Plus, Search, Tags, Trash2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { CreateFormModal } from '@/components/CreateFormModal';
 import { cn } from '@/lib/cn';
 
 const emptyForm = {
@@ -19,17 +20,10 @@ const emptyForm = {
 };
 
 const gradients = ['gradient-primary', 'gradient-accent', 'gradient-warm', 'gradient-success'];
-const cardToneOverlays = [
-    'from-primary/25 via-primary/5 to-transparent',
-    'from-accent/25 via-accent/5 to-transparent',
-    'from-warning/25 via-warning/5 to-transparent',
-    'from-success/25 via-success/5 to-transparent',
-];
-
 const statusMeta = {
     draft: { label: 'Draft', progress: 25 },
-    active: { label: 'Active', progress: 70 },
-    archived: { label: 'Archived', progress: 100 },
+    active: { label: 'Aktif', progress: 70 },
+    archived: { label: 'Arsip', progress: 100 },
 };
 
 export default function MyCourses({ courses, jurusans, categories, filters, migrationRequired, mocked }) {
@@ -37,10 +31,19 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const [categoryFilter, setCategoryFilter] = useState(filters?.category ?? 'all');
     const [editingId, setEditingId] = useState(null);
+    const [showForm, setShowForm] = useState(false);
 
     const form = useForm(emptyForm);
     const isEditing = editingId !== null;
     const selectedCourse = useMemo(() => courses.find((item) => item.id === editingId) ?? null, [courses, editingId]);
+
+    const summary = useMemo(() => {
+        const total = courses.length;
+        const active = courses.filter((item) => item.status === 'active').length;
+        const draft = courses.filter((item) => item.status === 'draft').length;
+        const students = courses.reduce((sum, item) => sum + (Number(item.students_count) || 0), 0);
+        return { total, active, draft, students };
+    }, [courses]);
 
     const submitFilter = (event) => {
         event.preventDefault();
@@ -58,6 +61,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
         setEditingId(null);
         form.setData(emptyForm);
         form.clearErrors();
+        setShowForm(true);
     };
 
     const beginEdit = (course) => {
@@ -75,19 +79,26 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
             status: course.status ?? 'draft',
         });
         form.clearErrors();
+        setShowForm(true);
+    };
+
+    const closeForm = () => {
+        setShowForm(false);
+        setEditingId(null);
+        form.setData(emptyForm);
+        form.clearErrors();
     };
 
     const submitForm = (event) => {
         event.preventDefault();
-
         const payload = (data) => ({ ...data, tags: parseTags(data.tags) });
 
         if (isEditing) {
-            form.transform(payload).put(`/my-courses/${editingId}`, { preserveScroll: true });
+            form.transform(payload).put(`/my-courses/${editingId}`, { preserveScroll: true, onSuccess: closeForm });
             return;
         }
 
-        form.transform(payload).post('/my-courses', { preserveScroll: true });
+        form.transform(payload).post('/my-courses', { preserveScroll: true, onSuccess: closeForm });
     };
 
     const destroyCourse = (course) => {
@@ -99,151 +110,155 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
         <ProtectedLayout>
             <Head title="Kursus Saya" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Kursus Saya" description="Kelola kursus yang Anda ampu, lalu susun module dan lesson pembelajarannya." />
+                <PageHeroBanner title="Kursus Saya" description="Kelola semua kelas dan materi yang Anda ampu" />
 
-                {mocked && (
-                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
-                        <BookOpen className="w-5 h-5 mt-0.5" />
-                        <div className="text-sm"><p className="font-semibold">Mode data mock aktif.</p><p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p></div>
-                    </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <StatCard title="Total Kursus" value={summary.total} tone="gradient-primary" />
+                    <StatCard title="Kelas Aktif" value={summary.active} tone="gradient-success" />
+                    <StatCard title="Draft" value={summary.draft} tone="gradient-warm" />
+                    <StatCard title="Total Jam" value={`${summary.students}j`} tone="bg-gradient-to-r from-sky-500 to-blue-600" />
+                </div>
 
-                {migrationRequired && (
-                    <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
-                        <BookOpen className="w-5 h-5 mt-0.5" />
-                        <div className="text-sm"><p className="font-semibold">Tabel kursus belum tersedia.</p><p>Jalankan migrasi dulu: <code className="font-mono">php artisan migrate</code></p></div>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 panel-card overflow-hidden">
-                        <div className="p-4 border-b border-border space-y-3">
-                            <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
+                <section className="panel-card overflow-hidden">
+                    <div className="p-4 border-b border-border space-y-3">
+                        <div className="flex flex-col xl:flex-row xl:items-center gap-2 justify-between">
+                            <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2 flex-1">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari judul / kode kursus..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                    <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari kursus..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
-                                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-40 focus:outline-none focus:ring-2 focus:ring-primary/30">
-                                    <option value="all">Semua Status</option>
+                                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm">
+                                    <option value="all">Semua</option>
+                                    <option value="active">Aktif</option>
                                     <option value="draft">Draft</option>
-                                    <option value="active">Active</option>
-                                    <option value="archived">Archived</option>
+                                    <option value="archived">Arsip</option>
                                 </select>
-                                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-48 focus:outline-none focus:ring-2 focus:ring-primary/30">
-                                    <option value="all">Semua Kategori</option>
+                                <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm">
+                                    <option value="all">Semua kategori</option>
                                     {(categories ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
                                 </select>
-                                <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                                <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
+                                <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
+                                <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Reset</button>
                             </form>
-                            <div className="flex justify-end">
-                                <Link href="/learning-modules" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">
+                            <div className="flex items-center gap-2">
+                                <Link href="/learning-modules" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium">
                                     <Layers3 className="w-4 h-4" /> Kelola Modules
                                 </Link>
+                                <button type="button" onClick={beginCreate} disabled={migrationRequired || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">
+                                    <Plus className="w-4 h-4" /> Buat Kursus
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-5">
-                            {courses.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-12">Belum ada kursus untuk Anda.</div>}
-                            {courses.map((course, index) => {
-                                const meta = statusMeta[course.status] ?? statusMeta.draft;
-                                return (
-                                    <div key={course.id} className="panel-card p-4 relative overflow-hidden hover:shadow-card-lg transition-all duration-300 animate-fade-in group" style={{ animationDelay: `${index * 60}ms` }}>
-                                        <div className={cn('absolute inset-0 bg-gradient-to-br opacity-70', cardToneOverlays[index % cardToneOverlays.length])} />
-                                        <div className="relative space-y-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <p className="text-sm text-muted-foreground">{course.category || 'Kursus'}</p>
-                                                    <h3 className="font-semibold group-hover:text-primary transition-colors truncate">{course.title}</h3>
-                                                    <p className="text-xs text-muted-foreground truncate">{course.code}</p>
-                                                </div>
-                                                <span className="text-[11px] px-2 py-1 rounded-full border border-border bg-background/80 text-secondary-foreground capitalize backdrop-blur-sm">{course.status}</span>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                                <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{course.credit_hours ?? 0} SKS</span>
-                                                <span>Semester {course.semester ?? '-'}</span>
-                                                <span>{course.materials_count ?? 0} Materi</span>
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <div className="flex justify-between text-xs"><span className="text-muted-foreground">Status</span><span className="font-medium">{meta.label}</span></div>
-                                                <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className={cn('h-full rounded-full', gradients[index % gradients.length])} style={{ width: `${meta.progress}%` }} /></div>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                {(course.tags ?? []).length > 0 ? course.tags.map((tag) => <span key={`${course.id}-${tag}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground"><Tags className="w-3 h-3" />{tag}</span>) : <span className="text-xs text-muted-foreground">Tanpa tag</span>}
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/80">
-                                                <button type="button" onClick={() => beginEdit(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"><Pencil className="w-3.5 h-3.5" />Edit</button>
-                                                <button type="button" onClick={() => destroyCourse(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
-                                                <Link href={`/learning-modules?course=${course.id}`} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-background/80 text-foreground text-xs font-medium hover:bg-secondary/60 transition-colors"><Layers3 className="w-3.5 h-3.5" />Modules</Link>
-                                            </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                        {courses.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-10">Belum ada kursus untuk Anda.</div>}
+                        {courses.map((course, index) => {
+                            const meta = statusMeta[course.status] ?? statusMeta.draft;
+                            return (
+                                <div key={course.id} className="panel-subcard p-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-sm text-muted-foreground">{course.category || 'Kursus'}</p>
+                                            <h3 className="font-semibold truncate">{course.title}</h3>
+                                            <p className="text-xs text-muted-foreground truncate">{course.code}</p>
+                                        </div>
+                                        <div className="inline-flex items-center gap-1">
+                                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-secondary">{meta.label}</span>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
+
+                                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {course.credit_hours ?? 0} materi</span>
+                                        <span>Semester {course.semester ?? '-'}</span>
+                                        <span>{course.materials_count ?? 0}j</span>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-xs"><span className="text-muted-foreground">Progress kelas</span><span className="font-medium">{meta.progress}%</span></div>
+                                        <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className={cn('h-full rounded-full', gradients[index % gradients.length])} style={{ width: `${meta.progress}%` }} /></div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        {(course.tags ?? []).length > 0 ? course.tags.map((tag) => <span key={`${course.id}-${tag}`} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-accent text-accent-foreground"><Tags className="w-3 h-3" />{tag}</span>) : <span className="text-xs text-muted-foreground">Tanpa tag</span>}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <button type="button" onClick={() => beginEdit(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"><Pencil className="w-3.5 h-3.5" />Edit</button>
+                                        <button type="button" onClick={() => destroyCourse(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
+                </section>
 
-                    <div className="panel-card p-4 h-fit">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-semibold">{isEditing ? 'Edit Kursus' : 'Tambah Kursus'}</h2>
-                            {isEditing && <button type="button" onClick={beginCreate} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Batalkan edit"><X className="w-4 h-4" /></button>}
-                        </div>
-
-                        {isEditing && selectedCourse && <p className="text-xs text-muted-foreground mb-4">Mengubah kursus <span className="font-medium text-foreground">{selectedCourse.title}</span></p>}
-
-                        <form onSubmit={submitForm} className="space-y-3">
-                            <Field label="Judul Kursus" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                            <Field label="Kode Kursus" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
-                            <Field label="Kategori" value={form.data.category} error={form.errors.category} onChange={(value) => form.setData('category', value)} placeholder="Contoh: Pemrograman Web" />
-                            <Field label="Tags" value={form.data.tags} error={form.errors.tags} onChange={(value) => form.setData('tags', value)} placeholder="Pisahkan dengan koma, contoh: react, laravel" />
-                            <label className="block">
-                                <span className="text-sm font-medium">Deskripsi</span>
-                                <textarea value={form.data.description} onChange={(event) => form.setData('description', event.target.value)} rows={3} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                                {form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}
-                            </label>
-                            <SelectField label="Jurusan" value={form.data.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)} error={form.errors.jurusan_id}>
-                                <option value="">Pilih Jurusan</option>
-                                {jurusans.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.fakultas?.name ?? '-'})</option>)}
+                <CreateFormModal
+                    open={showForm}
+                    title={isEditing ? 'Edit Kursus' : 'Tambah Kursus'}
+                    onClose={closeForm}
+                    onSubmit={submitForm}
+                    submitLabel={isEditing ? 'Simpan' : 'Tambah'}
+                    processing={form.processing}
+                    disableSubmit={migrationRequired || mocked}
+                    maxWidthClass="max-w-4xl"
+                >
+                    <div className="space-y-3">
+                        <Field label="Judul Kursus" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
+                        <Field label="Kode Kursus" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                        <Field label="Kategori" value={form.data.category} error={form.errors.category} onChange={(value) => form.setData('category', value)} placeholder="Contoh: Pemrograman Web" />
+                        <Field label="Tags" value={form.data.tags} error={form.errors.tags} onChange={(value) => form.setData('tags', value)} placeholder="react, laravel" />
+                        <label className="block">
+                            <span className="text-sm font-medium">Deskripsi</span>
+                            <textarea value={form.data.description} onChange={(event) => form.setData('description', event.target.value)} rows={3} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+                            {form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}
+                        </label>
+                        <SelectField label="Jurusan" value={form.data.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)} error={form.errors.jurusan_id}>
+                            <option value="">Pilih Jurusan</option>
+                            {jurusans.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.fakultas?.name ?? '-'})</option>)}
+                        </SelectField>
+                        <div className="grid grid-cols-2 gap-3">
+                            <SelectField label="Level" value={form.data.level} onChange={(value) => form.setData('level', value)} error={form.errors.level}>
+                                <option value="dasar">Dasar</option>
+                                <option value="menengah">Menengah</option>
+                                <option value="lanjutan">Lanjutan</option>
                             </SelectField>
-                            <div className="grid grid-cols-2 gap-3">
-                                <SelectField label="Level" value={form.data.level} onChange={(value) => form.setData('level', value)} error={form.errors.level}>
-                                    <option value="dasar">Dasar</option>
-                                    <option value="menengah">Menengah</option>
-                                    <option value="lanjutan">Lanjutan</option>
-                                </SelectField>
-                                <Field label="Semester" type="number" value={form.data.semester} error={form.errors.semester} onChange={(value) => form.setData('semester', value)} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Field label="SKS" type="number" value={form.data.credit_hours} error={form.errors.credit_hours} onChange={(value) => form.setData('credit_hours', value)} />
-                                <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}>
-                                    <option value="draft">Draft</option>
-                                    <option value="active">Active</option>
-                                    <option value="archived">Archived</option>
-                                </SelectField>
-                            </div>
-                            <button type="submit" disabled={form.processing || migrationRequired || mocked} className="w-full inline-flex justify-center items-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60"><Plus className="w-4 h-4" />{isEditing ? 'Simpan Perubahan' : 'Tambah Kursus'}</button>
-                        </form>
+                            <Field label="Semester" type="number" value={form.data.semester} error={form.errors.semester} onChange={(value) => form.setData('semester', value)} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Field label="SKS" type="number" value={form.data.credit_hours} error={form.errors.credit_hours} onChange={(value) => form.setData('credit_hours', value)} />
+                            <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}>
+                                <option value="draft">Draft</option>
+                                <option value="active">Aktif</option>
+                                <option value="archived">Arsip</option>
+                            </SelectField>
+                        </div>
                     </div>
-                </div>
+                </CreateFormModal>
             </div>
         </ProtectedLayout>
     );
 }
 
+function StatCard({ title, value, tone }) {
+    return (
+        <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card ${tone}`}>
+            <div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" />
+            <p className="text-sm text-white/85">{title}</p>
+            <p className="mt-1 text-[42px] leading-none font-bold">{value}</p>
+        </div>
+    );
+}
+
 function Field({ label, value, onChange, error, type = 'text', placeholder = '' }) {
-    return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>;
+    return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>;
 }
 
 function SelectField({ label, value, onChange, error, children }) {
-    return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>;
+    return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>;
 }
 
 function parseTags(raw) {
     if (!raw) return [];
     return [...new Set(String(raw).split(',').map((item) => item.trim()).filter((item) => item !== ''))];
 }
-
-
-
-
-

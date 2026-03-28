@@ -474,6 +474,26 @@ class LecturerController extends Controller
         return Inertia::render('Lecturer/Discussions', $this->service->getDiscussionsData((int) $user->id, $search, $status, $courseId));
     }
 
+    public function schedule(Request $request): Response
+    {
+        $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/Schedule');
+        }
+
+        return $this->placeholder('Jadwal', 'Kelola jadwal kelas, kuis, dan deadline');
+    }
+
+    public function certificates(Request $request): Response
+    {
+        $user = $request->user();
+        if ($user && $user->role === 'student') {
+            return Inertia::render('Student/Certificates');
+        }
+
+        return $this->placeholder('Sertifikat', 'Lihat daftar sertifikat yang telah diperoleh');
+    }
+
     public function storeDiscussion(StoreDiscussionRequest $request): RedirectResponse
     {
         $user = $this->requireLecturer();

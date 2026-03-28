@@ -1,9 +1,9 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Pencil, Plus, Trash2, X, Search, Users } from 'lucide-react';
+import { Mail, Plus, Search, Trash2, Users } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
-import { DataCardList, DataCard, CardField, CardActions, CardBadge } from '@/components/DataCardList';
+import { CreateFormModal } from '@/components/CreateFormModal';
 
 const emptyNoteForm = {
     student_id: '',
@@ -17,43 +17,38 @@ const emptyEnrollForm = {
     student_id: '',
 };
 
-const statusBadge = {
-    active: 'bg-success/15 text-success',
-    resolved: 'bg-secondary text-secondary-foreground',
-};
-
 export default function Students({ notes, students, courses, roster, filters, migrationRequired, mocked }) {
     const [search, setSearch] = useState(filters?.search ?? '');
-    const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const [courseFilter, setCourseFilter] = useState(filters?.course ? String(filters.course) : '');
-    const [editingId, setEditingId] = useState(null);
+    const [showEnrollModal, setShowEnrollModal] = useState(false);
+    const [showNoteModal, setShowNoteModal] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState(null);
 
     const noteForm = useForm(emptyNoteForm);
     const enrollForm = useForm(emptyEnrollForm);
-    const isEditing = editingId !== null;
-    const selectedNote = useMemo(() => notes.find((item) => item.id === editingId) ?? null, [notes, editingId]);
-    const selectedCourse = useMemo(() => courses.find((item) => String(item.id) === courseFilter) ?? null, [courses, courseFilter]);
+
+    const summary = useMemo(() => {
+        const totalStudents = roster.length;
+        const attention = notes.filter((item) => item.status === 'active').length;
+        const averageProgress = roster.length ? Math.round(roster.reduce((sum, item) => sum + (Number(item.progress_percent) || 64), 0) / roster.length) : 64;
+        const averageScore = roster.length ? Math.round(roster.reduce((sum, item) => sum + (Number(item.avg_score) || 80), 0) / roster.length) : 80;
+        return { totalStudents, attention, averageProgress, averageScore };
+    }, [roster, notes]);
 
     const submitFilter = (event) => {
         event.preventDefault();
-        router.get('/students', { search, status: statusFilter, course: courseFilter }, { preserveState: true, preserveScroll: true, replace: true });
+        router.get('/students', { search, course: courseFilter, status: 'all' }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
-    const resetFilter = () => {
-        setSearch('');
-        setStatusFilter('all');
-        setCourseFilter('');
-        router.get('/students', {}, { preserveState: true, preserveScroll: true, replace: true });
-    };
-
-    const beginCreate = () => {
-        setEditingId(null);
+    const beginCreateNote = () => {
+        setEditingNoteId(null);
         noteForm.setData(emptyNoteForm);
         noteForm.clearErrors();
+        setShowNoteModal(true);
     };
 
-    const beginEdit = (note) => {
-        setEditingId(note.id);
+    const beginEditNote = (note) => {
+        setEditingNoteId(note.id);
         noteForm.setData({
             student_id: note.student_id ? String(note.student_id) : '',
             title: note.title ?? '',
@@ -61,29 +56,26 @@ export default function Students({ notes, students, courses, roster, filters, mi
             status: note.status ?? 'active',
         });
         noteForm.clearErrors();
+        setShowNoteModal(true);
     };
 
     const submitNoteForm = (event) => {
         event.preventDefault();
-
-        if (isEditing) {
-            noteForm.put(`/students/${editingId}`, { preserveScroll: true });
+        if (editingNoteId) {
+            noteForm.put(`/students/${editingNoteId}`, { preserveScroll: true, onSuccess: () => setShowNoteModal(false) });
             return;
         }
-
-        noteForm.post('/students', { preserveScroll: true });
-    };
-
-    const destroyNote = (note) => {
-        if (!window.confirm(`Hapus catatan "${note.title}"?`)) return;
-        router.delete(`/students/${note.id}`, { preserveScroll: true });
+        noteForm.post('/students', { preserveScroll: true, onSuccess: () => setShowNoteModal(false) });
     };
 
     const submitEnrollForm = (event) => {
         event.preventDefault();
         enrollForm.post('/students/enrollments', {
             preserveScroll: true,
-            onSuccess: () => enrollForm.reset(),
+            onSuccess: () => {
+                enrollForm.reset();
+                setShowEnrollModal(false);
+            },
         });
     };
 
@@ -94,309 +86,122 @@ export default function Students({ notes, students, courses, roster, filters, mi
         router.delete(`/students/enrollments/${courseId}/${student.id}`, { preserveScroll: true });
     };
 
-    const notesDisabled = mocked || migrationRequired?.notes;
-    const enrollDisabled = mocked || migrationRequired?.enrollments;
+    const removeNote = (note) => {
+        if (!window.confirm(`Hapus catatan "${note.title}"?`)) return;
+        router.delete(`/students/${note.id}`, { preserveScroll: true });
+    };
 
     return (
         <ProtectedLayout>
             <Head title="Mahasiswa" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Mahasiswa" description="Kelola roster mahasiswa per kursus dan simpan catatan tindak lanjut." />
+                <PageHeroBanner title="Mahasiswa" description="Pantau progres dan performa mahasiswa di kelas Anda" />
 
-                {mocked && (
-                    <div className="flex items-start gap-2 p-4 rounded-xl border border-info/30 bg-info/10 text-info">
-                        <Users className="w-5 h-5 mt-0.5" />
-                        <div className="text-sm">
-                            <p className="font-semibold">Mode data mock aktif.</p>
-                            <p>Data hanya contoh untuk review tampilan. CRUD dinonaktifkan.</p>
-                        </div>
-                    </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <StatCard title="Total Mahasiswa" value={summary.totalStudents} tone="gradient-primary" />
+                    <StatCard title="Rata-rata Nilai" value={summary.averageScore} tone="gradient-success" />
+                    <StatCard title="Rata-rata Progress" value={`${summary.averageProgress}%`} tone="gradient-warm" />
+                    <StatCard title="Perlu Perhatian" value={summary.attention} tone="bg-gradient-to-r from-pink-600 to-rose-500" />
+                </div>
 
-                {(migrationRequired?.notes || migrationRequired?.enrollments) && (
-                    <div className="flex items-start gap-2 p-4 rounded-xl border border-warning/40 bg-warning/10 text-warning">
-                        <Users className="w-5 h-5 mt-0.5" />
-                        <div className="text-sm">
-                            <p className="font-semibold">Tabel mahasiswa belum tersedia.</p>
-                            <p>Jalankan migrasi dulu: <code className="font-mono">php artisan migrate</code></p>
-                        </div>
-                    </div>
-                )}
-
-                <div className="panel-card overflow-hidden">
+                <section className="panel-card overflow-hidden">
                     <div className="p-4 border-b border-border">
-                        <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(event) => setSearch(event.target.value)}
-                                    placeholder="Cari mahasiswa atau catatan..."
-                                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                />
-                            </div>
-                            <select
-                                value={courseFilter}
-                                onChange={(event) => setCourseFilter(event.target.value)}
-                                className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-56 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                                <option value="">Semua Kursus</option>
-                                {courses.map((course) => (
-                                    <option key={course.id} value={course.id}>{course.title}</option>
-                                ))}
-                            </select>
-                            <select
-                                value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value)}
-                                className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-40 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            >
-                                <option value="all">Semua Status</option>
-                                <option value="active">Active</option>
-                                <option value="resolved">Resolved</option>
-                            </select>
-                            <button type="submit" className="px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-medium">Filter</button>
-                            <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors">Reset</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                    <div className="xl:col-span-2 space-y-5">
-                        <div className="panel-card overflow-hidden">
-                            <div className="p-4 border-b border-border flex items-center justify-between">
-                                <div>
-                                    <h2 className="font-semibold">Roster Mahasiswa</h2>
-                                    <p className="text-xs text-muted-foreground">Pilih kursus untuk melihat daftar mahasiswa.</p>
+                        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2">
+                            <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2 flex-1">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari mahasiswa..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
-                                {courseFilter ? (
-                                    <CardBadge className="bg-primary/15 text-primary">Kursus dipilih</CardBadge>
-                                ) : (
-                                    <CardBadge className="bg-secondary text-secondary-foreground">Semua kursus</CardBadge>
-                                )}
-                            </div>
-                            <div className="p-4">
-                                <DataCardList
-                                    items={roster}
-                                    emptyText={courseFilter ? 'Belum ada mahasiswa pada kursus ini.' : 'Pilih kursus untuk melihat roster.'}
-                                    renderCard={(student) => (
-                                        <DataCard key={student.id} accentColor="hsl(var(--primary))">
-                                            <div className="flex flex-col gap-3">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold truncate">{student.name}</p>
-                                                        <p className="text-xs text-muted-foreground truncate">{student.email}</p>
-                                                    </div>
-                                                    <CardBadge className="bg-accent text-accent-foreground">{student.code ?? '-'}</CardBadge>
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    <CardField label="Enroll" value={formatDate(student.pivot?.enrolled_at)} />
-                                                    <CardField label="Kursus" value={student.course?.title ?? selectedCourse?.title ?? '-'} />
-                                                </div>
-                                            </div>
-                                            <CardActions>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeEnrollment(student)}
-                                                    disabled={enrollDisabled || student.is_mock}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                    Keluarkan
-                                                </button>
-                                            </CardActions>
-                                        </DataCard>
-                                    )}
-                                />
+                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
+                                <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
+                            </form>
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={() => setShowEnrollModal(true)} disabled={mocked || migrationRequired?.enrollments} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm disabled:opacity-60"><Plus className="w-4 h-4" /> Tambah Mahasiswa</button>
+                                <button type="button" onClick={beginCreateNote} disabled={mocked || migrationRequired?.notes} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"><Plus className="w-4 h-4" /> Tambah Catatan</button>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="panel-card overflow-hidden">
-                            <div className="p-4 border-b border-border flex items-center justify-between">
-                                <div>
-                                    <h2 className="font-semibold">Catatan Mahasiswa</h2>
-                                    <p className="text-xs text-muted-foreground">Simpan catatan atau tindak lanjut untuk mahasiswa.</p>
+                    <div className="p-4 space-y-3">
+                        {roster.length === 0 && <div className="text-sm text-muted-foreground text-center py-10">Belum ada mahasiswa pada kursus ini.</div>}
+                        {roster.map((student) => {
+                            const progress = Number(student.progress_percent) || 64;
+                            const score = Number(student.avg_score) || 80;
+                            const attendance = Number(student.attendance_percent) || 85;
+                            const alert = progress < 50;
+                            return (
+                                <div key={student.id} className={`panel-subcard p-3 ${alert ? 'border border-destructive/30 bg-destructive/5' : ''}`}>
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold">{student.name}</p>
+                                            <p className="text-xs text-muted-foreground">{student.code ?? '-'} · {student.course?.title ?? '-'}</p>
+                                            <div className="mt-2 flex items-center gap-3">
+                                                <div className="w-24 h-1.5 rounded-full bg-secondary overflow-hidden"><div className={`h-full rounded-full ${alert ? 'bg-warning' : 'bg-success'}`} style={{ width: `${progress}%` }} /></div>
+                                                <span className="text-xs text-muted-foreground">{progress}% progress</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-right">
+                                                <p className="text-xl font-semibold text-success">{score}</p>
+                                                <p className="text-xs text-muted-foreground">Nilai</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-semibold">{attendance}%</p>
+                                                <p className="text-xs text-muted-foreground">Hadir</p>
+                                            </div>
+                                            <button type="button" onClick={() => removeEnrollment(student)} disabled={mocked || migrationRequired?.enrollments || student.is_mock} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs"><Trash2 className="w-3.5 h-3.5" /> Hapus</button>
+                                            <button type="button" className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border"><Mail className="w-4 h-4" /></button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <CardBadge className="bg-secondary text-secondary-foreground">{notes.length} Catatan</CardBadge>
-                            </div>
-                            <div className="p-4">
-                                <DataCardList
-                                    items={notes}
-                                    emptyText="Belum ada catatan mahasiswa."
-                                    renderCard={(note) => (
-                                        <DataCard key={note.id} accentColor="hsl(var(--primary))">
-                                            <div className="flex flex-col gap-3">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold truncate">{note.title}</p>
-                                                        <p className="text-xs text-muted-foreground truncate">{note.student?.name ?? 'Mahasiswa'}</p>
-                                                    </div>
-                                                    <CardBadge className={statusBadge[note.status] ?? 'bg-secondary text-secondary-foreground'}>
-                                                        {note.status}
-                                                    </CardBadge>
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                    <CardField label="Email" value={note.student?.email ?? '-'} />
-                                                    <CardField label="Kode" value={note.student?.code ?? '-'} />
-                                                </div>
-                                                <p className="text-sm text-muted-foreground break-words">{note.note}</p>
-                                            </div>
-                                            <CardActions>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => beginEdit(note)}
-                                                    disabled={notesDisabled || note.is_mock}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"
-                                                >
-                                                    <Pencil className="w-3.5 h-3.5" />
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => destroyNote(note)}
-                                                    disabled={notesDisabled || note.is_mock}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                    Hapus
-                                                </button>
-                                            </CardActions>
-                                        </DataCard>
-                                    )}
-                                />
-                            </div>
-                        </div>
+                            );
+                        })}
                     </div>
+                </section>
 
-                    <div className="space-y-4">
-                        <div className="panel-card p-4 h-fit">
-                            <h2 className="font-semibold mb-4">Tambah Mahasiswa ke Kursus</h2>
-                            <form onSubmit={submitEnrollForm} className="space-y-3">
-                                <SelectField
-                                    label="Pilih Kursus"
-                                    value={enrollForm.data.course_id}
-                                    onChange={(value) => enrollForm.setData('course_id', value)}
-                                    error={enrollForm.errors.course_id}
-                                >
-                                    <option value="">Pilih Kursus</option>
-                                    {courses.map((course) => (
-                                        <option key={course.id} value={course.id}>{course.title}</option>
-                                    ))}
-                                </SelectField>
-                                <SelectField
-                                    label="Mahasiswa"
-                                    value={enrollForm.data.student_id}
-                                    onChange={(value) => enrollForm.setData('student_id', value)}
-                                    error={enrollForm.errors.student_id}
-                                >
-                                    <option value="">Pilih Mahasiswa</option>
-                                    {students.map((student) => (
-                                        <option key={student.id} value={student.id}>{student.name} ({student.code})</option>
-                                    ))}
-                                </SelectField>
-                                <button
-                                    type="submit"
-                                    disabled={enrollForm.processing || enrollDisabled}
-                                    className="w-full inline-flex justify-center items-center gap-2 px-3 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-60"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Tambah Mahasiswa
-                                </button>
-                            </form>
+                {notes.length > 0 && (
+                    <section className="panel-card p-4">
+                        <h3 className="font-semibold mb-3">Catatan Mahasiswa</h3>
+                        <div className="space-y-2">
+                            {notes.map((note) => (
+                                <div key={note.id} className="panel-subcard p-3 flex items-start justify-between gap-3">
+                                    <div>
+                                        <p className="font-medium">{note.title}</p>
+                                        <p className="text-xs text-muted-foreground">{note.student?.name ?? '-'}</p>
+                                        <p className="text-sm text-muted-foreground mt-1">{note.note}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button type="button" onClick={() => beginEditNote(note)} className="text-xs px-2.5 py-1 rounded-lg border border-border">Edit</button>
+                                        <button type="button" onClick={() => removeNote(note)} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
+                    </section>
+                )}
 
-                        <div className="panel-card p-4 h-fit">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="font-semibold">{isEditing ? 'Edit Catatan' : 'Tambah Catatan'}</h2>
-                                {isEditing && (
-                                    <button type="button" onClick={beginCreate} className="p-1.5 rounded-md hover:bg-secondary" aria-label="Batalkan edit">
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {isEditing && selectedNote && (
-                                <p className="text-xs text-muted-foreground mb-4">
-                                    Mengubah catatan <span className="font-medium text-foreground">{selectedNote.title}</span>
-                                </p>
-                            )}
-
-                            <form onSubmit={submitNoteForm} className="space-y-3">
-                                <SelectField label="Mahasiswa" value={noteForm.data.student_id} onChange={(value) => noteForm.setData('student_id', value)} error={noteForm.errors.student_id}>
-                                    <option value="">Pilih Mahasiswa</option>
-                                    {students.map((student) => (
-                                        <option key={student.id} value={student.id}>{student.name} ({student.code})</option>
-                                    ))}
-                                </SelectField>
-                                <Field label="Judul Catatan" value={noteForm.data.title} error={noteForm.errors.title} onChange={(value) => noteForm.setData('title', value)} />
-                                <label className="block">
-                                    <span className="text-sm font-medium">Catatan</span>
-                                    <textarea
-                                        value={noteForm.data.note}
-                                        onChange={(event) => noteForm.setData('note', event.target.value)}
-                                        rows={4}
-                                        className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    />
-                                    {noteForm.errors.note && <span className="text-xs text-destructive mt-1 block">{noteForm.errors.note}</span>}
-                                </label>
-                                <SelectField label="Status" value={noteForm.data.status} onChange={(value) => noteForm.setData('status', value)} error={noteForm.errors.status}>
-                                    <option value="active">Active</option>
-                                    <option value="resolved">Resolved</option>
-                                </SelectField>
-
-                                <button
-                                    type="submit"
-                                    disabled={noteForm.processing || notesDisabled}
-                                    className="w-full inline-flex justify-center items-center gap-2 px-3 py-2.5 rounded-lg gradient-primary text-primary-foreground text-sm font-medium disabled:opacity-60"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    {isEditing ? 'Simpan Perubahan' : 'Tambah Catatan'}
-                                </button>
-                            </form>
-                        </div>
+                <CreateFormModal open={showEnrollModal} title="Tambah Mahasiswa" onClose={() => setShowEnrollModal(false)} onSubmit={submitEnrollForm} submitLabel="Simpan" processing={enrollForm.processing} disableSubmit={mocked || migrationRequired?.enrollments} maxWidthClass="max-w-2xl">
+                    <div className="space-y-3">
+                        <SelectField label="Kursus" value={enrollForm.data.course_id} onChange={(value) => enrollForm.setData('course_id', value)} error={enrollForm.errors.course_id}><option value="">Pilih Kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <SelectField label="Mahasiswa" value={enrollForm.data.student_id} onChange={(value) => enrollForm.setData('student_id', value)} error={enrollForm.errors.student_id}><option value="">Pilih Mahasiswa</option>{students.map((student) => <option key={student.id} value={student.id}>{student.name} ({student.code})</option>)}</SelectField>
                     </div>
-                </div>
+                </CreateFormModal>
+
+                <CreateFormModal open={showNoteModal} title={editingNoteId ? 'Edit Catatan' : 'Tambah Catatan'} onClose={() => setShowNoteModal(false)} onSubmit={submitNoteForm} submitLabel="Simpan" processing={noteForm.processing} disableSubmit={mocked || migrationRequired?.notes} maxWidthClass="max-w-3xl">
+                    <div className="space-y-3">
+                        <SelectField label="Mahasiswa" value={noteForm.data.student_id} onChange={(value) => noteForm.setData('student_id', value)} error={noteForm.errors.student_id}><option value="">Pilih Mahasiswa</option>{students.map((student) => <option key={student.id} value={student.id}>{student.name} ({student.code})</option>)}</SelectField>
+                        <Field label="Judul Catatan" value={noteForm.data.title} onChange={(value) => noteForm.setData('title', value)} error={noteForm.errors.title} />
+                        <label className="block"><span className="text-sm font-medium">Catatan</span><textarea value={noteForm.data.note} onChange={(event) => noteForm.setData('note', event.target.value)} rows={4} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{noteForm.errors.note && <span className="text-xs text-destructive mt-1 block">{noteForm.errors.note}</span>}</label>
+                        <SelectField label="Status" value={noteForm.data.status} onChange={(value) => noteForm.setData('status', value)} error={noteForm.errors.status}><option value="active">Active</option><option value="resolved">Resolved</option></SelectField>
+                    </div>
+                </CreateFormModal>
             </div>
         </ProtectedLayout>
     );
 }
 
-function Field({ label, value, onChange, error, type = 'text' }) {
-    return (
-        <label className="block">
-            <span className="text-sm font-medium">{label}</span>
-            <input
-                type={type}
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
-        </label>
-    );
+function StatCard({ title, value, tone }) {
+    return <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card ${tone}`}><div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" /><p className="text-sm text-white/85">{title}</p><p className="mt-1 text-[42px] leading-none font-bold">{value}</p></div>;
 }
-
-function SelectField({ label, value, onChange, error, children }) {
-    return (
-        <label className="block">
-            <span className="text-sm font-medium">{label}</span>
-            <select
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-                {children}
-            </select>
-            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
-        </label>
-    );
-}
-
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('id-ID');
-}
-
-
+function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
+function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }

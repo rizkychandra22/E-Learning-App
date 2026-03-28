@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { BookOpen, CalendarDays, CheckCircle2, PlayCircle, Target, UserPlus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BookOpen, CalendarDays, CheckCircle2, Play, Star, Target, UserPlus } from 'lucide-react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
@@ -12,53 +12,112 @@ const UI = {
     chip: 'inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium',
 };
 
-function StatCard({ icon: Icon, label, value, helper }) {
+const KPI_GRADIENT_CLASS = {
+    primary: 'gradient-primary',
+    accent: 'gradient-success',
+    warm: 'gradient-warm',
+    success: 'gradient-accent',
+};
+
+const COURSE_CARD_THEMES = [
+    {
+        headerClass: 'gradient-primary',
+        progressClass: 'bg-primary',
+        categoryClass: 'bg-black/30 text-white',
+    },
+    {
+        headerClass: 'gradient-accent',
+        progressClass: 'bg-info',
+        categoryClass: 'bg-black/30 text-white',
+    },
+    {
+        headerClass: 'gradient-success',
+        progressClass: 'bg-success',
+        categoryClass: 'bg-black/30 text-white',
+    },
+    {
+        headerClass: '',
+        headerStyle: { background: 'linear-gradient(135deg, hsl(334 84% 56%), hsl(344 84% 54%))' },
+        progressClass: 'bg-accent',
+        categoryClass: 'bg-black/30 text-white',
+    },
+    {
+        headerClass: 'gradient-warm',
+        progressClass: 'bg-warning',
+        categoryClass: 'bg-black/30 text-white',
+    },
+];
+
+function StatCard({ icon: Icon, label, value, helper, tone = 'primary' }) {
     return (
-        <div className={cn(UI.panel, 'flex items-start gap-3')}>
-            <div className="rounded-xl bg-primary/10 text-primary p-2.5">
-                <Icon className="w-4 h-4" />
+        <div className={cn('relative overflow-hidden rounded-2xl p-4 text-white shadow-card-lg min-h-[122px]', KPI_GRADIENT_CLASS[tone] ?? KPI_GRADIENT_CLASS.primary)}>
+            <div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" />
+            <div className="absolute right-3 top-3 h-9 w-9 rounded-full bg-white/16 grid place-items-center">
+                <Icon className="h-4 w-4 text-white/90" />
             </div>
-            <div>
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-lg font-semibold mt-1">{value}</p>
-                {helper && <p className="text-xs text-muted-foreground mt-1">{helper}</p>}
-            </div>
+            <p className="text-sm text-white/85">{label}</p>
+            <p className="mt-2 text-[42px] leading-none font-bold tracking-tight">{value}</p>
+            {helper && <p className="text-xs text-white/85 mt-2">{helper}</p>}
         </div>
     );
 }
 
-function CourseCard({ course }) {
+function CourseCard({ course, index }) {
+    const progress = Number(course.progress_percent ?? 0);
+    const totalLessons = Number(course.total_lessons ?? 0);
+    const completedLessons = Number(course.completed_lessons ?? 0);
+    const isDone = progress >= 100;
+    const statusLabel = isDone ? 'Selesai' : 'Sedang Belajar';
+    const theme = COURSE_CARD_THEMES[index % COURSE_CARD_THEMES.length];
+    const category = course.category?.trim() ? course.category : 'Programming';
+    const rating = ((4.3 + (index % 5) * 0.15)).toFixed(1);
+
     return (
-        <div className={cn(UI.panel, 'space-y-3')}>
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-xs text-muted-foreground">Kelas Aktif</p>
-                    <h3 className="font-semibold">{course.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Mentor: {course.lecturer?.name ?? '-'}</p>
+        <article className="panel-card overflow-hidden p-0">
+            <div className={cn('relative px-4 py-4 text-white min-h-[126px]', theme.headerClass)} style={theme.headerStyle}>
+                <div className="absolute inset-0 bg-black/5" />
+                <div className="relative flex items-start justify-between">
+                    <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', theme.categoryClass)}>{category}</span>
+                    <span className="inline-flex items-center rounded-full bg-white/85 text-primary px-2.5 py-1 text-xs font-semibold">{statusLabel}</span>
                 </div>
-                <span className={UI.chip}>{course.progress_percent}% selesai</span>
-            </div>
-            <div className="space-y-2">
-                <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${course.progress_percent}%` }} />
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    <span className={UI.chip}>{course.code}</span>
-                    <span className={UI.chip}>{course.total_lessons} lesson</span>
-                    <span className={UI.chip}>{course.modules.length} modul</span>
+                <div className="relative mt-4 flex justify-center opacity-40">
+                    <BookOpen className="w-12 h-12" />
                 </div>
             </div>
-            <div className="panel-subcard p-3 text-sm">
-                <p className="font-medium">Progress Pembelajaran</p>
-                <p className="text-xs text-muted-foreground mt-1">{course.completed_lessons} dari {course.total_lessons} lesson selesai</p>
+
+            <div className="p-4">
+                <h3 className="font-semibold text-lg leading-tight">{course.title}</h3>
+                <p className="text-sm text-muted-foreground">{course.lecturer?.name ?? '-'}</p>
+
+                <div className="mt-2 flex items-center gap-1 text-sm text-warning">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="font-medium">{rating}</span>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{completedLessons}/{totalLessons} materi</span>
+                    <span className="font-semibold">{progress}%</span>
+                </div>
+                <div className="mt-2 h-2.5 rounded-full bg-secondary overflow-hidden">
+                    <div className={cn('h-full rounded-full', theme.progressClass)} style={{ width: `${progress}%` }} />
+                </div>
+
+                {isDone ? (
+                    <button type="button" className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary/70 px-4 py-2.5 text-sm font-semibold text-muted-foreground" disabled>
+                        <CheckCircle2 className="w-4 h-4" />
+                        Selesai
+                    </button>
+                ) : (
+                    <Link
+                        href={`/learning/${course.id}`}
+                        className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+                    >
+                        <Play className="w-4 h-4" />
+                        Lanjutkan
+                    </Link>
+                )}
             </div>
-            <div className="flex flex-wrap gap-2">
-                <Link href={`/learning/${course.id}`} className="text-xs font-medium text-primary hover:opacity-80 flex items-center gap-1">
-                    <PlayCircle className="w-3.5 h-3.5" />
-                    Lanjutkan Materi
-                </Link>
-            </div>
-        </div>
+        </article>
     );
 }
 
@@ -71,6 +130,9 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
         course_id: '',
         enrollment_key: '',
     });
+
+    const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState('all');
 
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const today = useMemo(
@@ -88,17 +150,37 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
         });
     };
 
+    const countAll = courses.length;
+    const countActive = courses.filter((course) => {
+        const progress = Number(course.progress_percent ?? 0);
+        return progress > 0 && progress < 100;
+    }).length;
+    const countDone = courses.filter((course) => Number(course.progress_percent ?? 0) >= 100).length;
+
     const stats = [
-        { label: 'Kursus Aktif', value: String(summary.active_courses ?? 0), helper: 'Kursus yang sedang dipelajari', icon: BookOpen },
-        { label: 'Lesson Selesai', value: String(summary.completed_lessons ?? 0), helper: 'Akumulasi semua course', icon: CheckCircle2 },
-        { label: 'Rata-rata Progress', value: `${summary.average_progress ?? 0}%`, helper: 'Ringkasan progres belajar', icon: Target },
+        { label: 'Kursus Aktif', value: String(summary.active_courses ?? 0), helper: 'Kursus yang sedang dipelajari', icon: BookOpen, tone: 'primary' },
+        { label: 'Lesson Selesai', value: String(summary.completed_lessons ?? 0), helper: 'Akumulasi semua course', icon: CheckCircle2, tone: 'accent' },
+        { label: 'Rata-rata Progress', value: `${summary.average_progress ?? 0}%`, helper: 'Ringkasan progres belajar', icon: Target, tone: 'success' },
+        { label: 'Kursus Selesai', value: String(countDone), helper: 'Kelas dengan progress 100%', icon: CheckCircle2, tone: 'warm' },
     ];
+
+    const filteredCourses = useMemo(() => {
+        const keyword = search.trim().toLowerCase();
+        return courses.filter((course) => {
+            const progress = Number(course.progress_percent ?? 0);
+            const byStatus = filter === 'all' ? true : filter === 'active' ? progress > 0 && progress < 100 : progress >= 100;
+            const byKeyword = keyword === ''
+                ? true
+                : `${course.title} ${course.category ?? ''} ${course.lecturer?.name ?? ''}`.toLowerCase().includes(keyword);
+            return byStatus && byKeyword;
+        });
+    }, [courses, search, filter]);
 
     return (
         <ProtectedLayout>
             <Head title="Kursus Saya" />
             <div className="space-y-6">
-                <PageHeroBanner title="Kursus Saya" description="Pantau kelas aktif, modul pembelajaran, dan progres belajar dalam satu tampilan." />
+                <PageHeroBanner title="Kursus Saya" description="Pantau progress belajarmu di sini." />
 
                 <div className="flex flex-wrap gap-3 text-sm">
                     <span className={UI.chip}><CalendarDays className="w-3.5 h-3.5" />{today}</span>
@@ -106,7 +188,7 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                     <span className={UI.chip}>Learning modules Sprint 3</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 min-[540px]:grid-cols-2 xl:grid-cols-4 gap-3">
                     {stats.map((stat) => <StatCard key={stat.label} {...stat} />)}
                 </div>
 
@@ -164,16 +246,45 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {courses.length > 0 ? courses.map((course) => <CourseCard key={course.id} course={course} />) : (
-                        <div className={cn(UI.panel, 'text-sm text-muted-foreground lg:col-span-2')}>
-                            Belum ada kursus yang terdaftar untuk mahasiswa ini.
+                <section className="space-y-4">
+                    <div className="flex flex-col lg:flex-row gap-3">
+                        <label className="relative flex-1">
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Cari kursus..."
+                                className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
+                            />
+                        </label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={() => setFilter('all')}
+                                className={cn('rounded-xl border px-4 py-2 text-sm font-semibold transition-colors', filter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}
+                            >Semua ({countAll})</button>
+                            <button
+                                type="button"
+                                onClick={() => setFilter('active')}
+                                className={cn('rounded-xl border px-4 py-2 text-sm font-semibold transition-colors', filter === 'active' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}
+                            >Berlangsung ({countActive})</button>
+                            <button
+                                type="button"
+                                onClick={() => setFilter('done')}
+                                className={cn('rounded-xl border px-4 py-2 text-sm font-semibold transition-colors', filter === 'done' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground')}
+                            >Selesai ({countDone})</button>
                         </div>
-                    )}
-                </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filteredCourses.length > 0 ? filteredCourses.map((course, index) => <CourseCard key={course.id} course={course} index={index} />) : (
+                            <div className={cn(UI.panel, 'text-sm text-muted-foreground lg:col-span-2 xl:col-span-3')}>
+                                Belum ada kursus yang sesuai filter.
+                            </div>
+                        )}
+                    </div>
+                </section>
             </div>
         </ProtectedLayout>
     );
 }
-
-

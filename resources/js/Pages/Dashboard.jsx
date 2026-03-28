@@ -395,7 +395,28 @@ function ModernTrendChart({ title, data = [], valueFormatter = (value) => String
 
 function BarColumnChart({ title, data = [], valueFormatter = (value) => String(value) }) {
     if (!data.length) return null;
-    const maxValue = Math.max(...data.map((item) => Number(item.value) || 0), 1);
+    const toNumeric = (value) => {
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (value === null || value === undefined) return 0;
+        let normalized = String(value).trim().replace(/\s+/g, '');
+        if (!normalized) return 0;
+        if (normalized.includes('.') && normalized.includes(',')) {
+            if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) normalized = normalized.replace(/\./g, '').replace(',', '.');
+            else normalized = normalized.replace(/,/g, '');
+        } else if (normalized.includes(',')) {
+            normalized = /^-?\d{1,3}(,\d{3})+$/.test(normalized) ? normalized.replace(/,/g, '') : normalized.replace(',', '.');
+        } else if (normalized.includes('.')) {
+            normalized = /^-?\d{1,3}(\.\d{3})+$/.test(normalized) ? normalized.replace(/\./g, '') : normalized;
+        }
+        normalized = normalized.replace(/[^\d.-]/g, '');
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const maxValue = Math.max(...data.map((item) => toNumeric(item.value)), 1);
+    const values = data.map((item) => toNumeric(item.value));
+    const minValue = Math.min(...values);
+    const avgValue = Math.round(values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1));
+    const growth = values.length > 1 && values[0] > 0 ? ((values[values.length - 1] - values[0]) / values[0]) * 100 : 0;
     const minBarHeightPercent = 28;
 
     return (
@@ -404,7 +425,7 @@ function BarColumnChart({ title, data = [], valueFormatter = (value) => String(v
             <div className="mt-4 panel-subcard p-3">
                 <div className="grid grid-cols-6 gap-2.5">
                     {data.map((item) => {
-                        const value = Number(item.value) || 0;
+                        const value = toNumeric(item.value);
                         const height = Math.max((value / maxValue) * 100, minBarHeightPercent);
                         return (
                             <div key={item.label} className="flex flex-col items-center gap-2">
@@ -419,6 +440,23 @@ function BarColumnChart({ title, data = [], valueFormatter = (value) => String(v
                 <p className="mt-3 text-sm text-muted-foreground">
                     Tertinggi: <span className="font-semibold text-foreground">{valueFormatter(maxValue)}</span>
                 </p>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-lg bg-secondary/60 p-3">
+                        <p className="text-xs text-muted-foreground">Rata-rata</p>
+                        <p className="font-semibold mt-1">{valueFormatter(avgValue)}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/60 p-3">
+                        <p className="text-xs text-muted-foreground">Nilai Terendah</p>
+                        <p className="font-semibold mt-1">{valueFormatter(minValue)}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/60 p-3">
+                        <p className="text-xs text-muted-foreground">Pertumbuhan</p>
+                        <p className={cn('font-semibold mt-1', growth >= 0 ? 'text-success' : 'text-destructive')}>
+                            {growth >= 0 ? '+' : ''}
+                            {growth.toFixed(1)}%
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -511,9 +549,15 @@ function DonutCategoryChart({ title, data = [] }) {
     );
 }
 
-function HorizontalMetricChart({ title, data = [] }) {
+function HorizontalMetricChart({ title, data = [], showFooter = false }) {
     if (!data.length) return null;
     const maxValue = Math.max(...data.map((item) => Number(item.value) || 0), 1);
+    const totalValue = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
+    const dominant = data.reduce(
+        (current, item) => ((Number(item.value) || 0) > (Number(current?.value) || 0) ? item : current),
+        data[0]
+    );
+    const dominantShare = totalValue > 0 ? ((Number(dominant?.value) || 0) / totalValue) * 100 : 0;
 
     return (
         <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '360ms' }}>
@@ -535,6 +579,22 @@ function HorizontalMetricChart({ title, data = [] }) {
                     );
                 })}
             </div>
+            {showFooter && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-lg bg-secondary/60 p-3">
+                        <p className="text-xs text-muted-foreground">Total Metode</p>
+                        <p className="font-semibold mt-1">{data.length}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/60 p-3">
+                        <p className="text-xs text-muted-foreground">Metode Dominan</p>
+                        <p className="font-semibold mt-1">{dominant?.label ?? '-'}</p>
+                    </div>
+                    <div className="rounded-lg bg-secondary/60 p-3">
+                        <p className="text-xs text-muted-foreground">Kontribusi Dominan</p>
+                        <p className="font-semibold mt-1">{dominantShare.toFixed(1)}%</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -694,12 +754,14 @@ export default function Dashboard() {
     const adminRoleStats = adminAcademic?.role_stats ?? {};
     const monthlyIncome = financeData?.monthly_income ?? [];
 
+    const displayName = user?.full_name || user?.name || user?.username || 'Pengguna';
+
     const roleGreeting = {
         super_admin: 'Selamat datang, Super Admin',
         admin: 'Selamat datang, Admin Akademik',
         finance: 'Selamat datang, Tim Finance',
-        dosen: 'Selamat datang, Dosen',
-        mahasiswa: 'Selamat datang, Mahasiswa',
+        dosen: 'Selamat datang, Dosen ' + displayName,
+        mahasiswa: 'Selamat datang, ' + displayName,
     };
 
     const roleSubtitle = {
@@ -804,10 +866,21 @@ export default function Dashboard() {
     ];
 
     const dosenKpis = [
-        { title: 'Kursus Saya', value: 6, icon: BookOpen, gradient: 'primary', delay: 0 },
-        { title: 'Total Mahasiswa', value: 182, change: '+12 minggu ini', changeType: 'up', icon: Users, gradient: 'accent', delay: 80 },
-        { title: 'Tugas Belum Dinilai', value: 23, icon: ClipboardList, gradient: 'warm', delay: 160 },
-        { title: 'Kuis Aktif', value: 4, icon: Award, gradient: 'success', delay: 240 },
+        { title: 'Kelas Aktif', value: 5, icon: BookOpen, gradient: 'primary', delay: 0 },
+        { title: 'Total Mahasiswa', value: 187, icon: Users, gradient: 'accent', delay: 80 },
+        { title: 'Tugas Diperiksa', value: '43 / 60', icon: ClipboardCheck, gradient: 'warm', delay: 160 },
+        { title: 'Jam Mengajar', value: '24 Jam', icon: Clock, gradient: 'success', delay: 240 },
+    ];
+    const dosenClassProgress = [
+        { title: 'React JS Fundamental', students: 45, progress: 65, nextSession: 'Senin, 24 Mar - 13:00' },
+        { title: 'Node.js Advanced', students: 38, progress: 40, nextSession: 'Selasa, 25 Mar - 10:00' },
+        { title: 'Algorithm & Data Structure', students: 52, progress: 80, nextSession: 'Rabu, 26 Mar - 09:00' },
+        { title: 'Web Security Basics', students: 32, progress: 20, nextSession: 'Kamis, 27 Mar - 14:00' },
+    ];
+    const dosenIncomingAssignments = [
+        { student: 'Andi Pratama', course: 'React JS', task: 'Membuat Komponen Todo', submittedAt: '22 Mar 10:30', status: 'pending' },
+        { student: 'Maya Sari', course: 'Node.js', task: 'REST API CRUD', submittedAt: '21 Mar 16:45', status: 'pending' },
+        { student: 'Riko Febrian', course: 'Algorithm', task: 'Sorting Algorithm', submittedAt: '21 Mar 14:00', status: 'reviewed' },
     ];
 
     const mahasiswaKpis = [
@@ -871,10 +944,6 @@ export default function Dashboard() {
                     />
                 )}
 
-                {user.role === 'dosen' && (
-                    <KpiGrid cards={dosenKpis} />
-                )}
-
                 {user.role === 'mahasiswa' && (
                     <KpiGrid cards={mahasiswaKpis} />
                 )}
@@ -906,11 +975,11 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-start">
-                            <div className="xl:col-span-8">
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-stretch">
+                            <div className="xl:col-span-8 h-full">
                                 <BarColumnChart title="Tren Enrollment" data={adminEnrollmentData} />
                             </div>
-                            <div className="xl:col-span-4">
+                            <div className="xl:col-span-4 h-full">
                                 <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />
                             </div>
                             <div className="xl:col-span-12">
@@ -961,7 +1030,7 @@ export default function Dashboard() {
                                 )}
                             </div>
                             <div className="xl:col-span-4">
-                                <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} />
+                                <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} showFooter />
                             </div>
                         </div>
 
@@ -1004,6 +1073,70 @@ export default function Dashboard() {
                             </div>
                         </div>
                     </div>
+                ) : user.role === 'dosen' ? (
+                    <div className="space-y-4 sm:space-y-6">
+                        <KpiGrid cards={dosenKpis} />
+                        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-stretch">
+                            <div className="xl:col-span-8">
+                                <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '360ms' }}>
+                                    <SectionTitle icon={BookOpen}>Kelas Saya</SectionTitle>
+                                    <div className="mt-4 space-y-3">
+                                        {dosenClassProgress.map((course) => (
+                                            <div key={course.title} className="panel-subcard p-3">
+                                                <div className="flex items-center justify-between gap-2 text-sm">
+                                                    <p className="font-semibold">{course.title}</p>
+                                                    <p className="text-muted-foreground">{course.students} mahasiswa</p>
+                                                </div>
+                                                <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden">
+                                                    <div className="h-full gradient-primary rounded-full transition-all duration-500" style={{ width: `${course.progress}%` }} />
+                                                </div>
+                                                <p className="mt-2 text-xs text-muted-foreground">Sesi berikutnya: {course.nextSession}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="xl:col-span-4">
+                                <RadarPerformanceChart title="Rata-rata Nilai Kelas" data={dosenRadarData} />
+                            </div>
+                            <div className="xl:col-span-12">
+                                <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '420ms' }}>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <SectionTitle icon={ClipboardList}>Tugas Masuk</SectionTitle>
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">2 belum diperiksa</span>
+                                    </div>
+                                    <div className="mt-4 overflow-x-auto">
+                                        <table className="w-full min-w-[760px] text-sm">
+                                            <thead>
+                                                <tr className="text-left text-muted-foreground border-b border-border">
+                                                    <th className="py-2 px-2 font-medium">Mahasiswa</th>
+                                                    <th className="py-2 px-2 font-medium">Kursus</th>
+                                                    <th className="py-2 px-2 font-medium">Tugas</th>
+                                                    <th className="py-2 px-2 font-medium">Dikumpulkan</th>
+                                                    <th className="py-2 px-2 font-medium">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {dosenIncomingAssignments.map((item, index) => (
+                                                    <tr key={`${item.student}-${item.task}-${index}`} className="border-b border-border/70">
+                                                        <td className="py-2.5 px-2 font-medium">{item.student}</td>
+                                                        <td className="py-2.5 px-2 text-muted-foreground">{item.course}</td>
+                                                        <td className="py-2.5 px-2">{item.task}</td>
+                                                        <td className="py-2.5 px-2 text-muted-foreground">{item.submittedAt}</td>
+                                                        <td className="py-2.5 px-2">
+                                                            <span className={cn('inline-flex px-2.5 py-1 rounded-full text-xs font-medium', item.status === 'pending' ? 'bg-warning/20 text-warning' : 'bg-success/15 text-success')}>
+                                                                {item.status === 'pending' ? 'Menunggu' : 'Selesai'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -1012,13 +1145,6 @@ export default function Dashboard() {
                             <>
                                 <BarColumnChart title="Tren Enrollment" data={adminEnrollmentData} />
                                 <RecentActivity title="Aktivitas Akademik" intlLocale={intlLocale} activities={adminAcademic?.recent_activities ?? []} />
-                            </>
-                        )}
-
-                        {user.role === 'dosen' && (
-                            <>
-                                <BarColumnChart title="Aktivitas Kelas Mingguan" data={superWeeklyActivityData} />
-                                <RecentActivity title="Tugas Masuk" intlLocale={intlLocale} activities={[]} />
                             </>
                         )}
 
@@ -1043,7 +1169,6 @@ export default function Dashboard() {
                         </div>
                         <div className="space-y-4 sm:space-y-6">
                         {user.role === 'admin' && <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />}
-                        {user.role === 'dosen' && <RadarPerformanceChart title="Rata-rata Nilai Kelas" data={dosenRadarData} />}
                         {(user.role === 'mahasiswa' || user.role === 'dosen') && <CourseProgress />}
                         <UpcomingSchedule />
                         </div>
@@ -1053,4 +1178,6 @@ export default function Dashboard() {
         </ProtectedLayout>
     );
 }
+
+
 
