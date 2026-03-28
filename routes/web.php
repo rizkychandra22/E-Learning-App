@@ -169,6 +169,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/quizzes/{quiz}', [LecturerController::class, 'destroyQuiz']);
 
     Route::get('/discussions', [LecturerController::class, 'discussions']);
+    Route::get('/schedule', [LecturerController::class, 'schedule']);
+    Route::get('/certificates', [LecturerController::class, 'certificates']);
     Route::post('/discussions', [LecturerController::class, 'storeDiscussion']);
     Route::put('/discussions/{discussion}', [LecturerController::class, 'updateDiscussion']);
     Route::delete('/discussions/{discussion}', [LecturerController::class, 'destroyDiscussion']);

@@ -1,7 +1,7 @@
 import {
     LayoutDashboard, Users, BookOpen, FileText, MessageSquare, ClipboardList,
     Award, Settings, GraduationCap, Shield, UserCheck, FolderOpen,
-    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity, Bell, CircleHelp
+    BarChart3, ChevronLeft, ChevronRight, X, Wallet, Activity, Bell, CircleHelp, CalendarDays
 } from 'lucide-react';
 import { Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,6 +58,8 @@ const navByRole = {
         { title: 'Nilai', url: '/grades', icon: BarChart3 },
         { title: 'Diskusi', url: '/discussions', icon: MessageSquare },
         { title: 'Notifikasi', url: '/notifications', icon: Bell },
+        { title: 'Jadwal', url: '/schedule', icon: CalendarDays },
+        { title: 'Sertifikat', url: '/certificates', icon: Award },
     ],
 };
 
