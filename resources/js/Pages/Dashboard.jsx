@@ -754,12 +754,14 @@ export default function Dashboard() {
     const adminRoleStats = adminAcademic?.role_stats ?? {};
     const monthlyIncome = financeData?.monthly_income ?? [];
 
+    const displayName = user?.full_name || user?.name || user?.username || 'Pengguna';
+
     const roleGreeting = {
         super_admin: 'Selamat datang, Super Admin',
         admin: 'Selamat datang, Admin Akademik',
         finance: 'Selamat datang, Tim Finance',
-        dosen: 'Selamat datang, Dosen',
-        mahasiswa: 'Selamat datang, Mahasiswa',
+        dosen: 'Selamat datang, Dosen ' + displayName,
+        mahasiswa: 'Selamat datang, ' + displayName,
     };
 
     const roleSubtitle = {
@@ -1176,3 +1178,6 @@ export default function Dashboard() {
         </ProtectedLayout>
     );
 }
+
+
+
