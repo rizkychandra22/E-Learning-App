@@ -10,6 +10,7 @@ use App\Models\CourseMaterial;
 use App\Models\CourseModule;
 use App\Models\Discussion;
 use App\Models\FeeComponent;
+use App\Models\Fakultas;
 use App\Models\InAppNotification;
 use App\Models\Invoice;
 use App\Models\Jurusan;
@@ -18,6 +19,7 @@ use App\Models\Payment;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\StudentNote;
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
@@ -31,12 +33,68 @@ class PlatformDemoSeeder extends Seeder
             return;
         }
 
+        $academicStructure = $this->seedAcademicStructure();
         $users = $this->seedUsers();
-        $courses = $this->seedCourses($users);
+        $courses = $this->seedCourses($users, $academicStructure);
         $this->seedEnrollmentsAndLearning($courses, $users);
         $this->seedAssessmentsAndDiscussions($courses, $users);
         $this->seedFinance($users);
         $this->seedNotifications($users, $courses);
+        $this->seedSystemSettings($users);
+    }
+
+    private function seedAcademicStructure(): array
+    {
+        if (!Schema::hasTable('fakultas') || !Schema::hasTable('jurusans')) {
+            return ['jurusan_id' => null];
+        }
+
+        $fakultasMap = [];
+        $fakultasRows = [
+            ['name' => 'Fakultas Sains dan Teknologi', 'slug' => 'fakultas-sains-dan-teknologi', 'code' => '31'],
+            ['name' => 'Fakultas Ekonomi', 'slug' => 'fakultas-ekonomi', 'code' => '51'],
+            ['name' => 'Fakultas Ilmu Sosial', 'slug' => 'fakultas-ilmu-sosial', 'code' => '21'],
+        ];
+
+        foreach ($fakultasRows as $row) {
+            $fakultasMap[$row['code']] = Fakultas::updateOrCreate(
+                ['code' => $row['code']],
+                [
+                    'name' => $row['name'],
+                    'slug' => $row['slug'],
+                ]
+            );
+        }
+
+        $jurusanRows = [
+            ['fakultas_code' => '31', 'name' => 'Teknik Informatika', 'slug' => 'teknik-informatika', 'code' => '44'],
+            ['fakultas_code' => '31', 'name' => 'Sistem Informasi', 'slug' => 'sistem-informasi', 'code' => '45'],
+            ['fakultas_code' => '51', 'name' => 'Manajemen Bisnis', 'slug' => 'manajemen-bisnis', 'code' => '62'],
+            ['fakultas_code' => '21', 'name' => 'Administrasi Bisnis', 'slug' => 'administrasi-bisnis', 'code' => '31'],
+        ];
+
+        $tiJurusanId = null;
+        foreach ($jurusanRows as $row) {
+            $fakultasId = $fakultasMap[$row['fakultas_code']]?->id ?? null;
+            if (!$fakultasId) {
+                continue;
+            }
+
+            $jurusan = Jurusan::updateOrCreate(
+                ['code' => $row['code']],
+                [
+                    'fakultas_id' => $fakultasId,
+                    'name' => $row['name'],
+                    'slug' => $row['slug'],
+                ]
+            );
+
+            if ($row['name'] === 'Teknik Informatika') {
+                $tiJurusanId = $jurusan->id;
+            }
+        }
+
+        return ['jurusan_id' => $tiJurusanId];
     }
 
     private function seedUsers(): array
@@ -132,13 +190,16 @@ class PlatformDemoSeeder extends Seeder
         ];
     }
 
-    private function seedCourses(array $users): array
+    private function seedCourses(array $users, array $academicStructure): array
     {
         if (!Schema::hasTable('courses')) {
             return [];
         }
 
-        $jurusan = Jurusan::query()->where('name', 'Teknik Informatika')->first() ?? Jurusan::query()->first();
+        $jurusanId = $academicStructure['jurusan_id'] ?? null;
+        if (!$jurusanId) {
+            $jurusanId = Jurusan::query()->where('name', 'Teknik Informatika')->value('id') ?? Jurusan::query()->value('id');
+        }
         $teacherA = $users['teachers'][0] ?? null;
         $teacherB = $users['teachers'][1] ?? null;
         $teacherC = $users['teachers'][2] ?? null;
@@ -201,7 +262,7 @@ class PlatformDemoSeeder extends Seeder
             $payload = [
                 'title' => $item['title'],
                 'description' => $item['description'],
-                'jurusan_id' => $jurusan?->id,
+                'jurusan_id' => $jurusanId,
                 'lecturer_id' => $item['lecturer_id'],
                 'level' => $item['level'],
                 'semester' => $item['semester'],
@@ -587,5 +648,72 @@ class PlatformDemoSeeder extends Seeder
                 'file_size' => (int) Storage::disk('public')->size($path),
             ]
         );
+    }
+
+    private function seedSystemSettings(array $users): void
+    {
+        if (!Schema::hasTable('system_settings')) {
+            return;
+        }
+
+        $root = $users['root'] ?? null;
+        $admin = $users['admin'] ?? null;
+        $finance = $users['finance'] ?? null;
+
+        $global = [
+            'platform_name' => 'Smart Learning Campus',
+            'support_email' => 'support@univ.ac.id',
+            'default_language' => 'id',
+            'maintenance_mode' => '0',
+            'allow_registration' => '1',
+            'notify_on_new_user' => '1',
+            'session_timeout_minutes' => '60',
+            'max_upload_mb' => '25',
+        ];
+
+        foreach ($global as $key => $value) {
+            SystemSetting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
+
+        if ($admin) {
+            $adminScoped = [
+                'dashboard_refresh_seconds' => '60',
+                'show_pending_first' => '1',
+                'enable_user_email_notification' => '1',
+                'default_user_role_filter' => 'all',
+            ];
+            foreach ($adminScoped as $key => $value) {
+                SystemSetting::updateOrCreate(
+                    ['key' => 'admin_' . $admin->id . '_' . $key],
+                    ['value' => $value]
+                );
+            }
+        }
+
+        if ($finance) {
+            $financeScoped = [
+                'default_due_days' => '14',
+                'auto_verify_payment' => '0',
+                'overdue_reminder_days' => '3',
+                'nominal_spp' => '3500000',
+                'late_fee_per_day' => '50000',
+                'grace_period_days' => '7',
+                'auto_invoice_enabled' => '1',
+                'auto_reminder_enabled' => '1',
+            ];
+            foreach ($financeScoped as $key => $value) {
+                SystemSetting::updateOrCreate(
+                    ['key' => 'finance_' . $finance->id . '_' . $key],
+                    ['value' => $value]
+                );
+            }
+        }
+
+        if ($root) {
+            SystemSetting::updateOrCreate(
+                ['key' => 'seeded_by_root_user_id'],
+                ['value' => (string) $root->id]
+            );
+        }
     }
 }
