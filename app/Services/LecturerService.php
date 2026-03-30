@@ -78,12 +78,6 @@ class LecturerService
             ->get(['id', 'name', 'fakultas_id']);
 
         $mocked = false;
-        $shouldMock = $search === '' && $normalizedStatus === 'all' && $normalizedCategory === 'all';
-        if ($courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $courses = collect($this->mockCourses());
-            $availableCategories = collect(array_values(array_unique(array_filter(array_map(fn ($item) => $item['category'] ?? null, $courses->all())))));
-        }
 
         return [
             'courses' => $courses,
@@ -711,13 +705,6 @@ class LecturerService
         }
 
         $mocked = false;
-        $shouldMock = $search === '' && $selectedCourseId === null;
-        if ($materials->isEmpty() && $courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $mockCourses = $this->mockCourseOptions();
-            $courses = collect($mockCourses);
-            $materials = collect($this->mockMaterials($mockCourses));
-        }
 
         return [
             'materials' => $materials,
@@ -792,13 +779,6 @@ class LecturerService
 
         $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
         $mocked = false;
-        $shouldMock = $search === '' && $normalizedStatus === 'all' && $selectedCourseId === null;
-        if ($assignments->isEmpty() && $courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $mockCourses = $this->mockCourseOptions();
-            $courses = collect($mockCourses);
-            $assignments = collect($this->mockAssignments($mockCourses));
-        }
 
         return [
             'assignments' => $assignments,
@@ -880,13 +860,6 @@ class LecturerService
 
         $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
         $mocked = false;
-        $shouldMock = $search === '' && $normalizedStatus === 'all' && $selectedCourseId === null;
-        if ($quizzes->isEmpty() && $courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $mockCourses = $this->mockCourseOptions();
-            $courses = collect($mockCourses);
-            $quizzes = collect($this->mockQuizzes($mockCourses));
-        }
 
         return [
             'quizzes' => $quizzes,
@@ -1091,13 +1064,6 @@ class LecturerService
 
         $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
         $mocked = false;
-        $shouldMock = $search === '' && $normalizedStatus === 'all' && $selectedCourseId === null;
-        if ($discussions->isEmpty() && $courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $mockCourses = $this->mockCourseOptions();
-            $courses = collect($mockCourses);
-            $discussions = collect($this->mockDiscussions($mockCourses));
-        }
 
         return [
             'discussions' => $discussions,
@@ -1206,15 +1172,6 @@ class LecturerService
             ->get(['id', 'name', 'email', 'code']);
 
         $mocked = false;
-        $shouldMock = $search === '' && $normalizedStatus === 'all' && $selectedCourseId === null;
-        if ($notes->isEmpty() && $roster->isEmpty() && $courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $mockCourses = $this->mockCourseOptions();
-            $courses = collect($mockCourses);
-            $students = collect($this->mockStudents());
-            $roster = collect($this->mockRoster($mockCourses, $students->all()));
-            $notes = collect($this->mockStudentNotes($students->all()));
-        }
 
         return [
             'notes' => $notes,

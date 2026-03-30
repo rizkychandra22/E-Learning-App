@@ -32,10 +32,6 @@ class SuperAdminService
             ->get(['id', 'name', 'email', 'username', 'code', 'created_at']);
 
         $mocked = false;
-        if ($search === '' && $users->isEmpty()) {
-            $mocked = true;
-            $users = collect($this->mockManagedUsers($target));
-        }
 
         return [
             'title' => $config['title'],
@@ -155,16 +151,6 @@ class SuperAdminService
             ->count();
 
         $mocked = false;
-        $roleTotal = array_sum(array_map(fn ($item) => (int) $item['value'], $roleDistribution));
-        $allMonthlyZero = $monthlyUsers->every(fn ($item) => (int) $item['total'] === 0);
-        if ($totalUsers === 0 && $totalFakultas === 0 && $totalJurusan === 0 && $fakultasStats->isEmpty() && $roleTotal === 0 && $allMonthlyZero) {
-            $mocked = true;
-            $mock = $this->mockStatisticsData();
-            return [
-                ...$mock,
-                'mocked' => $mocked,
-            ];
-        }
 
         return [
             'summary' => [
@@ -338,10 +324,6 @@ class SuperAdminService
         }
 
         $mocked = false;
-        if ($query === '' && ($type === '' || $type === 'all') && $logs->isEmpty()) {
-            $mocked = true;
-            $logs = collect($this->mockActivityLogs());
-        }
 
         return [
             'logs' => $logs->take(100)->values(),

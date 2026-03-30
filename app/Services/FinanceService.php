@@ -114,16 +114,12 @@ class FinanceService
         $selectedStatus = in_array($status, $allowedStatus, true) ? $status : 'all';
 
         if (!$this->hasFinanceTables()) {
-            $mocked = true;
-            $mockStudents = $this->mockStudents();
-            $mockComponents = $this->mockFeeComponents();
-            $mockInvoices = $this->mockInvoices($mockStudents, $mockComponents);
             return [
                 'migrationRequired' => true,
-                'invoices' => $mockInvoices,
-                'students' => $mockStudents,
-                'feeComponents' => $mockComponents,
-                'mocked' => $mocked,
+                'invoices' => [],
+                'students' => [],
+                'feeComponents' => [],
+                'mocked' => false,
                 'filters' => [
                     'search' => $search,
                     'status' => $selectedStatus,
@@ -157,12 +153,6 @@ class FinanceService
             ->get(['id', 'name', 'code', 'amount']);
 
         $mocked = false;
-        if ($invoices->isEmpty()) {
-            $mocked = true;
-            $students = collect($this->mockStudents());
-            $feeComponents = collect($this->mockFeeComponents());
-            $invoices = collect($this->mockInvoices($students->all(), $feeComponents->all()));
-        }
 
         return [
             'migrationRequired' => false,
@@ -206,16 +196,12 @@ class FinanceService
         $selectedStatus = in_array($status, $allowedStatus, true) ? $status : 'all';
 
         if (!$this->hasFinanceTables()) {
-            $mocked = true;
-            $mockStudents = $this->mockStudents();
-            $mockInvoices = $this->mockInvoices($mockStudents, $this->mockFeeComponents());
-            $mockPayments = $this->mockPayments($mockStudents, $mockInvoices);
             return [
                 'migrationRequired' => true,
-                'payments' => $mockPayments,
-                'invoices' => $mockInvoices,
-                'students' => $mockStudents,
-                'mocked' => $mocked,
+                'payments' => [],
+                'invoices' => [],
+                'students' => [],
+                'mocked' => false,
                 'filters' => [
                     'search' => $search,
                     'status' => $selectedStatus,
@@ -247,12 +233,6 @@ class FinanceService
             ->get(['id', 'name', 'code']);
 
         $mocked = false;
-        if ($payments->isEmpty()) {
-            $mocked = true;
-            $students = collect($this->mockStudents());
-            $invoices = collect($this->mockInvoices($students->all(), $this->mockFeeComponents()));
-            $payments = collect($this->mockPayments($students->all(), $invoices->all()));
-        }
 
         return [
             'migrationRequired' => false,
@@ -270,38 +250,16 @@ class FinanceService
     public function getVerificationData(string $search = ''): array
     {
         if (!$this->hasFinanceTables()) {
-            $mockStudents = $this->mockStudents();
-            $mockInvoices = $this->mockInvoices($mockStudents, $this->mockFeeComponents());
-            $mockPayments = collect($this->mockPayments($mockStudents, $mockInvoices))
-                ->merge([
-                    [
-                        'id' => 903,
-                        'payment_no' => 'PAY-202603-0003',
-                        'status' => 'pending',
-                        'amount' => 300000,
-                        'method' => 'bank_transfer',
-                        'paid_at' => now()->subHours(2)->toISOString(),
-                        'invoice_id' => $mockInvoices[1]['id'] ?? 802,
-                        'student_id' => $mockStudents[1]['id'] ?? 602,
-                        'invoice' => $mockInvoices[1] ?? null,
-                        'student' => $mockStudents[1] ?? null,
-                        'is_mock' => true,
-                    ],
-                ])
-                ->filter(fn (array $item) => ($item['status'] ?? '') === 'pending')
-                ->values()
-                ->all();
-
             return [
                 'migrationRequired' => true,
-                'mocked' => true,
+                'mocked' => false,
                 'filters' => ['search' => $search],
                 'summary' => [
-                    'pending' => count($mockPayments),
+                    'pending' => 0,
                     'verified' => 0,
                     'rejected' => 0,
                 ],
-                'verifications' => $mockPayments,
+                'verifications' => [],
             ];
         }
 
@@ -329,19 +287,6 @@ class FinanceService
         ];
 
         $mocked = false;
-        if ($pending->isEmpty() && $summary['pending'] === 0 && $summary['verified'] === 0 && $summary['rejected'] === 0) {
-            $mocked = true;
-            $mockStudents = $this->mockStudents();
-            $mockInvoices = $this->mockInvoices($mockStudents, $this->mockFeeComponents());
-            $pending = collect($this->mockPayments($mockStudents, $mockInvoices))
-                ->filter(fn (array $item) => ($item['status'] ?? '') === 'pending')
-                ->values();
-            $summary = [
-                'pending' => $pending->count(),
-                'verified' => 0,
-                'rejected' => 0,
-            ];
-        }
 
         return [
             'migrationRequired' => false,
@@ -400,14 +345,17 @@ class FinanceService
     public function getReportsData(?string $dateFrom, ?string $dateTo): array
     {
         if (!$this->hasFinanceTables()) {
-            $mocked = true;
-            $mock = $this->mockReports();
             return [
                 'migrationRequired' => true,
-                'summary' => $mock['summary'],
-                'top_unpaid' => $mock['top_unpaid'],
-                'cashflow' => $mock['cashflow'],
-                'mocked' => $mocked,
+                'summary' => [
+                    'verified_income' => 0,
+                    'pending_amount' => 0,
+                    'receivables' => 0,
+                    'total_invoices' => 0,
+                ],
+                'top_unpaid' => [],
+                'cashflow' => [],
+                'mocked' => false,
                 'filters' => [
                     'date_from' => $dateFrom,
                     'date_to' => $dateTo,
@@ -456,16 +404,6 @@ class FinanceService
             ->values();
 
         $mocked = false;
-        if ($topUnpaid->isEmpty() && $verifiedIncome === 0.0 && $pendingAmount === 0.0 && $receivables === 0.0) {
-            $mocked = true;
-            $mock = $this->mockReports();
-            $topUnpaid = collect($mock['top_unpaid']);
-            $cashflow = collect($mock['cashflow']);
-            $verifiedIncome = $mock['summary']['verified_income'];
-            $pendingAmount = $mock['summary']['pending_amount'];
-            $receivables = $mock['summary']['receivables'];
-            $totalInvoices = $mock['summary']['total_invoices'];
-        }
 
         return [
             'migrationRequired' => false,
@@ -473,7 +411,7 @@ class FinanceService
                 'verified_income' => $verifiedIncome,
                 'pending_amount' => $pendingAmount,
                 'receivables' => $receivables,
-                'total_invoices' => $mocked ? $totalInvoices : Invoice::count(),
+                'total_invoices' => Invoice::count(),
             ],
             'top_unpaid' => $topUnpaid,
             'cashflow' => $cashflow,
