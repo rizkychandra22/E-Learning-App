@@ -18,10 +18,12 @@ use App\Models\Fakultas;
 use App\Models\Jurusan;
 use App\Models\User;
 use App\Services\AdminAcademicService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminAcademicController extends Controller
@@ -225,15 +227,28 @@ class AdminAcademicController extends Controller
     public function academicReport(Request $request): Response
     {
         $period = trim((string) $request->query('period', 'monthly'));
+        $courseId = (int) $request->query('course_id', 0);
 
-        return Inertia::render('AdminAcademic/AcademicReport', $this->service->getAcademicReportData($period));
+        return Inertia::render('AdminAcademic/AcademicReport', $this->service->getAcademicReportData($period, $courseId > 0 ? $courseId : null));
     }
 
-    public function exportAcademicReport(Request $request): StreamedResponse
+    public function learningAnalytics(Request $request): JsonResponse
     {
         $period = trim((string) $request->query('period', 'monthly'));
+        $courseId = (int) $request->query('course_id', 0);
 
-        return $this->service->exportAcademicReportCsv($period);
+        return response()->json(
+            $this->service->getLearningAnalyticsData($period, $courseId > 0 ? $courseId : null)
+        );
+    }
+
+    public function exportAcademicReport(Request $request): SymfonyResponse|StreamedResponse
+    {
+        $period = trim((string) $request->query('period', 'monthly'));
+        $format = trim((string) $request->query('format', 'csv'));
+        $courseId = (int) $request->query('course_id', 0);
+
+        return $this->service->exportAcademicReport($period, $format, $courseId > 0 ? $courseId : null);
     }
 
     public function updateSettings(UpdateSettingsRequest $request): RedirectResponse
