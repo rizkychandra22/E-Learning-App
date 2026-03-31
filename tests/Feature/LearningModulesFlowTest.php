@@ -80,6 +80,24 @@ class LearningModulesFlowTest extends TestCase
         $response->assertSee('https:\/\/www.youtube.com\/embed\/dQw4w9WgXcQ', false);
     }
 
+    public function test_student_learning_player_resumes_from_last_accessed_lesson(): void
+    {
+        [$student, $lesson, $course, $secondLesson] = $this->prepareLearningFlow();
+
+        $this->actingAs($student)->post("/learning/lessons/{$lesson->id}/progress", [
+            'progress_percent' => 40,
+        ]);
+        $this->travel(2)->seconds();
+        $this->actingAs($student)->post("/learning/lessons/{$secondLesson->id}/progress", [
+            'progress_percent' => 60,
+        ]);
+
+        $response = $this->actingAs($student)->get("/learning/{$course->id}");
+
+        $response->assertOk();
+        $response->assertSee('&quot;activeLesson&quot;:{&quot;id&quot;:' . $secondLesson->id, false);
+    }
+
     public function test_student_dashboard_reflects_completed_progress_after_learning_update(): void
     {
         [$student, $lesson] = $this->prepareLearningFlow();
@@ -93,6 +111,48 @@ class LearningModulesFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('&quot;completed_lessons&quot;:1', false);
         $response->assertSee('&quot;average_progress&quot;:50', false);
+    }
+
+    public function test_admin_can_create_module_and_lesson_for_existing_course(): void
+    {
+        $admin = $this->makeUser('admin', 'ADM-302');
+        $lecturer = $this->makeUser('teacher', 'TCH-303');
+        $course = $this->makeCourse($lecturer->id);
+
+        $moduleResponse = $this->actingAs($admin)->post('/learning-modules/modules', [
+            'course_id' => $course->id,
+            'title' => 'Module by Admin',
+            'description' => 'Disusun admin akademik',
+            'sort_order' => 1,
+        ]);
+
+        $moduleResponse->assertRedirect();
+        $this->assertDatabaseHas('course_modules', [
+            'course_id' => $course->id,
+            'title' => 'Module by Admin',
+        ]);
+
+        $moduleId = (int) CourseModule::query()
+            ->where('course_id', $course->id)
+            ->where('title', 'Module by Admin')
+            ->value('id');
+
+        $lessonResponse = $this->actingAs($admin)->post('/learning-modules/lessons', [
+            'course_module_id' => $moduleId,
+            'title' => 'Lesson by Admin',
+            'summary' => 'Konten lesson oleh admin',
+            'content_type' => 'text',
+            'content' => 'Materi tambahan',
+            'duration_minutes' => 15,
+            'sort_order' => 1,
+        ]);
+
+        $lessonResponse->assertRedirect();
+        $this->assertDatabaseHas('course_lessons', [
+            'course_module_id' => $moduleId,
+            'title' => 'Lesson by Admin',
+            'content_type' => 'text',
+        ]);
     }
 
     private function prepareLearningFlow(): array
