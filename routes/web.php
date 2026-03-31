@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/categories/jurusan/{jurusan}', [AdminAcademicController::class, 'destroyJurusan']);
 
         Route::get('/academic-reports', [AdminAcademicController::class, 'academicReport']);
+        Route::get('/academic-reports/analytics', [AdminAcademicController::class, 'learningAnalytics']);
         Route::get('/academic-reports/export', [AdminAcademicController::class, 'exportAcademicReport']);
 
         Route::put('/settings/admin-academic', [AdminAcademicController::class, 'updateSettings']);

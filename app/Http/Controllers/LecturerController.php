@@ -57,15 +57,15 @@ class LecturerController extends Controller
 
     public function learningModules(Request $request): Response
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         $courseId = $request->query('course') ? (int) $request->query('course') : null;
 
-        return Inertia::render('Lecturer/LearningModules', $this->service->getLearningModulesData((int) $user->id, $courseId));
+        return Inertia::render('Lecturer/LearningModules', $this->service->getLearningModulesData((int) $user->id, (string) $user->role, $courseId));
     }
 
     public function storeModule(Request $request): RedirectResponse
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         if (!$this->service->canManageLearningModules()) {
             return back()->withErrors(['modules' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
         }
@@ -77,14 +77,14 @@ class LecturerController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $this->service->createModule((int) $user->id, $payload);
+        $this->service->createModule((int) $user->id, (string) $user->role, $payload);
 
         return back()->with('success', 'Modul berhasil ditambahkan.');
     }
 
     public function updateModule(Request $request, CourseModule $module): RedirectResponse
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         if (!$this->service->canManageLearningModules()) {
             return back()->withErrors(['modules' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
         }
@@ -95,26 +95,26 @@ class LecturerController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $this->service->updateModule((int) $user->id, $module, $payload);
+        $this->service->updateModule((int) $user->id, (string) $user->role, $module, $payload);
 
         return back()->with('success', 'Modul berhasil diperbarui.');
     }
 
     public function destroyModule(CourseModule $module): RedirectResponse
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         if (!$this->service->canManageLearningModules()) {
             return back()->withErrors(['modules' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
         }
 
-        $this->service->deleteModule((int) $user->id, $module);
+        $this->service->deleteModule((int) $user->id, (string) $user->role, $module);
 
         return back()->with('success', 'Modul berhasil dihapus.');
     }
 
     public function storeLesson(Request $request): RedirectResponse
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         if (!$this->service->canManageLearningModules()) {
             return back()->withErrors(['lessons' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
         }
@@ -130,14 +130,14 @@ class LecturerController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $this->service->createLesson((int) $user->id, $payload);
+        $this->service->createLesson((int) $user->id, (string) $user->role, $payload);
 
         return back()->with('success', 'Lesson berhasil ditambahkan.');
     }
 
     public function updateLesson(Request $request, CourseLesson $lesson): RedirectResponse
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         if (!$this->service->canManageLearningModules()) {
             return back()->withErrors(['lessons' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
         }
@@ -152,19 +152,19 @@ class LecturerController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $this->service->updateLesson((int) $user->id, $lesson, $payload);
+        $this->service->updateLesson((int) $user->id, (string) $user->role, $lesson, $payload);
 
         return back()->with('success', 'Lesson berhasil diperbarui.');
     }
 
     public function destroyLesson(CourseLesson $lesson): RedirectResponse
     {
-        $user = $this->requireLecturer();
+        $user = $this->requireAcademicOperator();
         if (!$this->service->canManageLearningModules()) {
             return back()->withErrors(['lessons' => 'Tabel learning modules belum tersedia. Jalankan migrasi terlebih dahulu.']);
         }
 
-        $this->service->deleteLesson((int) $user->id, $lesson);
+        $this->service->deleteLesson((int) $user->id, (string) $user->role, $lesson);
 
         return back()->with('success', 'Lesson berhasil dihapus.');
     }
@@ -339,8 +339,9 @@ class LecturerController extends Controller
         abort_if(!$user || $user->role !== 'student', 403);
 
         $payload = $request->validate([
-            'submission_text' => ['required', 'string', 'min:5'],
+            'submission_text' => ['required_without_all:attachment_file,attachment_url', 'nullable', 'string', 'min:5'],
             'attachment_url' => ['nullable', 'url', 'max:255'],
+            'attachment_file' => ['nullable', 'file', 'max:10240', 'mimes:pdf,doc,docx,zip,rar,jpg,jpeg,png,txt'],
         ]);
 
         $this->service->submitAssignment((int) $user->id, $assignment, $payload);
@@ -410,7 +411,7 @@ class LecturerController extends Controller
         abort_if(!$user || $user->role !== 'student', 403);
 
         $payload = $request->validate([
-            'answers' => ['required', 'string', 'min:5'],
+            'answers' => ['required'],
         ]);
 
         $this->service->submitQuiz((int) $user->id, $quiz, $payload);
@@ -688,6 +689,14 @@ class LecturerController extends Controller
     {
         $user = auth()->user();
         abort_if(!$user || $user->role !== 'teacher', 403);
+
+        return $user;
+    }
+
+    private function requireAcademicOperator()
+    {
+        $user = auth()->user();
+        abort_if(!$user || !in_array($user->role, ['teacher', 'admin'], true), 403);
 
         return $user;
     }

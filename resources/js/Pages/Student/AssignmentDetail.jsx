@@ -1,4 +1,4 @@
-import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Clock, MessageSquare, Send } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, ClipboardList, Clock, ExternalLink, FileUp, MessageSquare, Paperclip, Send } from 'lucide-react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
@@ -19,6 +19,14 @@ function SectionTitle({ icon: Icon, children }) {
     );
 }
 
+function formatBytes(size) {
+    const value = Number(size || 0);
+    if (!value || value <= 0) return '-';
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function AssignmentDetail() {
     const { user } = useAuth();
     const { props } = usePage();
@@ -30,6 +38,7 @@ export default function AssignmentDetail() {
     const form = useForm({
         submission_text: assignment?.submission?.submission_text ?? '',
         attachment_url: assignment?.submission?.attachment_url ?? '',
+        attachment_file: null,
     });
 
     if (!assignment) {
@@ -46,7 +55,7 @@ export default function AssignmentDetail() {
 
     const submitAssignment = (event) => {
         event.preventDefault();
-        form.post(`/assignments/${assignment.id}/submit`, { preserveScroll: true });
+        form.post(`/assignments/${assignment.id}/submit`, { preserveScroll: true, forceFormData: true });
     };
 
     return (
@@ -109,6 +118,17 @@ export default function AssignmentDetail() {
                                 </label>
 
                                 <label className="block">
+                                    <span className="text-sm font-medium">Upload File Lampiran (opsional)</span>
+                                    <input
+                                        type="file"
+                                        onChange={(event) => form.setData('attachment_file', event.target.files?.[0] ?? null)}
+                                        className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    />
+                                    <p className="mt-1 text-xs text-muted-foreground">Format: PDF, DOC, DOCX, ZIP, RAR, JPG, PNG, TXT (maks 10MB)</p>
+                                    {form.errors.attachment_file && <span className="mt-1 block text-xs text-destructive">{form.errors.attachment_file}</span>}
+                                </label>
+
+                                <label className="block">
                                     <span className="text-sm font-medium">Link Lampiran (opsional)</span>
                                     <input
                                         type="url"
@@ -147,11 +167,32 @@ export default function AssignmentDetail() {
                                 </div>
                             </div>
                         </div>
+
+                        {assignment?.submission?.attachment_url && (
+                            <div className={UI.panel}>
+                                <SectionTitle icon={Paperclip}>Lampiran Terkirim</SectionTitle>
+                                <div className="mt-3 panel-subcard p-3 text-sm space-y-1">
+                                    <p className="font-medium">{assignment?.submission?.attachment_name ?? 'Lampiran tugas'}</p>
+                                    <p className="text-xs text-muted-foreground">{assignment?.submission?.attachment_mime ?? '-'} • {formatBytes(assignment?.submission?.attachment_size)}</p>
+                                    <a href={assignment.submission.attachment_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:opacity-80">
+                                        <ExternalLink className="w-3.5 h-3.5" /> Buka lampiran
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
+                        {form.data.attachment_file && (
+                            <div className={UI.panel}>
+                                <SectionTitle icon={FileUp}>File Akan Dikirim</SectionTitle>
+                                <div className="mt-3 panel-subcard p-3 text-sm">
+                                    <p className="font-medium break-all">{form.data.attachment_file.name}</p>
+                                    <p className="text-xs text-muted-foreground">{formatBytes(form.data.attachment_file.size)}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
         </ProtectedLayout>
     );
 }
-
-

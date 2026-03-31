@@ -1,5 +1,5 @@
-import { CalendarDays, CheckCircle2, Clock3, ListChecks, BookOpen, GraduationCap, ArrowUpRight, Bell, ClipboardList } from 'lucide-react';
-import { Head } from '@inertiajs/react';
+import { ArrowUpRight, Bell, BookOpen, CalendarDays, CheckCircle2, ClipboardList, Clock3, GraduationCap, ListChecks, Trophy } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
@@ -12,31 +12,31 @@ const KPI_GRADIENT_CLASS = {
     success: 'gradient-accent',
 };
 
-const stats = [
-    { title: 'Kursus Aktif', value: 3, icon: BookOpen, tone: 'primary' },
-    { title: 'Tugas Selesai', value: 3, icon: CheckCircle2, tone: 'accent' },
-    { title: 'Sertifikat', value: 1, icon: GraduationCap, tone: 'warm' },
-    { title: 'Jadwal Hari Ini', value: 5, icon: CalendarDays, tone: 'success' },
-];
+function formatDateTime(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
-const courses = [
-    { title: 'React JS Fundamental', mentor: 'Dr. Ahmad', lessons: '16/24', percent: 68, color: 'bg-primary' },
-    { title: 'Node.js Advanced', mentor: 'Budi Santoso', lessons: '8/20', percent: 42, color: 'bg-info' },
-    { title: 'Database Design', mentor: 'Dr. Sari', lessons: '15/18', percent: 85, color: 'bg-success' },
-];
+function toRelativeLabel(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.round(diffMs / 60000);
+    if (diffMinutes < 60) return `${Math.max(diffMinutes, 1)} menit lalu`;
+    const diffHours = Math.round(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} jam lalu`;
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays} hari lalu`;
+}
 
-const upcoming = [
-    { title: 'Kuis: React Hooks', course: 'React JS Fundamental', due: 'Besok, 09:00', tone: 'bg-primary/15 text-primary' },
-    { title: 'Tugas: ERD Database', course: 'Database Design', due: 'Rabu, 23:59', tone: 'bg-warning/20 text-warning' },
-    { title: 'Ujian Tengah Semester', course: 'Algoritma & Struktur Data', due: 'Jumat, 08:00', tone: 'bg-destructive/15 text-destructive' },
-];
-
-const activities = [
-    { title: 'React JS Fundamental', text: 'Melanjutkan Bab 7: Hooks', time: '2 jam lalu', icon: BookOpen },
-    { title: 'Tugas: UI Design', text: 'Tugas dikumpulkan', time: '5 jam lalu', icon: ClipboardList },
-    { title: 'Kuis: HTML/CSS', text: 'Nilai: 90/100', time: 'Kemarin', icon: ArrowUpRight },
-    { title: 'Node.js Advanced', text: 'Bab 3 selesai', time: 'Kemarin', icon: BookOpen },
-];
+function mapTypeLabel(type) {
+    if (type === 'assignment') return 'Tugas';
+    if (type === 'quiz') return 'Kuis';
+    return 'Aktivitas';
+}
 
 function StatCard({ item }) {
     const Icon = item.icon;
@@ -54,10 +54,31 @@ function StatCard({ item }) {
 
 export default function StudentHome() {
     const { user } = useAuth();
+    const { props } = usePage();
     if (!user) return null;
 
-    const overall = 44;
     const displayName = user?.full_name || user?.name || user?.username || 'Mahasiswa';
+    const stats = props?.stats ?? {
+        active_courses: 0,
+        completed_assignments: 0,
+        graded_items: 0,
+        today_schedule: 0,
+        average_progress: 0,
+    };
+    const courses = props?.courses ?? [];
+    const upcomingItems = props?.upcoming_items ?? [];
+    const recentActivities = props?.recent_activities ?? [];
+    const latestResults = props?.latest_results ?? [];
+    const migrationRequired = props?.migrationRequired ?? {};
+
+    const statItems = [
+        { title: 'Kursus Aktif', value: stats.active_courses, icon: BookOpen, tone: 'primary' },
+        { title: 'Tugas Selesai', value: stats.completed_assignments, icon: CheckCircle2, tone: 'accent' },
+        { title: 'Nilai Dinilai', value: stats.graded_items, icon: GraduationCap, tone: 'warm' },
+        { title: 'Jadwal Hari Ini', value: stats.today_schedule, icon: CalendarDays, tone: 'success' },
+    ];
+
+    const overall = Number(stats.average_progress ?? 0);
 
     return (
         <ProtectedLayout>
@@ -65,11 +86,17 @@ export default function StudentHome() {
             <div className="space-y-6">
                 <PageHeroBanner
                     title={`Selamat datang, ${displayName}`}
-                    description="Pantau progres belajar dan tugas kamu"
+                    description="Pantau progres belajar, deadline, dan hasil nilai terbaru."
                 />
 
+                {(migrationRequired.learning || migrationRequired.assignments || migrationRequired.quizzes || migrationRequired.grades) && (
+                    <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                        Sebagian data dashboard membutuhkan migrasi terbaru. Jalankan <code className="font-mono">php artisan migrate</code>.
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 min-[540px]:grid-cols-2 xl:grid-cols-4 gap-3">
-                    {stats.map((item) => <StatCard key={item.title} item={item} />)}
+                    {statItems.map((item) => <StatCard key={item.title} item={item} />)}
                 </div>
 
                 <section className="panel-card p-4">
@@ -83,7 +110,7 @@ export default function StudentHome() {
                     <div className="mt-3 h-3 rounded-full bg-secondary overflow-hidden">
                         <div className="h-full bg-primary" style={{ width: `${overall}%` }} />
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2">5 kursus terdaftar - 1 selesai</p>
+                    <p className="text-sm text-muted-foreground mt-2">Data progress diambil dari lesson yang sudah diselesaikan.</p>
                 </section>
 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
@@ -93,20 +120,22 @@ export default function StudentHome() {
                                 <ListChecks className="w-4 h-4 text-primary" />
                                 Progress Kursus
                             </h3>
-                            <button type="button" className="text-sm text-primary hover:opacity-80 transition-opacity">Lihat Semua</button>
+                            <Link href="/my-courses" className="text-sm text-primary hover:opacity-80 transition-opacity">Lihat Semua</Link>
                         </div>
                         <div className="mt-4 space-y-5">
+                            {!courses.length && <p className="text-sm text-muted-foreground">Belum ada kursus aktif.</p>}
                             {courses.map((course) => (
-                                <div key={course.title}>
+                                <div key={course.id}>
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
                                             <p className="font-medium text-base">{course.title}</p>
-                                            <p className="text-sm text-muted-foreground">{course.mentor}</p>
+                                            <p className="text-sm text-muted-foreground">{course?.lecturer?.name ?? '-'}</p>
                                         </div>
-                                        <p className="font-semibold text-base">{course.percent}%</p>
+                                        <p className="font-semibold text-base">{course.progress_percent ?? 0}%</p>
                                     </div>
+                                    <p className="mt-1 text-xs text-muted-foreground">{course.completed_lessons ?? 0}/{course.total_lessons ?? 0} materi selesai</p>
                                     <div className="mt-2 h-2.5 rounded-full bg-secondary overflow-hidden">
-                                        <div className={cn('h-full rounded-full', course.color)} style={{ width: `${course.percent}%` }} />
+                                        <div className="h-full rounded-full bg-primary" style={{ width: `${course.progress_percent ?? 0}%` }} />
                                     </div>
                                 </div>
                             ))}
@@ -122,11 +151,12 @@ export default function StudentHome() {
                             <CalendarDays className="w-4 h-4 text-muted-foreground" />
                         </div>
                         <div className="mt-3 space-y-2.5">
-                            {upcoming.map((item) => (
-                                <article key={item.title} className="panel-subcard p-3">
-                                    <p className="font-medium text-base">{item.title}</p>
+                            {!upcomingItems.length && <p className="text-sm text-muted-foreground">Tidak ada jadwal terdekat.</p>}
+                            {upcomingItems.map((item, index) => (
+                                <article key={`${item.type}-${index}`} className="panel-subcard p-3">
+                                    <p className="font-medium text-base">{mapTypeLabel(item.type)}: {item.title}</p>
                                     <p className="text-sm text-muted-foreground mt-0.5">{item.course}</p>
-                                    <span className={cn('inline-flex mt-2 rounded-full px-2 py-0.5 text-xs font-medium', item.tone)}>{item.due}</span>
+                                    <span className="inline-flex mt-2 rounded-full px-2 py-0.5 text-xs font-medium bg-primary/15 text-primary">{formatDateTime(item.schedule_at)}</span>
                                 </article>
                             ))}
                         </div>
@@ -135,36 +165,53 @@ export default function StudentHome() {
 
                 <section className="panel-card p-4">
                     <h3 className="font-semibold flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-primary" />
+                        Hasil Quiz & Assignment Terbaru
+                    </h3>
+                    <div className="mt-3 divide-y divide-border">
+                        {!latestResults.length && <p className="py-3 text-sm text-muted-foreground">Belum ada nilai yang dipublikasikan.</p>}
+                        {latestResults.map((item, index) => (
+                            <article key={`${item.type}-${index}`} className="flex items-center justify-between gap-3 py-3">
+                                <div className="min-w-0">
+                                    <p className="font-medium text-base truncate">{mapTypeLabel(item.type)}: {item.title}</p>
+                                    <p className="text-sm text-muted-foreground truncate">{item.course}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-sm font-semibold text-primary">{item.score}/{item.max_score}</p>
+                                    <p className="text-xs text-muted-foreground">{formatDateTime(item.graded_at)}</p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+
+                <section className="panel-card p-4">
+                    <h3 className="font-semibold flex items-center gap-2">
                         <Bell className="w-4 h-4 text-primary" />
                         Aktivitas Terakhir
                     </h3>
                     <div className="mt-3 divide-y divide-border">
-                        {activities.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <article key={`${item.title}-${item.time}`} className="flex items-start justify-between gap-3 py-3">
-                                    <div className="flex items-start gap-3 min-w-0">
-                                        <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
-                                            <Icon className="w-4 h-4" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-medium text-base">{item.title}</p>
-                                            <p className="text-sm text-muted-foreground truncate">{item.text}</p>
-                                        </div>
+                        {!recentActivities.length && <p className="py-3 text-sm text-muted-foreground">Belum ada aktivitas terbaru.</p>}
+                        {recentActivities.map((item, index) => (
+                            <article key={`${item.type}-${index}`} className="flex items-start justify-between gap-3 py-3">
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+                                        {item.type === 'quiz' ? <ListChecks className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
                                     </div>
-                                    <span className="text-sm text-muted-foreground whitespace-nowrap inline-flex items-center gap-1.5">
-                                        <Clock3 className="w-3.5 h-3.5" />
-                                        {item.time}
-                                    </span>
-                                </article>
-                            );
-                        })}
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-base">{item.title}</p>
+                                        <p className="text-sm text-muted-foreground truncate">{item.text}</p>
+                                    </div>
+                                </div>
+                                <span className="text-sm text-muted-foreground whitespace-nowrap inline-flex items-center gap-1.5">
+                                    <Clock3 className="w-3.5 h-3.5" />
+                                    {toRelativeLabel(item.time)}
+                                </span>
+                            </article>
+                        ))}
                     </div>
                 </section>
             </div>
         </ProtectedLayout>
     );
 }
-
-
-

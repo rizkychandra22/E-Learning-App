@@ -11,10 +11,12 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminAcademicService
@@ -74,14 +76,6 @@ class AdminAcademicService
             ->get(['id', 'name', 'code']);
 
         $mocked = false;
-        $shouldMock = $search === '' && $normalizedStatus === 'all' && $normalizedCategory === 'all';
-        if ($courses->isEmpty() && $shouldMock) {
-            $mocked = true;
-            $lecturers = collect($this->mockLecturers());
-            $jurusans = collect($this->mockJurusans());
-            $courses = collect($this->mockCourses($lecturers->all(), $jurusans->all()));
-            $availableCategories = collect(array_values(array_unique(array_filter(array_map(fn ($item) => $item['category'] ?? null, $courses->all())))));
-        }
 
         return [
             'courses' => $courses,
@@ -186,10 +180,6 @@ class AdminAcademicService
             ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'email_verified_at', 'created_at']);
 
         $mocked = false;
-        if ($search === '' && $selectedRole === 'all' && $users->isEmpty()) {
-            $mocked = true;
-            $users = collect($this->mockUsers());
-        }
 
         return [
             'users' => $users,
@@ -257,10 +247,6 @@ class AdminAcademicService
             ->get(['id', 'name', 'email', 'username', 'role', 'code', 'created_at']);
 
         $mocked = false;
-        if ($search === '' && $pendingUsers->isEmpty()) {
-            $mocked = true;
-            $pendingUsers = collect($this->mockPendingUsers());
-        }
 
         return [
             'pendingUsers' => $pendingUsers,
@@ -289,10 +275,6 @@ class AdminAcademicService
             ->get(['id', 'name', 'code', 'slug']);
 
         $mocked = false;
-        if ($fakultas->isEmpty()) {
-            $mocked = true;
-            $fakultas = collect($this->mockFakultas());
-        }
 
         return [
             'fakultas' => $fakultas,
@@ -450,54 +432,135 @@ class AdminAcademicService
         });
     }
 
-    public function getAcademicReportData(string $period = 'monthly'): array
+    public function getAcademicReportData(string $period = 'monthly', ?int $courseId = null): array
     {
-        $selectedPeriod = in_array($period, ['monthly', 'quarterly', 'yearly'], true) ? $period : 'monthly';
+        $selectedPeriod = $this->normalizePeriod($period);
         $dashboard = $this->getDashboardData();
+        $analytics = $this->getLearningAnalyticsData($selectedPeriod, $courseId);
 
-        $enrollmentTrend = $this->buildEnrollmentTrend($selectedPeriod);
-        $completionTrend = collect($enrollmentTrend)
-            ->map(fn (array $item) => [
-                'label' => $item['label'],
-                'value' => max((int) round($item['value'] * 0.68), 0),
-            ])
-            ->values()
-            ->all();
-
-        $progressDistribution = [
-            ['label' => '0-25%', 'value' => 8],
-            ['label' => '26-50%', 'value' => 18],
-            ['label' => '51-75%', 'value' => 35],
-            ['label' => '76-100%', 'value' => 39],
-        ];
-
-        $topCourses = $this->buildTopCourses();
+        $enrollmentTrend = $this->buildEnrollmentTrend($selectedPeriod, $courseId);
+        $completionTrend = $analytics['completion_trend'] ?? [];
+        $topCourses = $this->buildTopCourses($courseId);
         $totalEnrollment = collect($topCourses)->sum(fn (array $item) => (int) ($item['enrollment'] ?? 0));
-        $averageScore = $this->estimateAverageScore($topCourses);
 
         return [
             'filters' => [
                 'period' => $selectedPeriod,
+                'course_id' => $analytics['filters']['course_id'] ?? null,
             ],
             'summary' => [
                 'total_enrollment' => $totalEnrollment,
                 'completed_courses' => array_sum(array_map(fn (array $item) => (int) ($item['completed'] ?? 0), $topCourses)),
                 'active_courses' => (int) ($dashboard['summary']['active_courses_count'] ?? 0),
-                'average_score' => $averageScore,
+                'average_score' => (float) ($analytics['summary']['average_score'] ?? 0),
             ],
             'enrollment_trend' => $enrollmentTrend,
             'completion_trend' => $completionTrend,
-            'progress_distribution' => $progressDistribution,
+            'progress_distribution' => $analytics['progress_distribution'] ?? [],
             'top_courses' => $topCourses,
+            'available_courses' => $analytics['available_courses'] ?? [],
+            'analytics' => $analytics,
         ];
     }
 
-    public function exportAcademicReportCsv(string $period = 'monthly'): StreamedResponse
+    public function getLearningAnalyticsData(string $period = 'monthly', ?int $courseId = null): array
     {
-        $data = $this->getAcademicReportData($period);
+        $selectedPeriod = $this->normalizePeriod($period);
+        $selectedCourseId = $courseId !== null && $courseId > 0 ? $courseId : null;
+        $buckets = $this->buildPeriodBuckets($selectedPeriod);
+        $availableCourses = $this->buildCourseOptions();
+        $courseIds = $this->resolveScopedCourseIds($selectedCourseId);
+
+        if ($courseIds === []) {
+            return [
+                'filters' => [
+                    'period' => $selectedPeriod,
+                    'course_id' => null,
+                ],
+                'summary' => [
+                    'total_students' => 0,
+                    'total_lessons' => 0,
+                    'completion_rate' => 0.0,
+                    'engagement_rate' => 0.0,
+                    'average_score' => 0.0,
+                ],
+                'completion_trend' => $this->emptyTrend($buckets),
+                'engagement_trend' => $this->emptyTrend($buckets),
+                'score_trend' => $this->emptyTrend($buckets),
+                'progress_distribution' => [
+                    ['label' => '0-25%', 'value' => 0],
+                    ['label' => '26-50%', 'value' => 0],
+                    ['label' => '51-75%', 'value' => 0],
+                    ['label' => '76-100%', 'value' => 0],
+                ],
+                'available_courses' => $availableCourses,
+            ];
+        }
+
+        $studentIds = $this->resolveScopedStudentIds($courseIds);
+        $lessonIds = $this->resolveScopedLessonIds($courseIds);
+        $totalStudents = count($studentIds);
+        $totalLessons = count($lessonIds);
+
+        $totalCompletedEntries = empty($lessonIds)
+            ? 0
+            : (int) DB::table('lesson_progress')
+                ->whereIn('lesson_id', $lessonIds)
+                ->where('is_completed', true)
+                ->count();
+        $completionDenominator = max(1, $totalLessons * max(1, $totalStudents));
+        $completionRate = round(($totalCompletedEntries / $completionDenominator) * 100, 1);
+
+        $activeStudents = empty($studentIds)
+            ? 0
+            : (int) DB::table('lesson_progress')
+                ->when(!empty($lessonIds), fn ($query) => $query->whereIn('lesson_id', $lessonIds))
+                ->whereIn('student_id', $studentIds)
+                ->whereNotNull('last_accessed_at')
+                ->where('last_accessed_at', '>=', now()->subDays($this->engagementWindowDays($selectedPeriod)))
+                ->distinct('student_id')
+                ->count('student_id');
+        $engagementRate = $totalStudents > 0 ? round(($activeStudents / $totalStudents) * 100, 1) : 0.0;
+
+        $scores = $this->collectScores($courseIds);
+        $averageScore = count($scores) > 0 ? round(collect($scores)->avg(), 1) : 0.0;
+
+        return [
+            'filters' => [
+                'period' => $selectedPeriod,
+                'course_id' => $selectedCourseId,
+            ],
+            'summary' => [
+                'total_students' => $totalStudents,
+                'total_lessons' => $totalLessons,
+                'completion_rate' => $completionRate,
+                'engagement_rate' => $engagementRate,
+                'average_score' => $averageScore,
+            ],
+            'completion_trend' => $this->buildCompletionTrend($buckets, $lessonIds, $studentIds),
+            'engagement_trend' => $this->buildEngagementTrend($buckets, $lessonIds, $studentIds),
+            'score_trend' => $this->buildScoreTrend($buckets, $courseIds),
+            'progress_distribution' => $this->buildProgressDistribution($lessonIds, $studentIds),
+            'available_courses' => $availableCourses,
+        ];
+    }
+
+    public function exportAcademicReport(string $period = 'monthly', string $format = 'csv', ?int $courseId = null): SymfonyResponse|StreamedResponse
+    {
+        $selectedFormat = in_array(Str::lower($format), ['csv', 'pdf'], true) ? Str::lower($format) : 'csv';
+
+        return $selectedFormat === 'pdf'
+            ? $this->exportAcademicReportPdf($period, $courseId)
+            : $this->exportAcademicReportCsv($period, $courseId);
+    }
+
+    public function exportAcademicReportCsv(string $period = 'monthly', ?int $courseId = null): StreamedResponse
+    {
+        $data = $this->getAcademicReportData($period, $courseId);
+        $analytics = $data['analytics'] ?? [];
         $fileName = 'laporan-akademik-' . now()->format('Ymd-His') . '.csv';
 
-        return response()->streamDownload(function () use ($data): void {
+        return response()->streamDownload(function () use ($data, $analytics): void {
             $handle = fopen('php://output', 'w');
             if ($handle === false) {
                 return;
@@ -505,10 +568,13 @@ class AdminAcademicService
 
             fputcsv($handle, ['Metric', 'Value']);
             fputcsv($handle, ['Period', $data['filters']['period'] ?? 'monthly']);
+            fputcsv($handle, ['Course ID', $data['filters']['course_id'] ?? 'all']);
             fputcsv($handle, ['Total Enrollment', $data['summary']['total_enrollment'] ?? 0]);
             fputcsv($handle, ['Completed Courses', $data['summary']['completed_courses'] ?? 0]);
             fputcsv($handle, ['Active Courses', $data['summary']['active_courses'] ?? 0]);
             fputcsv($handle, ['Average Score', $data['summary']['average_score'] ?? 0]);
+            fputcsv($handle, ['Completion Rate', ($analytics['summary']['completion_rate'] ?? 0) . '%']);
+            fputcsv($handle, ['Engagement Rate', ($analytics['summary']['engagement_rate'] ?? 0) . '%']);
             fputcsv($handle, []);
 
             fputcsv($handle, ['Top Courses']);
@@ -522,9 +588,46 @@ class AdminAcademicService
                 ]);
             }
 
+            fputcsv($handle, []);
+            fputcsv($handle, ['Learning Analytics Trend']);
+            fputcsv($handle, ['Label', 'Completion %', 'Engagement %', 'Score']);
+            $completionTrend = $analytics['completion_trend'] ?? [];
+            $engagementTrend = $analytics['engagement_trend'] ?? [];
+            $scoreTrend = $analytics['score_trend'] ?? [];
+            foreach ($completionTrend as $index => $item) {
+                fputcsv($handle, [
+                    $item['label'] ?? '',
+                    $item['value'] ?? 0,
+                    $engagementTrend[$index]['value'] ?? 0,
+                    $scoreTrend[$index]['value'] ?? 0,
+                ]);
+            }
+
             fclose($handle);
         }, $fileName, [
             'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function exportAcademicReportPdf(string $period = 'monthly', ?int $courseId = null): SymfonyResponse
+    {
+        $data = $this->getAcademicReportData($period, $courseId);
+        $analytics = $data['analytics'] ?? [];
+        $pdfContent = $this->buildBasicPdf([
+            'Laporan Akademik',
+            'Periode: ' . ($data['filters']['period'] ?? 'monthly'),
+            'Filter Course ID: ' . (($data['filters']['course_id'] ?? null) ?: 'all'),
+            'Total Enrollment: ' . (string) ($data['summary']['total_enrollment'] ?? 0),
+            'Completed Courses: ' . (string) ($data['summary']['completed_courses'] ?? 0),
+            'Active Courses: ' . (string) ($data['summary']['active_courses'] ?? 0),
+            'Average Score: ' . (string) ($data['summary']['average_score'] ?? 0),
+            'Completion Rate: ' . (string) (($analytics['summary']['completion_rate'] ?? 0) . '%'),
+            'Engagement Rate: ' . (string) (($analytics['summary']['engagement_rate'] ?? 0) . '%'),
+        ]);
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="laporan-akademik-' . now()->format('Ymd-His') . '.pdf"',
         ]);
     }
 
@@ -533,35 +636,35 @@ class AdminAcademicService
         return 'admin_' . $adminId . '_';
     }
 
-    private function buildEnrollmentTrend(string $period): array
+    private function buildEnrollmentTrend(string $period, ?int $courseId = null): array
     {
-        $labelsByPeriod = [
-            'monthly' => ['Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar'],
-            'quarterly' => ['Q1', 'Q2', 'Q3', 'Q4'],
-            'yearly' => ['2022', '2023', '2024', '2025', '2026'],
-        ];
+        $buckets = $this->buildPeriodBuckets($period);
+        $courseIds = $this->resolveScopedCourseIds($courseId !== null && $courseId > 0 ? $courseId : null);
 
-        $labels = $labelsByPeriod[$period] ?? $labelsByPeriod['monthly'];
-        $baseValues = [
-            'monthly' => [85, 110, 96, 142, 168, 192],
-            'quarterly' => [360, 418, 477, 533],
-            'yearly' => [910, 1060, 1215, 1390, 1560],
-        ];
-        $values = $baseValues[$period] ?? $baseValues['monthly'];
+        return $buckets->map(function (array $bucket) use ($courseIds): array {
+            if ($courseIds === [] || !Schema::hasTable('course_student')) {
+                return ['label' => $bucket['label'], 'value' => 0];
+            }
 
-        return collect($labels)
-            ->map(fn (string $label, int $index) => [
-                'label' => $label,
-                'value' => $values[$index] ?? 0,
-            ])
-            ->values()
-            ->all();
+            $value = DB::table('course_student')
+                ->whereIn('course_id', $courseIds)
+                ->whereBetween(DB::raw('COALESCE(enrolled_at, created_at)'), [$bucket['start'], $bucket['end']])
+                ->count();
+
+            return [
+                'label' => $bucket['label'],
+                'value' => (int) $value,
+            ];
+        })->all();
     }
 
-    private function buildTopCourses(): array
+    private function buildTopCourses(?int $courseId = null): array
     {
         if (Schema::hasTable('courses')) {
             $query = Course::query()->with('lecturer:id,name');
+            if ($courseId !== null && $courseId > 0) {
+                $query->where('id', $courseId);
+            }
 
             if (Schema::hasTable('course_student')) {
                 $query->withCount('students');
@@ -616,6 +719,309 @@ class AdminAcademicService
         }
 
         return round($weighted / $weights, 1);
+    }
+
+    private function normalizePeriod(string $period): string
+    {
+        return in_array($period, ['monthly', 'quarterly', 'yearly'], true) ? $period : 'monthly';
+    }
+
+    private function buildPeriodBuckets(string $period): Collection
+    {
+        $now = now();
+
+        if ($period === 'quarterly') {
+            return collect(range(3, 0))
+                ->map(function (int $offset) use ($now): array {
+                    $date = $now->copy()->subQuarters($offset - 1)->startOfQuarter();
+
+                    return [
+                        'label' => 'Q' . $date->quarter . ' ' . $date->year,
+                        'start' => $date->copy()->startOfQuarter(),
+                        'end' => $date->copy()->endOfQuarter(),
+                    ];
+                })
+                ->values();
+        }
+
+        if ($period === 'yearly') {
+            return collect(range(4, 0))
+                ->map(function (int $offset) use ($now): array {
+                    $date = $now->copy()->subYears($offset - 1)->startOfYear();
+
+                    return [
+                        'label' => (string) $date->year,
+                        'start' => $date->copy()->startOfYear(),
+                        'end' => $date->copy()->endOfYear(),
+                    ];
+                })
+                ->values();
+        }
+
+        return collect(range(5, 0))
+            ->map(function (int $offset) use ($now): array {
+                $date = $now->copy()->subMonths($offset - 1)->startOfMonth();
+
+                return [
+                    'label' => $date->format('M Y'),
+                    'start' => $date->copy()->startOfMonth(),
+                    'end' => $date->copy()->endOfMonth(),
+                ];
+            })
+            ->values();
+    }
+
+    private function buildCourseOptions(): array
+    {
+        if (!Schema::hasTable('courses')) {
+            return [];
+        }
+
+        return Course::query()
+            ->orderBy('title')
+            ->get(['id', 'title'])
+            ->map(fn (Course $course): array => ['id' => $course->id, 'title' => $course->title])
+            ->all();
+    }
+
+    private function resolveScopedCourseIds(?int $courseId): array
+    {
+        if (!Schema::hasTable('courses')) {
+            return [];
+        }
+
+        return Course::query()
+            ->when($courseId !== null && $courseId > 0, fn ($query) => $query->where('id', $courseId))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function resolveScopedStudentIds(array $courseIds): array
+    {
+        if ($courseIds === [] || !Schema::hasTable('course_student')) {
+            return [];
+        }
+
+        return DB::table('course_student')
+            ->whereIn('course_id', $courseIds)
+            ->distinct()
+            ->pluck('student_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function resolveScopedLessonIds(array $courseIds): array
+    {
+        if ($courseIds === [] || !Schema::hasTable('course_modules') || !Schema::hasTable('course_lessons')) {
+            return [];
+        }
+
+        return DB::table('course_lessons')
+            ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
+            ->whereIn('course_modules.course_id', $courseIds)
+            ->pluck('course_lessons.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function collectScores(array $courseIds): array
+    {
+        if ($courseIds === []) {
+            return [];
+        }
+
+        $assignmentScores = Schema::hasTable('assignment_submissions') && Schema::hasTable('assignments')
+            ? DB::table('assignment_submissions')
+                ->join('assignments', 'assignments.id', '=', 'assignment_submissions.assignment_id')
+                ->whereIn('assignments.course_id', $courseIds)
+                ->whereNotNull('assignment_submissions.score')
+                ->pluck('assignment_submissions.score')
+                ->map(fn ($value) => (float) $value)
+                ->all()
+            : [];
+
+        $quizScores = Schema::hasTable('quiz_attempts') && Schema::hasTable('quizzes')
+            ? DB::table('quiz_attempts')
+                ->join('quizzes', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
+                ->whereIn('quizzes.course_id', $courseIds)
+                ->whereNotNull('quiz_attempts.score')
+                ->pluck('quiz_attempts.score')
+                ->map(fn ($value) => (float) $value)
+                ->all()
+            : [];
+
+        return [...$assignmentScores, ...$quizScores];
+    }
+
+    private function buildCompletionTrend(Collection $buckets, array $lessonIds, array $studentIds): array
+    {
+        return $buckets->map(function (array $bucket) use ($lessonIds, $studentIds): array {
+            if ($lessonIds === [] || $studentIds === [] || !Schema::hasTable('lesson_progress')) {
+                return ['label' => $bucket['label'], 'value' => 0];
+            }
+
+            $query = DB::table('lesson_progress')
+                ->whereIn('lesson_id', $lessonIds)
+                ->whereIn('student_id', $studentIds)
+                ->whereBetween('updated_at', [$bucket['start'], $bucket['end']]);
+
+            $total = (clone $query)->count();
+            $completed = (clone $query)->where('is_completed', true)->count();
+            $value = $total > 0 ? round(($completed / $total) * 100, 1) : 0;
+
+            return ['label' => $bucket['label'], 'value' => $value];
+        })->all();
+    }
+
+    private function buildEngagementTrend(Collection $buckets, array $lessonIds, array $studentIds): array
+    {
+        return $buckets->map(function (array $bucket) use ($lessonIds, $studentIds): array {
+            if ($lessonIds === [] || $studentIds === [] || !Schema::hasTable('lesson_progress')) {
+                return ['label' => $bucket['label'], 'value' => 0];
+            }
+
+            $active = DB::table('lesson_progress')
+                ->whereIn('lesson_id', $lessonIds)
+                ->whereIn('student_id', $studentIds)
+                ->whereBetween('last_accessed_at', [$bucket['start'], $bucket['end']])
+                ->distinct('student_id')
+                ->count('student_id');
+            $value = count($studentIds) > 0 ? round(($active / count($studentIds)) * 100, 1) : 0;
+
+            return ['label' => $bucket['label'], 'value' => $value];
+        })->all();
+    }
+
+    private function buildScoreTrend(Collection $buckets, array $courseIds): array
+    {
+        return $buckets->map(function (array $bucket) use ($courseIds): array {
+            if ($courseIds === []) {
+                return ['label' => $bucket['label'], 'value' => 0];
+            }
+
+            $assignmentScores = [];
+            if (Schema::hasTable('assignment_submissions') && Schema::hasTable('assignments')) {
+                $assignmentScores = DB::table('assignment_submissions')
+                    ->join('assignments', 'assignments.id', '=', 'assignment_submissions.assignment_id')
+                    ->whereIn('assignments.course_id', $courseIds)
+                    ->whereNotNull('assignment_submissions.score')
+                    ->whereBetween(DB::raw('COALESCE(assignment_submissions.graded_at, assignment_submissions.updated_at)'), [$bucket['start'], $bucket['end']])
+                    ->pluck('assignment_submissions.score')
+                    ->map(fn ($score) => (float) $score)
+                    ->all();
+            }
+
+            $quizScores = [];
+            if (Schema::hasTable('quiz_attempts') && Schema::hasTable('quizzes')) {
+                $quizScores = DB::table('quiz_attempts')
+                    ->join('quizzes', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
+                    ->whereIn('quizzes.course_id', $courseIds)
+                    ->whereNotNull('quiz_attempts.score')
+                    ->whereBetween(DB::raw('COALESCE(quiz_attempts.graded_at, quiz_attempts.updated_at)'), [$bucket['start'], $bucket['end']])
+                    ->pluck('quiz_attempts.score')
+                    ->map(fn ($score) => (float) $score)
+                    ->all();
+            }
+
+            $scores = [...$assignmentScores, ...$quizScores];
+            $value = count($scores) > 0 ? round(collect($scores)->avg(), 1) : 0;
+
+            return ['label' => $bucket['label'], 'value' => $value];
+        })->all();
+    }
+
+    private function buildProgressDistribution(array $lessonIds, array $studentIds): array
+    {
+        if ($lessonIds === [] || $studentIds === [] || !Schema::hasTable('lesson_progress')) {
+            return [
+                ['label' => '0-25%', 'value' => 0],
+                ['label' => '26-50%', 'value' => 0],
+                ['label' => '51-75%', 'value' => 0],
+                ['label' => '76-100%', 'value' => 0],
+            ];
+        }
+
+        $rows = DB::table('lesson_progress')
+            ->whereIn('lesson_id', $lessonIds)
+            ->whereIn('student_id', $studentIds)
+            ->pluck('progress_percent')
+            ->map(fn ($value) => (int) $value);
+
+        $total = max(1, $rows->count());
+        $bands = [
+            '0-25%' => $rows->filter(fn ($value) => $value <= 25)->count(),
+            '26-50%' => $rows->filter(fn ($value) => $value >= 26 && $value <= 50)->count(),
+            '51-75%' => $rows->filter(fn ($value) => $value >= 51 && $value <= 75)->count(),
+            '76-100%' => $rows->filter(fn ($value) => $value >= 76)->count(),
+        ];
+
+        return collect($bands)
+            ->map(fn (int $count, string $label): array => [
+                'label' => $label,
+                'value' => (int) round(($count / $total) * 100),
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function emptyTrend(Collection $buckets): array
+    {
+        return $buckets
+            ->map(fn (array $bucket): array => ['label' => $bucket['label'], 'value' => 0])
+            ->all();
+    }
+
+    private function engagementWindowDays(string $period): int
+    {
+        return match ($period) {
+            'quarterly' => 90,
+            'yearly' => 365,
+            default => 30,
+        };
+    }
+
+    private function buildBasicPdf(array $lines): string
+    {
+        $escape = static fn (string $text): string => str_replace(
+            ['\\', '(', ')'],
+            ['\\\\', '\\(', '\\)'],
+            $text
+        );
+
+        $streamLines = [];
+        $initialY = 780;
+        foreach ($lines as $index => $line) {
+            $y = $initialY - ($index * 18);
+            $streamLines[] = 'BT /F1 12 Tf 40 ' . $y . ' Td (' . $escape($line) . ') Tj ET';
+        }
+        $stream = implode("\n", $streamLines);
+
+        $objects = [];
+        $objects[] = "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj";
+        $objects[] = "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj";
+        $objects[] = "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj";
+        $objects[] = "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj";
+        $objects[] = "5 0 obj << /Length " . strlen($stream) . " >> stream\n" . $stream . "\nendstream endobj";
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = [];
+        foreach ($objects as $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= $object . "\n";
+        }
+
+        $xrefPosition = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+        foreach ($offsets as $offset) {
+            $pdf .= sprintf("%010d 00000 n \n", $offset);
+        }
+
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n" . $xrefPosition . "\n%%EOF";
+
+        return $pdf;
     }
 
     private function normalizeCoursePayload(array $payload): array

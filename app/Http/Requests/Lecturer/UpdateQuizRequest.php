@@ -21,6 +21,14 @@ class UpdateQuizRequest extends FormRequest
             'total_questions' => ['nullable', 'integer', 'min:1', 'max:200'],
             'scheduled_at' => ['nullable', 'date'],
             'status' => ['required', 'in:draft,active,closed'],
+            'questions' => ['nullable', 'array', 'min:1', 'max:200'],
+            'questions.*.question_text' => ['required_with:questions', 'string', 'max:2000'],
+            'questions.*.question_type' => ['required_with:questions', 'in:objective,essay'],
+            'questions.*.options' => ['nullable', 'array'],
+            'questions.*.options.*' => ['nullable', 'string', 'max:500'],
+            'questions.*.correct_answer' => ['nullable', 'string', 'max:1000'],
+            'questions.*.points' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'questions.*.sort_order' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

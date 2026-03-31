@@ -112,11 +112,33 @@ export default function AcademicReport({
     completion_trend = [],
     progress_distribution = [],
     top_courses = [],
+    available_courses = [],
 }) {
     const currentPeriod = filters?.period ?? 'monthly';
+    const currentCourseId = filters?.course_id ?? '';
+
+    const updateFilters = (nextPeriod, nextCourseId) => {
+        const payload = { period: nextPeriod };
+        if (nextCourseId) {
+            payload.course_id = nextCourseId;
+        }
+        router.get('/academic-reports', payload, { preserveState: true, preserveScroll: true, replace: true });
+    };
 
     const setPeriod = (period) => {
-        router.get('/academic-reports', { period }, { preserveState: true, preserveScroll: true, replace: true });
+        updateFilters(period, currentCourseId);
+    };
+
+    const setCourseId = (courseId) => {
+        updateFilters(currentPeriod, courseId);
+    };
+
+    const buildExportUrl = (format) => {
+        const params = new URLSearchParams({ period: currentPeriod, format });
+        if (currentCourseId) {
+            params.set('course_id', String(currentCourseId));
+        }
+        return `/academic-reports/export?${params.toString()}`;
     };
 
     const progressChartData = progress_distribution.map((item) => ({
@@ -161,12 +183,31 @@ export default function AcademicReport({
                                     </button>
                                 ))}
                             </div>
+                            <select
+                                value={currentCourseId}
+                                onChange={(event) => setCourseId(event.target.value)}
+                                className="px-3 py-2 rounded-lg border border-border bg-background text-sm"
+                            >
+                                <option value="">Semua Kursus</option>
+                                {available_courses.map((course) => (
+                                    <option key={course.id} value={course.id}>
+                                        {course.title}
+                                    </option>
+                                ))}
+                            </select>
                             <a
-                                href={`/academic-reports/export?period=${encodeURIComponent(currentPeriod)}`}
+                                href={buildExportUrl('csv')}
                                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary transition-colors text-sm font-medium"
                             >
                                 <Download className="w-4 h-4" />
                                 Export CSV
+                            </a>
+                            <a
+                                href={buildExportUrl('pdf')}
+                                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary transition-colors text-sm font-medium"
+                            >
+                                <Download className="w-4 h-4" />
+                                Export PDF
                             </a>
                         </>
                     )}
