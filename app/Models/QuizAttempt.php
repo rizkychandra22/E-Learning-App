@@ -20,6 +20,7 @@ class QuizAttempt extends Model
     ];
 
     protected $casts = [
+        'answers' => 'array',
         'score' => 'integer',
         'started_at' => 'datetime',
         'submitted_at' => 'datetime',

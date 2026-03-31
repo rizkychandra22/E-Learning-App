@@ -12,6 +12,9 @@ class AssignmentSubmission extends Model
         'student_id',
         'submission_text',
         'attachment_url',
+        'attachment_name',
+        'attachment_mime',
+        'attachment_size',
         'status',
         'score',
         'feedback',
@@ -21,6 +24,7 @@ class AssignmentSubmission extends Model
 
     protected $casts = [
         'score' => 'integer',
+        'attachment_size' => 'integer',
         'submitted_at' => 'datetime',
         'graded_at' => 'datetime',
     ];
