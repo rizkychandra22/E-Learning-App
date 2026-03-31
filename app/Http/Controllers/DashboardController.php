@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\AdminAcademicService;
 use App\Services\FinanceService;
+use App\Services\LecturerService;
 use App\Services\SuperAdminService;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,7 +14,8 @@ class DashboardController extends Controller
     public function __construct(
         private readonly AdminAcademicService $adminAcademicService,
         private readonly SuperAdminService $superAdminService,
-        private readonly FinanceService $financeService
+        private readonly FinanceService $financeService,
+        private readonly LecturerService $lecturerService
     ) {
     }
 
@@ -25,7 +27,7 @@ class DashboardController extends Controller
         $financeData = null;
 
         if ($authUser?->role === 'student') {
-            return Inertia::render('Student/Home');
+            return Inertia::render('Student/Home', $this->lecturerService->getStudentHomeData((int) $authUser->id));
         }
 
         if ($authUser?->role === 'root') {

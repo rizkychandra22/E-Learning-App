@@ -10,6 +10,7 @@ use App\Models\CourseMaterial;
 use App\Models\CourseModule;
 use App\Models\Discussion;
 use App\Models\LessonProgress;
+use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\StudentNote;
@@ -103,15 +104,15 @@ class LecturerService
         return $this->canManageLearningModules() && Schema::hasTable('lesson_progress');
     }
 
-    public function getLearningModulesData(int $lecturerId, ?int $courseId = null): array
+    public function getLearningModulesData(int $actorId, string $actorRole = 'teacher', ?int $courseId = null): array
     {
         $migrationRequired = !$this->canManageLearningModules();
-        $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
+        $courses = Schema::hasTable('courses') ? $this->getCoursesForLearningOperator($actorId, $actorRole) : collect();
         $selectedCourse = null;
         $modules = collect();
 
         if (!$migrationRequired && $courseId) {
-            $selectedCourse = $this->findLecturerCourse($lecturerId, $courseId);
+            $selectedCourse = $this->findCourseForLearningOperator($actorId, $actorRole, $courseId);
             $modules = $selectedCourse->modules()
                 ->with(['lessons' => fn ($query) => $query->orderBy('sort_order')])
                 ->get();
@@ -126,9 +127,9 @@ class LecturerService
         ];
     }
 
-    public function createModule(int $lecturerId, array $payload): void
+    public function createModule(int $actorId, string $actorRole, array $payload): void
     {
-        $course = $this->findLecturerCourse($lecturerId, (int) $payload['course_id']);
+        $course = $this->findCourseForLearningOperator($actorId, $actorRole, (int) $payload['course_id']);
 
         $course->modules()->create([
             'title' => trim((string) $payload['title']),
@@ -137,9 +138,9 @@ class LecturerService
         ]);
     }
 
-    public function updateModule(int $lecturerId, CourseModule $module, array $payload): void
+    public function updateModule(int $actorId, string $actorRole, CourseModule $module, array $payload): void
     {
-        $this->ensureModuleOwner($lecturerId, $module);
+        $this->ensureModuleOwnerForLearningOperator($actorId, $actorRole, $module);
 
         $module->update([
             'title' => trim((string) $payload['title']),
@@ -148,15 +149,15 @@ class LecturerService
         ]);
     }
 
-    public function deleteModule(int $lecturerId, CourseModule $module): void
+    public function deleteModule(int $actorId, string $actorRole, CourseModule $module): void
     {
-        $this->ensureModuleOwner($lecturerId, $module);
+        $this->ensureModuleOwnerForLearningOperator($actorId, $actorRole, $module);
         $module->delete();
     }
 
-    public function createLesson(int $lecturerId, array $payload): void
+    public function createLesson(int $actorId, string $actorRole, array $payload): void
     {
-        $module = $this->findLecturerModule($lecturerId, (int) $payload['course_module_id']);
+        $module = $this->findModuleForLearningOperator($actorId, $actorRole, (int) $payload['course_module_id']);
 
         $module->lessons()->create([
             'title' => trim((string) $payload['title']),
@@ -169,9 +170,9 @@ class LecturerService
         ]);
     }
 
-    public function updateLesson(int $lecturerId, CourseLesson $lesson, array $payload): void
+    public function updateLesson(int $actorId, string $actorRole, CourseLesson $lesson, array $payload): void
     {
-        $this->ensureLessonOwner($lecturerId, $lesson);
+        $this->ensureLessonOwnerForLearningOperator($actorId, $actorRole, $lesson);
 
         $lesson->update([
             'title' => trim((string) $payload['title']),
@@ -184,9 +185,9 @@ class LecturerService
         ]);
     }
 
-    public function deleteLesson(int $lecturerId, CourseLesson $lesson): void
+    public function deleteLesson(int $actorId, string $actorRole, CourseLesson $lesson): void
     {
-        $this->ensureLessonOwner($lecturerId, $lesson);
+        $this->ensureLessonOwnerForLearningOperator($actorId, $actorRole, $lesson);
         $lesson->delete();
     }
 
@@ -253,6 +254,127 @@ class LecturerService
             ],
             'migrationRequired' => false,
             'selfEnrollmentAvailable' => $selfEnrollmentAvailable,
+        ];
+    }
+
+    public function getStudentHomeData(int $studentId): array
+    {
+        $learning = $this->getStudentLearningDashboard($studentId);
+        $assignmentsData = $this->getStudentAssignmentsData($studentId);
+        $quizzesData = $this->getStudentQuizzesData($studentId);
+        $gradesData = $this->getStudentGradesData($studentId);
+
+        $courses = collect($learning['courses'] ?? []);
+        $assignments = collect($assignmentsData['assignments'] ?? []);
+        $quizzes = collect($quizzesData['quizzes'] ?? []);
+        $records = collect($gradesData['records'] ?? []);
+
+        $now = now();
+
+        $upcomingAssignments = $assignments
+            ->filter(fn ($item) => ($item['submission']['status'] ?? null) !== 'graded' && !empty($item['due_at']))
+            ->map(fn ($item) => [
+                'type' => 'assignment',
+                'title' => $item['title'] ?? '-',
+                'course' => $item['course']['title'] ?? '-',
+                'schedule_at' => $item['due_at'],
+                'status' => $item['submission']['status'] ?? 'pending',
+            ]);
+
+        $upcomingQuizzes = $quizzes
+            ->filter(fn ($item) => in_array($item['status'] ?? 'draft', ['active', 'draft'], true) && !empty($item['scheduled_at']))
+            ->map(fn ($item) => [
+                'type' => 'quiz',
+                'title' => $item['title'] ?? '-',
+                'course' => $item['course']['title'] ?? '-',
+                'schedule_at' => $item['scheduled_at'],
+                'status' => $item['attempt']['status'] ?? 'pending',
+            ]);
+
+        $upcomingItems = $upcomingAssignments
+            ->concat($upcomingQuizzes)
+            ->filter(function ($item) use ($now) {
+                $date = isset($item['schedule_at']) ? strtotime((string) $item['schedule_at']) : false;
+                return $date !== false && $date >= $now->timestamp;
+            })
+            ->sortBy('schedule_at')
+            ->take(6)
+            ->values();
+
+        $latestResults = $records
+            ->sortByDesc('graded_at')
+            ->take(6)
+            ->map(fn ($record) => [
+                'type' => $record['type'] ?? '-',
+                'title' => $record['title'] ?? '-',
+                'course' => $record['course']['title'] ?? '-',
+                'score' => (int) ($record['score'] ?? 0),
+                'max_score' => (int) ($record['max_score'] ?? 100),
+                'graded_at' => $record['graded_at'] ?? null,
+            ])
+            ->values();
+
+        $recentActivities = collect()
+            ->concat(
+                $assignments
+                    ->filter(fn ($item) => !empty($item['submission']['submitted_at']))
+                    ->map(fn ($item) => [
+                        'type' => 'assignment',
+                        'title' => $item['title'] ?? '-',
+                        'text' => 'Tugas dikumpulkan',
+                        'time' => $item['submission']['submitted_at'],
+                    ])
+            )
+            ->concat(
+                $quizzes
+                    ->filter(fn ($item) => !empty($item['attempt']['submitted_at']))
+                    ->map(fn ($item) => [
+                        'type' => 'quiz',
+                        'title' => $item['title'] ?? '-',
+                        'text' => 'Kuis dikirim',
+                        'time' => $item['attempt']['submitted_at'],
+                    ])
+            )
+            ->concat(
+                $latestResults->map(fn ($item) => [
+                    'type' => $item['type'],
+                    'title' => $item['title'],
+                    'text' => "Nilai {$item['score']}/{$item['max_score']}",
+                    'time' => $item['graded_at'],
+                ])
+            )
+            ->filter(fn ($item) => !empty($item['time']))
+            ->sortByDesc('time')
+            ->take(8)
+            ->values();
+
+        $todaySchedule = $upcomingItems
+            ->filter(function ($item) use ($now) {
+                $date = isset($item['schedule_at']) ? strtotime((string) $item['schedule_at']) : false;
+                return $date !== false && date('Y-m-d', $date) === $now->toDateString();
+            })
+            ->count();
+
+        return [
+            'stats' => [
+                'active_courses' => (int) ($learning['summary']['active_courses'] ?? 0),
+                'completed_assignments' => (int) ($assignmentsData['summary']['submitted_count'] ?? 0),
+                'graded_items' => (int) ($gradesData['summary']['graded_count'] ?? 0),
+                'today_schedule' => (int) $todaySchedule,
+                'average_progress' => (int) ($learning['summary']['average_progress'] ?? 0),
+            ],
+            'courses' => $courses->take(4)->values(),
+            'upcoming_items' => $upcomingItems,
+            'recent_activities' => $recentActivities,
+            'latest_results' => $latestResults,
+            'migrationRequired' => [
+                'learning' => (bool) ($learning['migrationRequired'] ?? false),
+                'assignments' => (bool) ($assignmentsData['migrationRequired']['assignments'] ?? false),
+                'submissions' => (bool) ($assignmentsData['migrationRequired']['submissions'] ?? false),
+                'quizzes' => (bool) ($quizzesData['migrationRequired']['quizzes'] ?? false),
+                'attempts' => (bool) ($quizzesData['migrationRequired']['attempts'] ?? false),
+                'grades' => (bool) ($gradesData['migrationRequired'] ?? false),
+            ],
         ];
     }
 
@@ -365,7 +487,10 @@ class LecturerService
                         'score' => $submission->score,
                         'feedback' => $submission->feedback,
                         'submission_text' => $submission->submission_text,
-                        'attachment_url' => $submission->attachment_url,
+                        'attachment_url' => $this->resolveSubmissionAttachmentUrl($submission->attachment_url),
+                        'attachment_name' => $submission->attachment_name,
+                        'attachment_mime' => $submission->attachment_mime,
+                        'attachment_size' => $submission->attachment_size,
                         'submitted_at' => $submission->submitted_at?->toISOString(),
                         'graded_at' => $submission->graded_at?->toISOString(),
                     ] : null,
@@ -423,7 +548,10 @@ class LecturerService
                     'score' => $submission->score,
                     'feedback' => $submission->feedback,
                     'submission_text' => $submission->submission_text,
-                    'attachment_url' => $submission->attachment_url,
+                    'attachment_url' => $this->resolveSubmissionAttachmentUrl($submission->attachment_url),
+                    'attachment_name' => $submission->attachment_name,
+                    'attachment_mime' => $submission->attachment_mime,
+                    'attachment_size' => $submission->attachment_size,
                     'submitted_at' => $submission->submitted_at?->toISOString(),
                     'graded_at' => $submission->graded_at?->toISOString(),
                 ] : null,
@@ -440,6 +568,22 @@ class LecturerService
         abort_if($assignment->status !== 'active', 422, 'Tugas belum dapat dikumpulkan.');
         abort_if(!Schema::hasTable('assignment_submissions'), 404);
 
+        $attachmentUrl = isset($payload['attachment_url']) && trim((string) $payload['attachment_url']) !== ''
+            ? trim((string) $payload['attachment_url'])
+            : null;
+        $attachmentName = null;
+        $attachmentMime = null;
+        $attachmentSize = null;
+
+        if (isset($payload['attachment_file']) && $payload['attachment_file'] !== null) {
+            $file = $payload['attachment_file'];
+            $storedPath = $file->store('assignment-submissions/' . $assignment->id . '/' . $studentId, 'public');
+            $attachmentUrl = $storedPath;
+            $attachmentName = $file->getClientOriginalName();
+            $attachmentMime = $file->getClientMimeType();
+            $attachmentSize = $file->getSize() ?? 0;
+        }
+
         AssignmentSubmission::updateOrCreate(
             [
                 'assignment_id' => $assignment->id,
@@ -447,9 +591,10 @@ class LecturerService
             ],
             [
                 'submission_text' => trim((string) ($payload['submission_text'] ?? '')),
-                'attachment_url' => isset($payload['attachment_url']) && trim((string) $payload['attachment_url']) !== ''
-                    ? trim((string) $payload['attachment_url'])
-                    : null,
+                'attachment_url' => $attachmentUrl,
+                'attachment_name' => $attachmentName,
+                'attachment_mime' => $attachmentMime,
+                'attachment_size' => $attachmentSize,
                 'status' => 'submitted',
                 'submitted_at' => now(),
                 'score' => null,
@@ -461,7 +606,7 @@ class LecturerService
 
     public function getStudentQuizzesData(int $studentId): array
     {
-        $migrationRequired = !Schema::hasTable('quizzes') || !Schema::hasTable('course_student');
+        $migrationRequired = !Schema::hasTable('quizzes') || !Schema::hasTable('course_student') || !Schema::hasTable('questions');
         $attemptMigrationRequired = !Schema::hasTable('quiz_attempts');
 
         if ($migrationRequired) {
@@ -484,6 +629,7 @@ class LecturerService
             ->whereHas('course.students', fn ($query) => $query->where('users.id', $studentId))
             ->with([
                 'course:id,title,code',
+                'questions:id,quiz_id,question_text,question_type,options,correct_answer,points,sort_order',
                 'attempts' => fn ($query) => $query->where('student_id', $studentId),
             ])
             ->orderByRaw('CASE WHEN scheduled_at IS NULL THEN 1 ELSE 0 END')
@@ -500,6 +646,14 @@ class LecturerService
                     'duration_minutes' => $quiz->duration_minutes,
                     'total_questions' => $quiz->total_questions,
                     'scheduled_at' => $quiz->scheduled_at?->toISOString(),
+                    'questions' => $quiz->questions->map(fn (Question $question) => [
+                        'id' => $question->id,
+                        'question_text' => $question->question_text,
+                        'question_type' => $question->question_type,
+                        'options' => $question->question_type === 'objective' ? array_values(array_filter($question->options ?? [], fn ($value) => trim((string) $value) !== '')) : [],
+                        'points' => $question->points,
+                        'sort_order' => $question->sort_order,
+                    ])->values(),
                     'course' => $quiz->course ? [
                         'id' => $quiz->course->id,
                         'title' => $quiz->course->title,
@@ -510,7 +664,7 @@ class LecturerService
                         'status' => $attempt->status,
                         'score' => $attempt->score,
                         'feedback' => $attempt->feedback,
-                        'answers' => $attempt->answers,
+                        'answers' => $this->normalizeAttemptAnswers($attempt->answers),
                         'submitted_at' => $attempt->submitted_at?->toISOString(),
                         'graded_at' => $attempt->graded_at?->toISOString(),
                     ] : null,
@@ -538,13 +692,31 @@ class LecturerService
         abort_if($quiz->status !== 'active', 422, 'Kuis belum dapat dikerjakan.');
         abort_if(!Schema::hasTable('quiz_attempts'), 404);
 
+        $rawAnswers = $payload['answers'] ?? null;
+        $normalizedAnswers = [];
+        if (is_array($rawAnswers)) {
+            $normalizedAnswers = collect($rawAnswers)
+                ->mapWithKeys(function ($value, $key) {
+                    $answer = is_string($value) ? trim($value) : (string) $value;
+                    return [(string) $key => $answer];
+                })
+                ->filter(fn ($value) => $value !== '')
+                ->all();
+        } else {
+            $legacy = trim((string) $rawAnswers);
+            if ($legacy !== '') {
+                $normalizedAnswers = ['legacy_text' => $legacy];
+            }
+        }
+        abort_if($normalizedAnswers === [], 422, 'Jawaban kuis tidak boleh kosong.');
+
         QuizAttempt::updateOrCreate(
             [
                 'quiz_id' => $quiz->id,
                 'student_id' => $studentId,
             ],
             [
-                'answers' => trim((string) ($payload['answers'] ?? '')),
+                'answers' => $normalizedAnswers,
                 'status' => 'submitted',
                 'started_at' => now(),
                 'submitted_at' => now(),
@@ -839,12 +1011,13 @@ class LecturerService
         $normalizedStatus = in_array($status, ['all', 'draft', 'active', 'closed'], true) ? $status : 'all';
         $selectedCourseId = trim($courseId) !== '' ? (int) $courseId : null;
 
-        $migrationRequired = !Schema::hasTable('quizzes');
+        $migrationRequired = !Schema::hasTable('quizzes') || !Schema::hasTable('questions');
         $quizzes = collect();
         if (!$migrationRequired) {
             $quizzes = Quiz::query()
                 ->where('lecturer_id', $lecturerId)
-                ->with('course:id,title,code')
+                ->with(['course:id,title,code', 'questions:id,quiz_id,question_text,question_type,options,correct_answer,points,sort_order'])
+                ->withCount('attempts')
                 ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
                 ->when($selectedCourseId, fn ($query) => $query->where('course_id', $selectedCourseId))
                 ->when($search !== '', function ($query) use ($search) {
@@ -855,7 +1028,37 @@ class LecturerService
                     });
                 })
                 ->latest('id')
-                ->get();
+                ->get()
+                ->map(function (Quiz $quiz): array {
+                    $avgScore = (int) round((float) ($quiz->attempts()->where('status', 'graded')->avg('score') ?? 0));
+                    return [
+                        'id' => $quiz->id,
+                        'course_id' => $quiz->course_id,
+                        'title' => $quiz->title,
+                        'description' => $quiz->description,
+                        'duration_minutes' => $quiz->duration_minutes,
+                        'total_questions' => $quiz->total_questions,
+                        'scheduled_at' => $quiz->scheduled_at?->toISOString(),
+                        'status' => $quiz->status,
+                        'participants_count' => (int) ($quiz->attempts_count ?? 0),
+                        'avg_score' => $avgScore,
+                        'course' => $quiz->course ? [
+                            'id' => $quiz->course->id,
+                            'title' => $quiz->course->title,
+                            'code' => $quiz->course->code,
+                        ] : null,
+                        'questions' => $quiz->questions->map(fn (Question $question) => [
+                            'id' => $question->id,
+                            'question_text' => $question->question_text,
+                            'question_type' => $question->question_type,
+                            'options' => $question->question_type === 'objective' ? array_values(array_filter($question->options ?? [], fn ($value) => trim((string) $value) !== '')) : [],
+                            'correct_answer' => $question->correct_answer,
+                            'points' => $question->points,
+                            'sort_order' => $question->sort_order,
+                        ])->values()->all(),
+                    ];
+                })
+                ->values();
         }
 
         $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
@@ -876,23 +1079,25 @@ class LecturerService
 
     public function canManageQuizzes(): bool
     {
-        return Schema::hasTable('quizzes');
+        return Schema::hasTable('quizzes') && Schema::hasTable('questions');
     }
 
     public function createQuiz(int $lecturerId, array $payload): void
     {
         $courseId = $this->resolveCourseId($lecturerId, $payload['course_id'] ?? null);
 
-        Quiz::create([
+        $quiz = Quiz::create([
             'lecturer_id' => $lecturerId,
             'course_id' => $courseId,
             'title' => $payload['title'],
             'description' => $payload['description'] ?? null,
             'duration_minutes' => $payload['duration_minutes'] ?? null,
-            'total_questions' => $payload['total_questions'] ?? null,
+            'total_questions' => isset($payload['questions']) ? count($payload['questions']) : ($payload['total_questions'] ?? null),
             'scheduled_at' => $payload['scheduled_at'] ?? null,
             'status' => $payload['status'],
         ]);
+
+        $this->syncQuizQuestions($quiz, $payload['questions'] ?? []);
     }
 
     public function updateQuiz(int $lecturerId, Quiz $quiz, array $payload): void
@@ -905,10 +1110,14 @@ class LecturerService
             'title' => $payload['title'],
             'description' => $payload['description'] ?? null,
             'duration_minutes' => $payload['duration_minutes'] ?? null,
-            'total_questions' => $payload['total_questions'] ?? null,
+            'total_questions' => isset($payload['questions']) ? count($payload['questions']) : ($payload['total_questions'] ?? null),
             'scheduled_at' => $payload['scheduled_at'] ?? null,
             'status' => $payload['status'],
         ]);
+
+        if (array_key_exists('questions', $payload)) {
+            $this->syncQuizQuestions($quiz, $payload['questions'] ?? []);
+        }
     }
 
     public function deleteQuiz(int $lecturerId, Quiz $quiz): void
@@ -1382,6 +1591,139 @@ class LecturerService
     private function ensureCourseOwner(int $lecturerId, Course $course): void
     {
         abort_if((int) $course->lecturer_id !== $lecturerId, 404);
+    }
+
+    private function syncQuizQuestions(Quiz $quiz, array $questions): void
+    {
+        if (!Schema::hasTable('questions')) {
+            return;
+        }
+
+        $normalized = collect($questions)
+            ->map(function ($item, int $index): ?array {
+                $text = trim((string) ($item['question_text'] ?? ''));
+                if ($text === '') {
+                    return null;
+                }
+
+                $questionType = in_array(($item['question_type'] ?? 'objective'), ['objective', 'essay'], true)
+                    ? $item['question_type']
+                    : 'objective';
+                $options = collect($item['options'] ?? [])
+                    ->map(fn ($value) => trim((string) $value))
+                    ->filter(fn ($value) => $value !== '')
+                    ->values()
+                    ->all();
+
+                return [
+                    'question_text' => $text,
+                    'question_type' => $questionType,
+                    'options' => $questionType === 'objective' ? $options : [],
+                    'correct_answer' => isset($item['correct_answer']) ? trim((string) $item['correct_answer']) : null,
+                    'points' => max(1, (int) ($item['points'] ?? 10)),
+                    'sort_order' => max(1, (int) ($item['sort_order'] ?? ($index + 1))),
+                ];
+            })
+            ->filter()
+            ->values();
+
+        $quiz->questions()->delete();
+        foreach ($normalized as $row) {
+            $quiz->questions()->create($row);
+        }
+
+        $quiz->update(['total_questions' => $normalized->count()]);
+    }
+
+    private function normalizeAttemptAnswers($answers): array
+    {
+        if (is_array($answers)) {
+            return $answers;
+        }
+
+        if (is_string($answers) && trim($answers) !== '') {
+            return ['legacy_text' => trim($answers)];
+        }
+
+        return [];
+    }
+
+    private function resolveSubmissionAttachmentUrl(?string $attachmentUrl): ?string
+    {
+        if (!$attachmentUrl) {
+            return null;
+        }
+
+        if (str_starts_with($attachmentUrl, 'http://') || str_starts_with($attachmentUrl, 'https://')) {
+            return $attachmentUrl;
+        }
+
+        return Storage::disk('public')->url($attachmentUrl);
+    }
+
+    private function getCoursesForLearningOperator(int $actorId, string $actorRole): Collection
+    {
+        if ($actorRole === 'admin') {
+            return Course::query()
+                ->orderBy('title')
+                ->get(['id', 'title', 'code']);
+        }
+
+        return $this->getLecturerCoursesSimple($actorId);
+    }
+
+    private function findCourseForLearningOperator(int $actorId, string $actorRole, int $courseId): Course
+    {
+        $query = Course::query()->where('id', $courseId);
+        if ($actorRole !== 'admin') {
+            $query->where('lecturer_id', $actorId);
+        }
+
+        $course = $query->first();
+        abort_if(!$course, 404);
+
+        return $course;
+    }
+
+    private function findModuleForLearningOperator(int $actorId, string $actorRole, int $moduleId): CourseModule
+    {
+        $query = CourseModule::query()
+            ->where('id', $moduleId)
+            ->whereHas('course', function ($subQuery) use ($actorId, $actorRole) {
+                if ($actorRole !== 'admin') {
+                    $subQuery->where('lecturer_id', $actorId);
+                }
+            });
+
+        $module = $query->first();
+        abort_if(!$module, 404);
+
+        return $module;
+    }
+
+    private function ensureModuleOwnerForLearningOperator(int $actorId, string $actorRole, CourseModule $module): void
+    {
+        $module->loadMissing('course');
+        if ($actorRole === 'admin') {
+            abort_if(!$module->course, 404);
+            return;
+        }
+
+        abort_if(!$module->course || (int) $module->course->lecturer_id !== $actorId, 404);
+    }
+
+    private function ensureLessonOwnerForLearningOperator(int $actorId, string $actorRole, CourseLesson $lesson): void
+    {
+        $lesson->loadMissing('module.course');
+        if ($actorRole === 'admin') {
+            abort_if(!$lesson->module || !$lesson->module->course, 404);
+            return;
+        }
+
+        abort_if(
+            !$lesson->module || !$lesson->module->course || (int) $lesson->module->course->lecturer_id !== $actorId,
+            404
+        );
     }
 
     private function ensureModuleOwner(int $lecturerId, CourseModule $module): void
