@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Fakultas;
+use App\Models\Jurusan;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Carbon\Carbon;
@@ -18,6 +19,10 @@ class SuperAdminService
         $config = $this->resolveUserConfig($target);
 
         $users = User::query()
+            ->with([
+                'jurusan:id,name,fakultas_id',
+                'jurusan.fakultas:id,name,code',
+            ])
             ->where('role', $config['role'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
@@ -29,7 +34,14 @@ class SuperAdminService
                 });
             })
             ->latest('id')
-            ->get(['id', 'name', 'email', 'username', 'code', 'created_at']);
+            ->get(['id', 'name', 'email', 'username', 'code', 'jurusan_id', 'created_at']);
+
+        $jurusans = in_array($config['role'], ['teacher', 'student'], true)
+            ? Jurusan::query()
+                ->with('fakultas:id,name,code')
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'fakultas_id'])
+            : collect();
 
         $mocked = false;
 
@@ -39,6 +51,7 @@ class SuperAdminService
             'target' => $target,
             'endpoint' => $config['endpoint'],
             'users' => $users,
+            'jurusans' => $jurusans,
             'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
@@ -54,6 +67,7 @@ class SuperAdminService
             ...$payload,
             'role' => $config['role'],
             'type' => $config['type'],
+            'jurusan_id' => $this->resolveManagedUserJurusanId($config['role'], $payload),
         ]);
 
         if (app(SystemSettingService::class)->shouldNotifyOnNewUser()) {
@@ -79,6 +93,7 @@ class SuperAdminService
             'code' => $payload['code'],
             'role' => $config['role'],
             'type' => $config['type'],
+            'jurusan_id' => $this->resolveManagedUserJurusanId($config['role'], $payload),
         ];
 
         if (!empty($payload['password'])) {
@@ -423,6 +438,20 @@ class SuperAdminService
         abort_if($config === null, 404);
 
         return $config;
+    }
+
+    private function resolveManagedUserJurusanId(string $role, array $payload): ?int
+    {
+        if (!in_array($role, ['teacher', 'student'], true)) {
+            return null;
+        }
+
+        $value = $payload['jurusan_id'] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (int) $value;
     }
 
     private function mockManagedUsers(string $target): array
