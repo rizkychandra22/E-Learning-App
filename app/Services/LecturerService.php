@@ -230,6 +230,7 @@ class LecturerService
             $availableCourses = Course::query()
                 ->where('status', 'active')
                 ->where('allow_self_enrollment', true)
+                ->when(!empty($student->jurusan_id), fn ($query) => $query->where('jurusan_id', (int) $student->jurusan_id))
                 ->whereNotIn('id', $enrolledCourseIds)
                 ->with('lecturer:id,name')
                 ->orderBy('title')
@@ -813,18 +814,24 @@ class LecturerService
 
     public function createCourseForLecturer(int $lecturerId, array $payload): void
     {
+        $lecturerJurusanId = $this->resolveLecturerJurusanId($lecturerId);
+
         Course::create($this->normalizeCoursePayload([
             ...$payload,
             'lecturer_id' => $lecturerId,
+            'jurusan_id' => $lecturerJurusanId,
         ]));
     }
 
     public function updateCourseForLecturer(int $lecturerId, Course $course, array $payload): void
     {
         $this->ensureCourseOwner($lecturerId, $course);
+        $lecturerJurusanId = $this->resolveLecturerJurusanId($lecturerId);
+
         $course->update($this->normalizeCoursePayload([
             ...$payload,
             'lecturer_id' => $lecturerId,
+            'jurusan_id' => $lecturerJurusanId,
         ]));
     }
 
@@ -1375,8 +1382,11 @@ class LecturerService
                 ->get(['users.id', 'users.name', 'users.email', 'users.code']);
         }
 
+        $lecturerJurusanId = User::query()->where('id', $lecturerId)->value('jurusan_id');
+
         $students = User::query()
             ->where('role', 'student')
+            ->when(!empty($lecturerJurusanId), fn ($query) => $query->where('jurusan_id', (int) $lecturerJurusanId))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'code']);
 
@@ -1417,6 +1427,10 @@ class LecturerService
             ->where('id', (int) $payload['student_id'])
             ->where('role', 'student')
             ->firstOrFail();
+
+        abort_if(empty($course->jurusan_id), 422, 'Kursus belum terhubung ke program studi.');
+        abort_if(empty($student->jurusan_id), 422, 'Mahasiswa belum terhubung ke program studi.');
+        abort_if((int) $course->jurusan_id !== (int) $student->jurusan_id, 422, 'Mahasiswa hanya dapat didaftarkan ke kursus program studi yang sama.');
 
         $alreadyEnrolled = $course->students()->where('users.id', $student->id)->exists();
         abort_if($alreadyEnrolled, 422, 'Mahasiswa sudah terdaftar di kursus ini.');
@@ -1466,12 +1480,20 @@ class LecturerService
             abort_if($enrollmentKey === '' || !hash_equals((string) $course->enrollment_key, $enrollmentKey), 422, 'Kunci enrollment tidak valid.');
         }
 
+        $student = User::query()
+            ->where('id', $studentId)
+            ->where('role', 'student')
+            ->firstOrFail();
+
+        abort_if(empty($course->jurusan_id), 422, 'Kursus belum terhubung ke program studi.');
+        abort_if(empty($student->jurusan_id), 422, 'Akun Anda belum terhubung ke program studi.');
+        abort_if((int) $course->jurusan_id !== (int) $student->jurusan_id, 422, 'Kursus ini bukan untuk program studi Anda.');
+
         $alreadyEnrolled = $course->students()->where('users.id', $studentId)->exists();
         abort_if($alreadyEnrolled, 422, 'Anda sudah terdaftar di kursus ini.');
 
         $course->students()->attach($studentId, ['enrolled_at' => now()]);
 
-        $student = User::query()->findOrFail($studentId);
         if ($course->lecturer) {
             $this->notificationService->notifyEnrollment($student, $course->lecturer, (string) $course->title, $studentId, true);
         } else {
@@ -1773,6 +1795,18 @@ class LecturerService
         abort_if(!$course, 404);
 
         return $course;
+    }
+
+    private function resolveLecturerJurusanId(int $lecturerId): int
+    {
+        $lecturer = User::query()
+            ->where('id', $lecturerId)
+            ->where('role', 'teacher')
+            ->firstOrFail();
+
+        abort_if(empty($lecturer->jurusan_id), 422, 'Profil dosen belum terhubung ke program studi.');
+
+        return (int) $lecturer->jurusan_id;
     }
 
     private function findLecturerModule(int $lecturerId, int $moduleId): CourseModule
