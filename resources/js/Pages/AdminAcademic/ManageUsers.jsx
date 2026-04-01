@@ -12,6 +12,7 @@ const emptyForm = {
     username: '',
     role: 'student',
     code: '',
+    jurusan_id: '',
     password: '',
 };
 
@@ -52,7 +53,7 @@ function relativeTime(value) {
     return `${days} hari lalu`;
 }
 
-export default function ManageUsers({ users, filters, mocked }) {
+export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [roleFilter, setRoleFilter] = useState(filters?.role ?? 'all');
     const [editingId, setEditingId] = useState(null);
@@ -98,6 +99,7 @@ export default function ManageUsers({ users, filters, mocked }) {
             username: user.username ?? '',
             role: user.role ?? 'student',
             code: user.code ?? '',
+            jurusan_id: user.jurusan_id ? String(user.jurusan_id) : '',
             password: '',
         });
         form.clearErrors();
@@ -217,13 +219,33 @@ export default function ManageUsers({ users, filters, mocked }) {
                             <Field label="Nama Lengkap" value={form.data.name} error={form.errors.name} onChange={(value) => form.setData('name', value)} />
                             <Field label="Email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
                             <Field label="Username" value={form.data.username} error={form.errors.username} onChange={(value) => form.setData('username', value)} />
-                            <SelectField label="Role" value={form.data.role} error={form.errors.role} onChange={(value) => form.setData('role', value)}>
+                            <SelectField
+                                label="Role"
+                                value={form.data.role}
+                                error={form.errors.role}
+                                onChange={(value) => {
+                                    form.setData('role', value);
+                                    if (!['teacher', 'student'].includes(value)) {
+                                        form.setData('jurusan_id', '');
+                                    }
+                                }}
+                            >
                                 <option value="admin">Admin Universitas</option>
                                 <option value="finance">Admin Finance</option>
                                 <option value="teacher">Dosen</option>
                                 <option value="student">Mahasiswa</option>
                             </SelectField>
                             <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                            {['teacher', 'student'].includes(form.data.role) && (
+                                <SelectField label="Program Studi" value={form.data.jurusan_id} error={form.errors.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)}>
+                                    <option value="">Pilih Program Studi</option>
+                                    {jurusans.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.name} ({item.fakultas?.name ?? '-'})
+                                        </option>
+                                    ))}
+                                </SelectField>
+                            )}
                             <div className="md:col-span-2">
                                 <Field
                                     label={isEditing ? 'Password Baru (Opsional)' : 'Password Sementara'}
@@ -242,6 +264,9 @@ export default function ManageUsers({ users, filters, mocked }) {
                             <thead>
                                 <tr className="text-left text-muted-foreground border-b border-border">
                                     <th className="py-3 px-2 font-medium">Pengguna</th>
+                                    <th className="py-3 px-2 font-medium">Kode</th>
+                                    <th className="py-3 px-2 font-medium">Program Studi</th>
+                                    <th className="py-3 px-2 font-medium">Fakultas</th>
                                     <th className="py-3 px-2 font-medium">Role</th>
                                     <th className="py-3 px-2 font-medium">Status</th>
                                     <th className="py-3 px-2 font-medium">Bergabung</th>
@@ -265,6 +290,9 @@ export default function ManageUsers({ users, filters, mocked }) {
                                                     </div>
                                                 </div>
                                             </td>
+                                            <td className="py-3 px-2 text-muted-foreground font-mono">{user.code || '-'}</td>
+                                            <td className="py-3 px-2 text-muted-foreground">{user.jurusan?.name ?? '-'}</td>
+                                            <td className="py-3 px-2 text-muted-foreground">{user.jurusan?.fakultas?.name ?? '-'}</td>
                                             <td className="py-3 px-2">
                                                 <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${roleBadgeClass[user.role] ?? 'bg-secondary text-secondary-foreground'}`}>
                                                     {roleLabels[user.role] ?? user.role}
@@ -305,7 +333,7 @@ export default function ManageUsers({ users, filters, mocked }) {
                                 })}
                                 {users.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="py-10 text-center text-muted-foreground">Tidak ada data pengguna.</td>
+                                        <td colSpan={9} className="py-10 text-center text-muted-foreground">Tidak ada data pengguna.</td>
                                     </tr>
                                 )}
                             </tbody>
