@@ -165,6 +165,10 @@ class AdminAcademicService
         $selectedRole = in_array($role, $allowedRoles, true) ? $role : 'all';
 
         $users = User::query()
+            ->with([
+                'jurusan:id,name,fakultas_id',
+                'jurusan.fakultas:id,name,code',
+            ])
             ->where('role', '!=', 'root')
             ->when($selectedRole !== 'all', fn ($query) => $query->where('role', $selectedRole))
             ->when($search !== '', function ($query) use ($search) {
@@ -177,12 +181,18 @@ class AdminAcademicService
                 });
             })
             ->latest('id')
-            ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'email_verified_at', 'created_at']);
+            ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'jurusan_id', 'email_verified_at', 'created_at']);
+
+        $jurusans = Jurusan::query()
+            ->with('fakultas:id,name,code')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'fakultas_id']);
 
         $mocked = false;
 
         return [
             'users' => $users,
+            'jurusans' => $jurusans,
             'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
@@ -196,6 +206,7 @@ class AdminAcademicService
         $user = User::create([
             ...$payload,
             'type' => $payload['role'] === 'student' ? 'nim' : 'nidn',
+            'jurusan_id' => $this->resolveUserJurusanId($payload),
         ]);
 
         if (app(SystemSettingService::class)->shouldNotifyOnNewUser()) {
@@ -216,6 +227,7 @@ class AdminAcademicService
             'role' => $payload['role'],
             'type' => $payload['role'] === 'student' ? 'nim' : 'nidn',
             'code' => $payload['code'],
+            'jurusan_id' => $this->resolveUserJurusanId($payload),
         ];
 
         if (!empty($payload['password'])) {
@@ -1040,6 +1052,20 @@ class AdminAcademicService
         $payload['tags'] = $normalizedTags === [] ? null : $normalizedTags;
 
         return $payload;
+    }
+
+    private function resolveUserJurusanId(array $payload): ?int
+    {
+        $role = (string) ($payload['role'] ?? '');
+        if (!in_array($role, ['teacher', 'student'], true)) {
+            return null;
+        }
+
+        if (!isset($payload['jurusan_id']) || $payload['jurusan_id'] === null || $payload['jurusan_id'] === '') {
+            return null;
+        }
+
+        return (int) $payload['jurusan_id'];
     }
 
     private function mockLecturers(): array
