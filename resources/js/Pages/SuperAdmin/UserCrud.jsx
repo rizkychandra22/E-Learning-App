@@ -11,6 +11,7 @@ const emptyForm = {
     email: '',
     username: '',
     code: '',
+    jurusan_id: '',
     password: '',
 };
 
@@ -44,7 +45,7 @@ function relativeTime(value) {
     return `${days} hari lalu`;
 }
 
-export default function UserCrud({ title, description, target, endpoint, users, filters, mocked }) {
+export default function UserCrud({ title, description, target, endpoint, users, jurusans = [], filters, mocked }) {
     const [editingId, setEditingId] = useState(null);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [showForm, setShowForm] = useState(false);
@@ -52,6 +53,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
     const form = useForm(emptyForm);
     const meta = useMemo(() => targetMeta[target] ?? targetMeta.admins, [target]);
     const isEditing = editingId !== null;
+    const requiresJurusan = target === 'lecturers' || target === 'students';
 
     const selectedUser = useMemo(() => users.find((item) => item.id === editingId) ?? null, [editingId, users]);
 
@@ -102,6 +104,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
             email: user.email ?? '',
             username: user.username ?? '',
             code: user.code ?? '',
+            jurusan_id: user.jurusan_id ? String(user.jurusan_id) : '',
             password: '',
         });
         form.clearErrors();
@@ -212,6 +215,16 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                             <Field label="Email" value={form.data.email} error={form.errors.email} onChange={(value) => form.setData('email', value)} />
                             <Field label="Username" value={form.data.username} error={form.errors.username} onChange={(value) => form.setData('username', value)} />
                             <Field label="Kode" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                            {requiresJurusan && (
+                                <SelectField label="Program Studi" value={form.data.jurusan_id} error={form.errors.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)}>
+                                    <option value="">Pilih Program Studi</option>
+                                    {jurusans.map((item) => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.name} ({item.fakultas?.name ?? '-'})
+                                        </option>
+                                    ))}
+                                </SelectField>
+                            )}
                             <div className="md:col-span-2">
                                 <Field
                                     label={isEditing ? 'Password Baru (Opsional)' : 'Password Sementara'}
@@ -233,6 +246,8 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                     <th className="py-3 px-2 font-medium">Kontak</th>
                                     <th className="py-3 px-2 font-medium">Username</th>
                                     <th className="py-3 px-2 font-medium">Kode</th>
+                                    {requiresJurusan && <th className="py-3 px-2 font-medium">Program Studi</th>}
+                                    {requiresJurusan && <th className="py-3 px-2 font-medium">Fakultas</th>}
                                     <th className="py-3 px-2 font-medium">Status</th>
                                     <th className="py-3 px-2 font-medium">Login Terakhir</th>
                                     <th className="py-3 px-2 font-medium">Aksi</th>
@@ -255,6 +270,8 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                         <td className="py-3 px-2 text-muted-foreground">{user.email || '-'}</td>
                                         <td className="py-3 px-2">{user.username || '-'}</td>
                                         <td className="py-3 px-2">{user.code || '-'}</td>
+                                        {requiresJurusan && <td className="py-3 px-2 text-muted-foreground">{user.jurusan?.name ?? '-'}</td>}
+                                        {requiresJurusan && <td className="py-3 px-2 text-muted-foreground">{user.jurusan?.fakultas?.name ?? '-'}</td>}
                                         <td className="py-3 px-2">
                                             <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-success/15 text-success">Aktif</span>
                                         </td>
@@ -285,7 +302,7 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                 ))}
                                 {users.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="py-10 text-center text-muted-foreground">Tidak ada data ditemukan.</td>
+                                        <td colSpan={requiresJurusan ? 9 : 7} className="py-10 text-center text-muted-foreground">Tidak ada data ditemukan.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -308,6 +325,22 @@ function Field({ label, value, onChange, error, type = 'text', placeholder = '' 
                 onChange={(event) => onChange(event.target.value)}
                 className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
+            {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
+        </label>
+    );
+}
+
+function SelectField({ label, value, onChange, error, children }) {
+    return (
+        <label className="block">
+            <span className="text-sm font-medium text-foreground">{label}</span>
+            <select
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                className="mt-1.5 w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+                {children}
+            </select>
             {error && <span className="text-xs text-destructive mt-1 block">{error}</span>}
         </label>
     );
