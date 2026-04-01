@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
+use App\Jobs\SendSimpleEmailJob;
 use App\Models\InAppNotification;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class NotificationService
@@ -37,6 +36,7 @@ class NotificationService
             'message' => $message,
             'url' => $url,
             'data' => $data === [] ? null : $data,
+            'status' => 'unread',
             'read_at' => null,
         ]);
     }
@@ -86,17 +86,20 @@ class NotificationService
             return;
         }
 
-        try {
-            Mail::raw($body, function ($message) use ($toEmail, $subject) {
-                $message->to($toEmail)->subject($subject);
-            });
-        } catch (\Throwable $exception) {
-            Log::warning('Email notification failed', [
-                'to' => $toEmail,
-                'subject' => $subject,
-                'error' => $exception->getMessage(),
-            ]);
+        SendSimpleEmailJob::dispatch($toEmail, $subject, $body);
+    }
+
+    public function hasReminderBeenSent(int $userId, string $reminderKey): bool
+    {
+        if (!$this->canUseNotifications()) {
+            return false;
         }
+
+        return InAppNotification::query()
+            ->where('user_id', $userId)
+            ->where('type', 'reminder')
+            ->where('data->reminder_key', $reminderKey)
+            ->exists();
     }
 
     public function notifyEnrollment(User $student, User $lecturer, string $courseTitle, int $actorId, bool $selfEnroll = false): void

@@ -58,6 +58,19 @@ function relativeTime(value) {
     return `${days} hari lalu`;
 }
 
+function resolveStatus(notification) {
+    if (notification?.status) {
+        return notification.status;
+    }
+    return notification?.read_at ? 'read' : 'unread';
+}
+
+function statusBadgeClass(status) {
+    return status === 'read'
+        ? 'bg-secondary text-secondary-foreground'
+        : 'bg-primary/15 text-primary';
+}
+
 export default function NotificationIndex({ notifications = [], summary = { total: 0, unread: 0 } }) {
     const { user } = useAuth();
     const [activeFilter, setActiveFilter] = useState('all');
@@ -190,6 +203,9 @@ export default function NotificationIndex({ notifications = [], summary = { tota
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="font-semibold text-lg truncate">{notification.title}</h3>
                                                     {!notification.read_at && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${statusBadgeClass(resolveStatus(notification))}`}>
+                                                        {resolveStatus(notification)}
+                                                    </span>
                                                 </div>
                                                 <p className="text-muted-foreground">{notification.message}</p>
                                                 <p className="text-sm text-muted-foreground mt-1">{relativeTime(notification.created_at)}</p>

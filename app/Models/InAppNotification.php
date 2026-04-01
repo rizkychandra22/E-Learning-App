@@ -15,6 +15,7 @@ class InAppNotification extends Model
         'message',
         'url',
         'data',
+        'status',
         'read_at',
     ];
 

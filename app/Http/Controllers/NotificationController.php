@@ -37,7 +37,10 @@ class NotificationController extends Controller
         abort_if((int) $notification->user_id !== (int) $user->id, 404);
 
         if (!$notification->read_at) {
-            $notification->update(['read_at' => now()]);
+            $notification->update([
+                'read_at' => now(),
+                'status' => 'read',
+            ]);
         }
 
         return back();
@@ -51,7 +54,10 @@ class NotificationController extends Controller
         InAppNotification::query()
             ->where('user_id', $user->id)
             ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+            ->update([
+                'read_at' => now(),
+                'status' => 'read',
+            ]);
 
         return back();
     }
