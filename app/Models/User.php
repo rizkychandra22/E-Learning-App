@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'role',
         'type',
         'code',
+        'jurusan_id',
         'profile_photo_path',
         'password',
     ];
@@ -82,5 +84,10 @@ class User extends Authenticatable
     public function notifications(): HasMany
     {
         return $this->hasMany(InAppNotification::class);
+    }
+
+    public function jurusan(): BelongsTo
+    {
+        return $this->belongsTo(Jurusan::class);
     }
 }
