@@ -25,6 +25,7 @@ class UpdateUserRequest extends FormRequest
             'username' => ['required', 'string', 'max:60', Rule::unique('users', 'username')->ignore($ignoreId)],
             'role' => ['required', 'in:admin,finance,teacher,student'],
             'code' => ['required', 'string', 'max:40', Rule::unique('users', 'code')->ignore($ignoreId)],
+            'jurusan_id' => ['nullable', 'integer', 'exists:jurusans,id', 'required_if:role,teacher,student'],
             'password' => ['nullable', 'string', 'min:6', 'max:72'],
         ];
     }
