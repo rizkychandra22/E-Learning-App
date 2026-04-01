@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Fakultas;
+use App\Models\Jurusan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,6 +15,7 @@ class UserManagementEndpointsTest extends TestCase
     public function test_admin_academic_can_create_update_and_delete_managed_user(): void
     {
         $adminAcademic = $this->makeUser('admin', 'ADM-100');
+        $jurusan = $this->makeJurusan();
 
         $createResponse = $this->actingAs($adminAcademic)->post('/manage-users', [
             'name' => 'Dosen Baru',
@@ -20,6 +23,7 @@ class UserManagementEndpointsTest extends TestCase
             'username' => 'dosenbaru',
             'role' => 'teacher',
             'code' => 'TCH-900',
+            'jurusan_id' => $jurusan->id,
             'password' => 'secret123',
         ]);
 
@@ -38,6 +42,7 @@ class UserManagementEndpointsTest extends TestCase
             'username' => 'mahasiswamigrasi',
             'role' => 'student',
             'code' => 'STD-901',
+            'jurusan_id' => $jurusan->id,
             'password' => '',
         ]);
 
@@ -80,12 +85,14 @@ class UserManagementEndpointsTest extends TestCase
     public function test_super_admin_endpoint_assigns_role_based_on_target(): void
     {
         $root = $this->makeUser('root', 'ROOT-100');
+        $jurusan = $this->makeJurusan();
 
         $createResponse = $this->actingAs($root)->post('/manage-lecturers', [
             'name' => 'Lecturer One',
             'email' => 'lecturer.one@example.test',
             'username' => 'lecturerone',
             'code' => 'LC-001',
+            'jurusan_id' => $jurusan->id,
             'password' => 'secret123',
         ]);
 
@@ -130,5 +137,20 @@ class UserManagementEndpointsTest extends TestCase
             'password' => 'password123',
         ]);
     }
-}
 
+    private function makeJurusan(): Jurusan
+    {
+        $fakultas = Fakultas::create([
+            'name' => 'Fakultas Test',
+            'code' => '99',
+            'slug' => 'fakultas-test',
+        ]);
+
+        return Jurusan::create([
+            'fakultas_id' => $fakultas->id,
+            'name' => 'Jurusan Test',
+            'code' => '98',
+            'slug' => 'jurusan-test',
+        ]);
+    }
+}

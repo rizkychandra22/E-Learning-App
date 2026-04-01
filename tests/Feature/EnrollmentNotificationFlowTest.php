@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Course;
+use App\Models\Fakultas;
 use App\Models\InAppNotification;
+use App\Models\Jurusan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,9 +16,10 @@ class EnrollmentNotificationFlowTest extends TestCase
 
     public function test_student_can_self_enroll_and_receive_notifications(): void
     {
-        $lecturer = $this->createUser('teacher', 'TCH-501');
-        $student = $this->createUser('student', 'STD-501');
-        $course = $this->createCourse($lecturer->id, 'JOIN-501');
+        $jurusan = $this->createJurusan();
+        $lecturer = $this->createUser('teacher', 'TCH-501', $jurusan->id);
+        $student = $this->createUser('student', 'STD-501', $jurusan->id);
+        $course = $this->createCourse($lecturer->id, 'JOIN-501', $jurusan->id);
 
         $response = $this->actingAs($student)->post('/my-courses/enroll', [
             'course_id' => $course->id,
@@ -65,7 +68,7 @@ class EnrollmentNotificationFlowTest extends TestCase
         ]);
     }
 
-    private function createUser(string $role, string $code): User
+    private function createUser(string $role, string $code, ?int $jurusanId = null): User
     {
         return User::create([
             'name' => ucfirst($role) . ' ' . $code,
@@ -74,17 +77,19 @@ class EnrollmentNotificationFlowTest extends TestCase
             'role' => $role,
             'type' => $role === 'student' ? 'nim' : 'nidn',
             'code' => $code,
+            'jurusan_id' => $jurusanId,
             'password' => 'password123',
             'email_verified_at' => now(),
         ]);
     }
 
-    private function createCourse(int $lecturerId, string $enrollmentKey): Course
+    private function createCourse(int $lecturerId, string $enrollmentKey, int $jurusanId): Course
     {
         return Course::create([
             'title' => 'Sprint 5 Course',
             'code' => 'SPR-501',
             'description' => 'Course untuk enrollment & notification.',
+            'jurusan_id' => $jurusanId,
             'lecturer_id' => $lecturerId,
             'level' => 'dasar',
             'semester' => 5,
@@ -92,6 +97,22 @@ class EnrollmentNotificationFlowTest extends TestCase
             'status' => 'active',
             'allow_self_enrollment' => true,
             'enrollment_key' => $enrollmentKey,
+        ]);
+    }
+
+    private function createJurusan(): Jurusan
+    {
+        $fakultas = Fakultas::create([
+            'name' => 'Fakultas Test',
+            'code' => '90',
+            'slug' => 'fakultas-test',
+        ]);
+
+        return Jurusan::create([
+            'fakultas_id' => $fakultas->id,
+            'name' => 'Teknik Test',
+            'code' => '91',
+            'slug' => 'teknik-test',
         ]);
     }
 }
