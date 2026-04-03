@@ -8,6 +8,7 @@ import { CreateFormModal } from '@/components/CreateFormModal';
 
 const fakultasDefault = { name: '', code: '' };
 const jurusanDefault = { fakultas_id: '', name: '', code: '' };
+const modalModeDefault = 'create';
 
 const iconPalette = [Laptop, Palette, Briefcase, FlaskConical, Sigma, Languages];
 
@@ -15,6 +16,7 @@ export default function Categories({ fakultas, mocked }) {
     const [editingFakultasId, setEditingFakultasId] = useState(null);
     const [editingJurusanId, setEditingJurusanId] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const [modalMode, setModalMode] = useState(modalModeDefault);
 
     const fakultasForm = useForm(fakultasDefault);
     const jurusanForm = useForm(jurusanDefault);
@@ -40,18 +42,29 @@ export default function Categories({ fakultas, mocked }) {
         jurusanForm.post('/categories/jurusan', { preserveScroll: true, onSuccess: resetJurusanForm });
     };
 
-    const editFakultas = (item) => {
+    const openCreateForm = () => {
+        setModalMode(modalModeDefault);
+        resetFakultasForm();
+        resetJurusanForm();
         setShowForm(true);
+    };
+
+    const editFakultas = (item) => {
+        setModalMode('edit-fakultas');
+        resetJurusanForm();
         setEditingFakultasId(item.id);
         fakultasForm.setData({ name: item.name, code: item.code });
         fakultasForm.clearErrors();
+        setShowForm(true);
     };
 
     const editJurusan = (item) => {
-        setShowForm(true);
+        setModalMode('edit-jurusan');
+        resetFakultasForm();
         setEditingJurusanId(item.id);
         jurusanForm.setData({ fakultas_id: String(item.fakultas_id), name: item.name, code: item.code });
         jurusanForm.clearErrors();
+        setShowForm(true);
     };
 
     const resetFakultasForm = () => {
@@ -74,6 +87,13 @@ export default function Categories({ fakultas, mocked }) {
         router.delete(`/categories/jurusan/${item.id}`, { preserveScroll: true });
     };
 
+    const closeForm = () => {
+        setShowForm(false);
+        setModalMode(modalModeDefault);
+        resetFakultasForm();
+        resetJurusanForm();
+    };
+
     return (
         <ProtectedLayout>
             <Head title="Kategori" />
@@ -81,7 +101,7 @@ export default function Categories({ fakultas, mocked }) {
                 <PageHeroBanner title="Kategori Kursus" description="Kelola kategori dan pengelompokan kursus" />
 
                 <div className="flex justify-end -mt-2">
-                    <button type="button" onClick={() => setShowForm((prev) => !prev)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
+                    <button type="button" onClick={() => (showForm ? closeForm() : openCreateForm())} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
                         {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                         {showForm ? 'Tutup Form' : 'Tambah Kategori'}
                     </button>
@@ -96,12 +116,13 @@ export default function Categories({ fakultas, mocked }) {
 
                 <CreateFormModal
                     open={showForm}
-                    title="Tambah Kategori"
-                    onClose={() => setShowForm(false)}
+                    title={modalMode === 'edit-fakultas' ? 'Edit Kategori' : modalMode === 'edit-jurusan' ? 'Edit Subkategori' : 'Tambah Kategori'}
+                    onClose={closeForm}
                     hideFooter
                     maxWidthClass="max-w-4xl"
                 >
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className={`grid grid-cols-1 ${modalMode === 'create' ? 'xl:grid-cols-2' : ''} gap-4`}>
+                        {(modalMode === 'create' || modalMode === 'edit-fakultas') && (
                         <div className="panel-subcard p-4">
                             <h3 className="font-semibold mb-3">{editingFakultasId ? 'Edit Kategori' : 'Tambah Kategori'}</h3>
                             <form onSubmit={saveFakultas} className="space-y-3">
@@ -116,7 +137,9 @@ export default function Categories({ fakultas, mocked }) {
                                 </div>
                             </form>
                         </div>
+                        )}
 
+                        {(modalMode === 'create' || modalMode === 'edit-jurusan') && (
                         <div className="panel-subcard p-4">
                             <h3 className="font-semibold mb-3">{editingJurusanId ? 'Edit Subkategori' : 'Tambah Subkategori'}</h3>
                             <form onSubmit={saveJurusan} className="space-y-3">
@@ -137,6 +160,7 @@ export default function Categories({ fakultas, mocked }) {
                                 </div>
                             </form>
                         </div>
+                        )}
                     </div>
                 </CreateFormModal>
 
