@@ -50,7 +50,7 @@ const navByRole = {
         { title: 'Notifikasi', url: '/notifications', icon: Bell },
     ],
     mahasiswa: [
-        { title: 'Beranda', url: '/dashboard', icon: LayoutDashboard },
+        { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
         { title: 'Kursus Saya', url: '/my-courses', icon: BookOpen },
         { title: 'Materi', url: '/materials', icon: FileText },
         { title: 'Tugas', url: '/assignments', icon: ClipboardList },
@@ -66,6 +66,10 @@ const navByRole = {
 export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile }) {
     const { user } = useAuth();
     const page = usePage();
+    const system = page.props?.system ?? {};
+    const platformName = String(system.platform_name ?? 'Smart Learning')
+        .replace(/\s*campus\s*$/i, '')
+        .trim() || 'Smart Learning';
 
     if (!user) return null;
 
@@ -79,23 +83,23 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
 
             <aside
                 className={cn(
-                    'flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 min-h-screen lg:h-screen lg:sticky lg:top-0 lg:translate-x-0 lg:z-auto',
-                    collapsed ? 'lg:w-16' : 'lg:w-64',
+                    'flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 min-h-screen lg:h-screen lg:sticky lg:top-0 lg:translate-x-0 lg:z-auto shadow-card overflow-y-auto',
+                    collapsed ? 'lg:w-20' : 'lg:w-72',
                     'fixed inset-y-0 left-0 z-40 w-72',
                     mobileOpen ? 'translate-x-0' : '-translate-x-full'
                 )}
             >
-                <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border">
-                    <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-                        <GraduationCap className="w-5 h-5 text-primary-foreground" />
+                <div className={cn('flex items-center gap-3 border-b border-sidebar-border', collapsed ? 'h-16 px-3 justify-center' : 'h-16 px-4')}>
+                    <div className="w-10 h-10 rounded-2xl gradient-primary flex items-center justify-center flex-shrink-0 shadow-card-lg">
+                        <GraduationCap className="w-5 h-5 text-white" />
                     </div>
-                    {showLabel && <span className="font-bold text-lg text-sidebar-primary-foreground tracking-tight">Smart Learning</span>}
+                    {showLabel && <span className="font-bold text-lg text-foreground tracking-tight truncate">{platformName}</span>}
                     <button type="button" onClick={onCloseMobile} className="ml-auto p-1.5 rounded-md hover:bg-sidebar-accent lg:hidden" aria-label="Close sidebar">
                         <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-hidden">
+                <nav className={cn('flex-1 min-h-0 overflow-y-auto', collapsed ? 'py-3 px-2 space-y-1' : 'py-3 px-3 space-y-1')}>
                     {navItems.map((item) => {
                         const isActive = currentPath === item.url;
                         return (
@@ -104,29 +108,42 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
                                 href={item.url}
                                 onClick={onCloseMobile}
                                 className={cn(
-                                    'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
-                                    isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                    'group relative flex items-center rounded-2xl border border-transparent transition-all duration-200',
+                                    collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2 text-sm font-semibold',
+                                    isActive
+                                        ? 'bg-sidebar-accent text-sidebar-primary border-sidebar-border'
+                                        : 'text-sidebar-foreground hover:bg-sidebar-accent/75 hover:text-sidebar-accent-foreground'
                                 )}
                             >
-                                <item.icon className="w-5 h-5 flex-shrink-0" />
+                                <span
+                                    className={cn(
+                                        'inline-flex items-center justify-center rounded-xl transition-colors',
+                                        collapsed ? 'h-9 w-9' : 'h-8 w-8',
+                                        isActive
+                                            ? 'bg-primary/15 text-primary'
+                                            : 'text-sidebar-foreground group-hover:text-primary'
+                                    )}
+                                >
+                                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                                </span>
                                 {showLabel && <span>{item.title}</span>}
                             </Link>
                         );
                     })}
                 </nav>
 
-                <div className="mx-2 mt-2 mb-2 pt-2 border-t border-sidebar-border/80">
+                <div className={cn('mt-2 mb-2 pt-3 border-t border-sidebar-border/80', collapsed ? 'mx-2' : 'mx-3')}>
                     {showLabel ? (
-                        <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/85 p-2.5">
-                            <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 text-sidebar-primary grid place-items-center mb-2">
+                        <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/70 p-2.5">
+                            <div className="w-8 h-8 rounded-full bg-primary/15 text-primary grid place-items-center mb-2">
                                 <CircleHelp className="w-4 h-4" />
                             </div>
-                            <p className="font-semibold text-sm text-sidebar-primary-foreground">Pusat Bantuan</p>
-                            <p className="text-xs text-sidebar-foreground/80 mt-0.5">Butuh bantuan? Hubungi kami.</p>
+                            <p className="font-semibold text-sm text-sidebar-accent-foreground">Pusat Bantuan</p>
+                            <p className="text-xs text-sidebar-foreground/85 mt-0.5">Butuh bantuan? Hubungi kami.</p>
                             <Link
                                 href="/help-center"
                                 onClick={onCloseMobile}
-                                className="mt-2 w-full inline-flex items-center justify-center rounded-lg bg-sidebar-primary/20 hover:bg-sidebar-primary/30 text-sidebar-primary-foreground px-2.5 py-1.5 text-xs font-semibold transition-colors"
+                                className="mt-2.5 w-full inline-flex items-center justify-center rounded-xl bg-primary/20 hover:bg-primary/30 text-sidebar-accent-foreground px-3 py-1.5 text-xs font-semibold transition-colors"
                             >
                                 Buka Bantuan
                             </Link>
