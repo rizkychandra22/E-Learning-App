@@ -25,6 +25,7 @@ class DashboardController extends Controller
         $superAdminData = null;
         $adminAcademicData = null;
         $financeData = null;
+        $lecturerData = null;
 
         if ($authUser?->role === 'student') {
             return Inertia::render('Student/Home', $this->lecturerService->getStudentHomeData((int) $authUser->id));
@@ -42,10 +43,15 @@ class DashboardController extends Controller
             $financeData = $this->financeService->getDashboardData();
         }
 
+        if ($authUser?->role === 'teacher') {
+            $lecturerData = $this->lecturerService->getDashboardData((int) $authUser->id);
+        }
+
         return Inertia::render('Dashboard', [
             'superAdmin' => $superAdminData,
             'adminAcademic' => $adminAcademicData,
             'financeData' => $financeData,
+            'lecturerData' => $lecturerData,
         ]);
     }
 }

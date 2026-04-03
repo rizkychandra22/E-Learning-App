@@ -259,6 +259,20 @@ class SuperAdminService
 
             $thisMonth = now()->startOfMonth();
             $lastMonthStart = now()->subMonthNoOverflow()->startOfMonth();
+            $weeklyActivity = collect(range(6, 0))
+                ->map(function (int $daysAgo): array {
+                    $date = now()->subDays($daysAgo);
+                    $start = $date->copy()->startOfDay();
+                    $end = $date->copy()->endOfDay();
+
+                    return [
+                        'label' => $date->locale('id')->translatedFormat('D'),
+                        'value' => User::query()
+                            ->whereBetween('updated_at', [$start, $end])
+                            ->count(),
+                    ];
+                })
+                ->values();
 
             return [
                 'summary' => [
@@ -269,6 +283,7 @@ class SuperAdminService
                 ],
                 'role_stats' => $usersByRole,
                 'monthly_users' => $monthlyUsers,
+                'weekly_activity' => $weeklyActivity,
                 'recent_activities' => $recentActivities,
             ];
         });

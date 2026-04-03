@@ -155,14 +155,7 @@ function HeroSection({ user, greeting, subtitle, intlLocale = 'id-ID' }) {
 
 function RecentActivity({ title = 'Aktivitas Terbaru', activities = [], intlLocale = 'id-ID' }) {
     const [showAll, setShowAll] = useState(false);
-    const fallbackActivities = [
-        { text: 'Tugas Algoritma telah dikumpulkan', timeText: '2 menit lalu', color: 'bg-success' },
-        { text: 'Materi baru: Pengantar Machine Learning', timeText: '15 menit lalu', color: 'bg-primary' },
-        { text: 'Kuis Basis Data dimulai', timeText: '1 jam lalu', color: 'bg-warning' },
-        { text: 'Diskusi baru di Forum Pemrograman Web', timeText: '2 jam lalu', color: 'bg-info' },
-        { text: 'Pengumuman kelas Pemrograman Web dipublikasikan', timeText: '3 jam lalu', color: 'bg-accent' },
-    ];
-    const list = activities.length ? activities : fallbackActivities;
+    const list = activities;
     const visibleList = showAll ? list : list.slice(0, 4);
 
     const colorByAction = {
@@ -186,17 +179,23 @@ function RecentActivity({ title = 'Aktivitas Terbaru', activities = [], intlLoca
                 )}
             </div>
             <div className="space-y-3">
-                {visibleList.map((activity, index) => (
-                    <div key={index} className="flex items-start gap-3 rounded-xl border border-transparent p-2.5 hover:bg-secondary/60 hover:border-border transition-colors">
-                        <div className={cn('w-2 h-2 rounded-full mt-2 flex-shrink-0', colorByAction[activity.action] ?? activity.color ?? 'bg-muted-foreground')} />
-                        <div className="min-w-0">
-                            <p className="text-sm leading-relaxed">{activity.text}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                {activity.timeText ?? (activity.time ? new Date(activity.time).toLocaleString(intlLocale) : '-')}
-                            </p>
-                        </div>
+                {visibleList.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border bg-background/50 p-4 text-center text-sm text-muted-foreground">
+                        Belum ada aktivitas terbaru.
                     </div>
-                ))}
+                ) : (
+                    visibleList.map((activity, index) => (
+                        <div key={index} className="flex items-start gap-3 rounded-xl border border-transparent p-2.5 hover:bg-secondary/60 hover:border-border transition-colors">
+                            <div className={cn('w-2 h-2 rounded-full mt-2 flex-shrink-0', colorByAction[activity.action] ?? activity.color ?? 'bg-muted-foreground')} />
+                            <div className="min-w-0">
+                                <p className="text-sm leading-relaxed">{activity.text}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    {activity.timeText ?? (activity.time ? new Date(activity.time).toLocaleString(intlLocale) : '-')}
+                                </p>
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );
@@ -423,7 +422,12 @@ function BarColumnChart({ title, data = [], valueFormatter = (value) => String(v
         <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '360ms' }}>
             <SectionTitle icon={BarChart3}>{title}</SectionTitle>
             <div className="mt-4 panel-subcard p-3">
-                <div className="grid grid-cols-6 gap-2.5">
+                <div
+                    className="grid gap-2.5"
+                    style={{
+                        gridTemplateColumns: `repeat(${Math.max(data.length, 1)}, minmax(0, 1fr))`,
+                    }}
+                >
                     {data.map((item) => {
                         const value = toNumeric(item.value);
                         const height = Math.max((value / maxValue) * 100, minBarHeightPercent);
@@ -748,11 +752,23 @@ export default function Dashboard() {
     const superAdmin = props.superAdmin;
     const adminAcademic = props.adminAcademic;
     const financeData = props.financeData;
+    const lecturerData = props.lecturerData;
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const roleStats = superAdmin?.role_stats ?? {};
     const monthlyUsers = superAdmin?.monthly_users ?? [];
+    const weeklyActivity = superAdmin?.weekly_activity ?? [];
     const adminRoleStats = adminAcademic?.role_stats ?? {};
+    const adminEnrollmentTrend = adminAcademic?.enrollment_trend ?? [];
+    const adminCategoryDistribution = adminAcademic?.category_distribution ?? [];
+    const adminLatestCourses = adminAcademic?.latest_courses ?? [];
     const monthlyIncome = financeData?.monthly_income ?? [];
+    const monthlyFinance = financeData?.monthly_finance ?? [];
+    const financeMethodData = financeData?.payment_methods ?? [];
+    const financeRecentTransactions = financeData?.recent_transactions ?? [];
+    const dosenSummary = lecturerData?.summary ?? {};
+    const dosenClassProgress = lecturerData?.class_progress ?? [];
+    const dosenRadarData = lecturerData?.performance_breakdown ?? [];
+    const dosenIncomingAssignments = lecturerData?.incoming_assignments ?? [];
 
     const displayName = user?.full_name || user?.name || user?.username || 'Pengguna';
 
@@ -777,30 +793,14 @@ export default function Dashboard() {
         value: Number(item.total) || 0,
     }));
 
-    const financeChartData = monthlyIncome.map((item) => ({
-        label: item.month,
-        value: Number(item.total) || 0,
+    const superWeeklyActivityData = weeklyActivity.map((item) => ({
+        label: item.label,
+        value: Number(item.value) || 0,
     }));
-
-    const fallbackMonthlyData = [
-        { label: 'Okt', value: 320 },
-        { label: 'Nov', value: 410 },
-        { label: 'Des', value: 380 },
-        { label: 'Jan', value: 520 },
-        { label: 'Feb', value: 610 },
-        { label: 'Mar', value: 730 },
-    ];
-
-    const adminEnrollmentData = (adminAcademic?.summary?.total_users ?? 0) > 0 ? fallbackMonthlyData : fallbackMonthlyData;
-    const superWeeklyActivityData = [
-        { label: 'Sen', value: 45 },
-        { label: 'Sel', value: 62 },
-        { label: 'Rab', value: 58 },
-        { label: 'Kam', value: 72 },
-        { label: 'Jum', value: 54 },
-        { label: 'Sab', value: 30 },
-        { label: 'Min', value: 22 },
-    ];
+    const adminEnrollmentData = adminEnrollmentTrend.map((item) => ({
+        label: item.label,
+        value: Number(item.value) || 0,
+    }));
 
     const computedRoleDistribution = [
         { label: 'Mahasiswa', value: roleStats.student ?? 0 },
@@ -809,85 +809,27 @@ export default function Dashboard() {
         { label: 'Finance', value: roleStats.finance ?? 0 },
         { label: 'Super Admin', value: roleStats.root ?? 0 },
     ];
-    const roleDistributionData = computedRoleDistribution.some((item) => Number(item.value) > 0)
-        ? computedRoleDistribution
-        : [
-            { label: 'Mahasiswa', value: 2310 },
-            { label: 'Dosen', value: 148 },
-            { label: 'Admin', value: 12 },
-            { label: 'Finance', value: 8 },
-            { label: 'Super Admin', value: 3 },
-        ];
+    const roleDistributionData = computedRoleDistribution;
 
-    const adminCategoryData = [
-        { label: 'Programming', value: 45 },
-        { label: 'Design', value: 28 },
-        { label: 'Business', value: 32 },
-        { label: 'Language', value: 20 },
-        { label: 'Science', value: 23 },
-    ];
-    const adminLatestCourses = [
-        { title: 'React JS Fundamental', instructor: 'Budi Santoso', students: 124, status: 'published' },
-        { title: 'UI/UX Design Masterclass', instructor: 'Siti Rahayu', students: 98, status: 'published' },
-        { title: 'Data Science Python', instructor: 'Reza Prasetyo', students: 87, status: 'draft' },
-        { title: 'Business Analytics', instructor: 'Diana Chen', students: 65, status: 'published' },
-    ];
+    const adminCategoryData = adminCategoryDistribution.map((item) => ({
+        label: item.label,
+        value: Number(item.value) || 0,
+    }));
 
-    const financeSeriesData = (financeChartData.length ? financeChartData : fallbackMonthlyData).map((item) => {
-        const income = Number(item.value) || 0;
+    const financeSeriesData = monthlyFinance.map((item) => {
+        const income = Number(item.income) || 0;
         return {
             label: item.label,
             income,
-            expense: Math.max(Math.round(income * 0.26), 1),
+            expense: Number(item.billing) || 0,
         };
     });
 
-    const financeMethodData = [
-        { label: 'Transfer Bank', value: 58 },
-        { label: 'Virtual Account', value: 27 },
-        { label: 'E-Wallet', value: 12 },
-        { label: 'Kartu Kredit', value: 4 },
-    ];
-    const financeRecentTransactions = [
-        { name: 'Andi Pratama', type: 'Pembayaran SPP', amount: 2500000, date: '22 Mar 2026', status: 'verified' },
-        { name: 'Sari Dewi', type: 'Pembayaran SPP', amount: 2500000, date: '22 Mar 2026', status: 'verified' },
-        { name: 'Budi Kurniawan', type: 'Tunggakan Semester 2', amount: 5000000, date: '20 Mar 2026', status: 'pending' },
-        { name: 'Maya Sari', type: 'Pembayaran Kursus', amount: 750000, date: '19 Mar 2026', status: 'verified' },
-        { name: 'Riko Febrian', type: 'Pembayaran SPP', amount: 2500000, date: '18 Mar 2026', status: 'rejected' },
-    ];
-
-    const dosenRadarData = [
-        { label: 'Kehadiran', value: 82 },
-        { label: 'Tugas', value: 74 },
-        { label: 'UTS', value: 69 },
-        { label: 'UAS', value: 77 },
-        { label: 'Proyek', value: 71 },
-        { label: 'Partisipasi', value: 80 },
-    ];
-
     const dosenKpis = [
-        { title: 'Kelas Aktif', value: 5, icon: BookOpen, gradient: 'primary', delay: 0 },
-        { title: 'Total Mahasiswa', value: 187, icon: Users, gradient: 'accent', delay: 80 },
-        { title: 'Tugas Diperiksa', value: '43 / 60', icon: ClipboardCheck, gradient: 'warm', delay: 160 },
-        { title: 'Jam Mengajar', value: '24 Jam', icon: Clock, gradient: 'success', delay: 240 },
-    ];
-    const dosenClassProgress = [
-        { title: 'React JS Fundamental', students: 45, progress: 65, nextSession: 'Senin, 24 Mar - 13:00' },
-        { title: 'Node.js Advanced', students: 38, progress: 40, nextSession: 'Selasa, 25 Mar - 10:00' },
-        { title: 'Algorithm & Data Structure', students: 52, progress: 80, nextSession: 'Rabu, 26 Mar - 09:00' },
-        { title: 'Web Security Basics', students: 32, progress: 20, nextSession: 'Kamis, 27 Mar - 14:00' },
-    ];
-    const dosenIncomingAssignments = [
-        { student: 'Andi Pratama', course: 'React JS', task: 'Membuat Komponen Todo', submittedAt: '22 Mar 10:30', status: 'pending' },
-        { student: 'Maya Sari', course: 'Node.js', task: 'REST API CRUD', submittedAt: '21 Mar 16:45', status: 'pending' },
-        { student: 'Riko Febrian', course: 'Algorithm', task: 'Sorting Algorithm', submittedAt: '21 Mar 14:00', status: 'reviewed' },
-    ];
-
-    const mahasiswaKpis = [
-        { title: 'Kursus Diikuti', value: 5, icon: BookOpen, gradient: 'primary', delay: 0 },
-        { title: 'Tugas Pending', value: 3, icon: ClipboardList, gradient: 'warm', delay: 80 },
-        { title: 'Kuis Mendatang', value: 2, icon: Award, gradient: 'accent', delay: 160 },
-        { title: 'Rata-rata Nilai', value: '85.4', change: '+2.1 dari semester lalu', changeType: 'up', icon: TrendingUp, gradient: 'success', delay: 240 },
+        { title: 'Kelas Aktif', value: dosenSummary.active_classes ?? 0, icon: BookOpen, gradient: 'primary', delay: 0 },
+        { title: 'Total Mahasiswa', value: dosenSummary.total_students ?? 0, icon: Users, gradient: 'accent', delay: 80 },
+        { title: 'Tugas Diperiksa', value: `${dosenSummary.graded_assignments ?? 0} / ${dosenSummary.total_assignments ?? 0}`, icon: ClipboardCheck, gradient: 'warm', delay: 160 },
+        { title: 'Jam Mengajar', value: `${dosenSummary.teaching_hours ?? 0} Jam`, icon: Clock, gradient: 'success', delay: 240 },
     ];
 
     return (
@@ -936,16 +878,12 @@ export default function Dashboard() {
                 {user.role === 'finance' && (
                     <KpiGrid
                         cards={[
-                            { title: 'Total Pendapatan', value: `Rp ${new Intl.NumberFormat(intlLocale).format(financeData?.summary?.income_month ?? 0)}`, change: '+18%', icon: Wallet, gradient: 'accent', delay: 0 },
-                            { title: 'Pembayaran Bulan Ini', value: `Rp ${new Intl.NumberFormat(intlLocale).format(Math.max((financeData?.summary?.income_month ?? 0) * 0.15, 0))}`, change: '+7%', icon: FileText, gradient: 'primary', delay: 80 },
+                            { title: 'Pendapatan Bulan Ini', value: `Rp ${new Intl.NumberFormat(intlLocale).format(financeData?.summary?.income_month ?? 0)}`, icon: Wallet, gradient: 'accent', delay: 0 },
+                            { title: 'Total Tagihan', value: new Intl.NumberFormat(intlLocale).format(financeData?.summary?.total_invoices ?? 0), icon: FileText, gradient: 'primary', delay: 80 },
                             { title: 'Tagihan Tertunggak', value: `Rp ${new Intl.NumberFormat(intlLocale).format(financeData?.summary?.outstanding ?? 0)}`, change: `${financeData?.summary?.pending_payments ?? 0} mahasiswa`, icon: Clock, gradient: 'warm', delay: 160 },
-                            { title: 'Beasiswa Disalurkan', value: `Rp ${new Intl.NumberFormat(intlLocale).format(Math.max((financeData?.summary?.income_month ?? 0) * 0.05, 0))}`, change: `${Math.max(Math.round((financeData?.summary?.verified_payments ?? 0) * 0.35), 0)} penerima`, icon: Award, gradient: 'success', delay: 240 },
+                            { title: 'Pembayaran Terverifikasi', value: new Intl.NumberFormat(intlLocale).format(financeData?.summary?.verified_payments ?? 0), icon: Award, gradient: 'success', delay: 240 },
                         ]}
                     />
-                )}
-
-                {user.role === 'mahasiswa' && (
-                    <KpiGrid cards={mahasiswaKpis} />
                 )}
 
                 {user.role === 'super_admin' ? (
@@ -957,7 +895,7 @@ export default function Dashboard() {
                             <BarColumnChart title="Aktivitas Kursus Mingguan" data={superWeeklyActivityData} />
                         </div>
                         <div className="xl:col-span-4 space-y-4 sm:space-y-6">
-                            <HorizontalMetricChart title="Distribusi Role" data={roleDistributionData} />
+                            <DonutCategoryChart title="Distribusi Role" data={roleDistributionData} />
                             <RecentActivity title="Notifikasi Sistem" intlLocale={intlLocale} activities={superAdmin?.recent_activities ?? []} />
                         </div>
                     </div>
@@ -1002,8 +940,11 @@ export default function Dashboard() {
                                                         <td className="py-2.5 px-2 text-muted-foreground">{course.instructor}</td>
                                                         <td className="py-2.5 px-2">{course.students}</td>
                                                         <td className="py-2.5 px-2">
-                                                            <span className={cn('inline-flex px-2.5 py-1 rounded-full text-xs font-medium', course.status === 'published' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground')}>
-                                                                {course.status}
+                                                            <span className={cn(
+                                                                'inline-flex px-2.5 py-1 rounded-full text-xs font-medium',
+                                                                course.status === 'active' ? 'bg-success/15 text-success' : 'bg-secondary text-secondary-foreground'
+                                                            )}>
+                                                                {course.status === 'active' ? 'Aktif' : course.status === 'archived' ? 'Arsip' : 'Draft'}
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -1021,16 +962,18 @@ export default function Dashboard() {
                             <div className="xl:col-span-8">
                                 {financeSeriesData.length > 0 ? (
                                     <FinanceCompareChart
-                                        title="Pemasukan vs Pengeluaran"
+                                        title="Pemasukan vs Tagihan Terbit"
                                         data={financeSeriesData}
                                         valueFormatter={(value) => `${new Intl.NumberFormat(intlLocale).format(value)}`}
                                     />
                                 ) : (
-                                    <TrendEmptyState title="Pemasukan vs Pengeluaran" />
+                                    <TrendEmptyState title="Pemasukan vs Tagihan Terbit" />
                                 )}
                             </div>
                             <div className="xl:col-span-4">
-                                <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} showFooter />
+                                {financeMethodData.length > 0
+                                    ? <HorizontalMetricChart title="Metode Pembayaran" data={financeMethodData} showFooter />
+                                    : <TrendEmptyState title="Metode Pembayaran" />}
                             </div>
                         </div>
 
@@ -1082,7 +1025,7 @@ export default function Dashboard() {
                                     <SectionTitle icon={BookOpen}>Kelas Saya</SectionTitle>
                                     <div className="mt-4 space-y-3">
                                         {dosenClassProgress.map((course) => (
-                                            <div key={course.title} className="panel-subcard p-3">
+                                            <div key={course.id ?? course.title} className="panel-subcard p-3">
                                                 <div className="flex items-center justify-between gap-2 text-sm">
                                                     <p className="font-semibold">{course.title}</p>
                                                     <p className="text-muted-foreground">{course.students} mahasiswa</p>
@@ -1090,20 +1033,22 @@ export default function Dashboard() {
                                                 <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden">
                                                     <div className="h-full gradient-primary rounded-full transition-all duration-500" style={{ width: `${course.progress}%` }} />
                                                 </div>
-                                                <p className="mt-2 text-xs text-muted-foreground">Sesi berikutnya: {course.nextSession}</p>
+                                                <p className="mt-2 text-xs text-muted-foreground">Progress pembelajaran: {course.progress}%</p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                             <div className="xl:col-span-4">
-                                <RadarPerformanceChart title="Rata-rata Nilai Kelas" data={dosenRadarData} />
+                                <RadarPerformanceChart title="Performa Kelas" data={dosenRadarData} />
                             </div>
                             <div className="xl:col-span-12">
                                 <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '420ms' }}>
                                     <div className="flex items-center justify-between gap-2">
                                         <SectionTitle icon={ClipboardList}>Tugas Masuk</SectionTitle>
-                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">2 belum diperiksa</span>
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+                                            {dosenIncomingAssignments.filter((item) => item.status === 'pending').length} belum diperiksa
+                                        </span>
                                     </div>
                                     <div className="mt-4 overflow-x-auto">
                                         <table className="w-full min-w-[760px] text-sm">
