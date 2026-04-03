@@ -27,6 +27,7 @@ class User extends Authenticatable
         'type',
         'code',
         'jurusan_id',
+        'email_verified_at',
         'profile_photo_path',
         'password',
     ];

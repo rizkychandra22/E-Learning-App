@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
-import { Search, Pencil, Trash2, Plus, Mail, MoreVertical, UserCheck, UserX } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Search, Pencil, Trash2, Plus, Mail, UserCheck, UserX, Upload, FileDown } from 'lucide-react';
+import axios from 'axios';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
@@ -58,6 +59,16 @@ export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
     const [roleFilter, setRoleFilter] = useState(filters?.role ?? 'all');
     const [editingId, setEditingId] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const [defaultImportPassword, setDefaultImportPassword] = useState('Kampus12345');
+    const [showImportPreview, setShowImportPreview] = useState(false);
+    const [previewRows, setPreviewRows] = useState([]);
+    const [previewHeaders, setPreviewHeaders] = useState([]);
+    const [previewSummary, setPreviewSummary] = useState(null);
+    const [previewErrors, setPreviewErrors] = useState([]);
+    const [previewingImport, setPreviewingImport] = useState(false);
+    const [importingUsers, setImportingUsers] = useState(false);
+    const [selectedImportFile, setSelectedImportFile] = useState(null);
+    const fileInputRef = useRef(null);
     const form = useForm(emptyForm);
 
     const isEditing = editingId !== null;
@@ -135,6 +146,155 @@ export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
         router.delete(`/manage-users/${user.id}`, { preserveScroll: true });
     };
 
+    const openImportDialog = () => {
+        if (mocked) return;
+        fileInputRef.current?.click();
+    };
+
+    const importUsersFromFile = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setPreviewingImport(true);
+        setPreviewErrors([]);
+        setShowImportPreview(false);
+        setSelectedImportFile(file);
+
+        const payload = new FormData();
+        payload.append('file', file);
+        payload.append('default_password', defaultImportPassword);
+
+        try {
+            const response = await axios.post('/manage-users/import/preview', payload, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setPreviewRows(response.data?.rows ?? []);
+            setPreviewHeaders(response.data?.headers ?? []);
+            setPreviewSummary(response.data?.summary ?? null);
+            setPreviewErrors(response.data?.errors ?? []);
+            setShowImportPreview(true);
+        } catch (error) {
+            const message = error?.response?.data?.message ?? 'Preview import gagal diproses.';
+            window.alert(message);
+            event.target.value = '';
+        } finally {
+            setPreviewingImport(false);
+        }
+    };
+
+    const closeImportPreview = () => {
+        setShowImportPreview(false);
+        setPreviewRows([]);
+        setPreviewHeaders([]);
+        setPreviewSummary(null);
+        setPreviewErrors([]);
+    };
+
+    const confirmImportUsers = (event) => {
+        event.preventDefault();
+        if (!selectedImportFile) return;
+
+        setImportingUsers(true);
+        router.post(
+            '/manage-users/import',
+            {
+                file: selectedImportFile,
+                default_password: defaultImportPassword,
+            },
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onFinish: () => {
+                    setImportingUsers(false);
+                    closeImportPreview();
+                    setSelectedImportFile(null);
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                },
+            }
+        );
+    };
+
+    const visiblePreviewHeaders = useMemo(() => {
+        if (!previewHeaders?.length) {
+            return ['line', 'name', 'email', 'username', 'role', 'code', 'jurusan_code'];
+        }
+        const prioritized = ['line', 'name', 'email', 'username', 'role', 'type', 'code', 'jurusan_code', 'jurusan_id'];
+        const selected = prioritized.filter((header) => header === 'line' || previewHeaders.includes(header));
+        return selected.length > 0 ? selected : previewHeaders.slice(0, 8);
+    }, [previewHeaders]);
+
+    const previewHasValidRows = (previewSummary?.valid_rows ?? 0) > 0;
+
+    const formatHeaderLabel = (header) => {
+        if (!header) return '-';
+        return header
+            .split('_')
+            .map((item) => item.charAt(0).toUpperCase() + item.slice(1))
+            .join(' ');
+    };
+
+    const displayCellValue = (row, header) => {
+        if (header === 'line') return row.line ?? '-';
+        const value = row?.[header];
+        return value === undefined || value === null || String(value).trim() === '' ? '-' : String(value);
+    };
+
+    const copyImportTemplateHeaders = () => {
+        const headers = 'name,email,username,role,type,code,jurusan_code,password,email_verified_at';
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(headers);
+            return;
+        }
+        window.prompt('Salin header ini:', headers);
+    };
+
+    const cancelImportSelection = () => {
+        setSelectedImportFile(null);
+        closeImportPreview();
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const resetFileInputOnly = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const onFileInputChange = (event) => {
+        importUsersFromFile(event);
+        if (!event.target.files?.length) {
+            resetFileInputOnly();
+            return;
+        }
+    };
+
+    const downloadImportTemplate = () => {
+        const headers = ['name', 'email', 'username', 'role', 'type', 'code', 'jurusan_code', 'password'];
+        const sample = [
+            ['Dr. Setyo Nugroho', 'setyo@lecturer.ac.id', 'setyonugroho', 'teacher', 'nidn', '0451733144001', '44', 'Kampus12345'],
+            ['Andi Herlambang', 'andi_h@univ.ac.id', 'andi_h', 'student', 'nim', '0726203144001', '44', ''],
+            ['Admin Akademik Baru', 'admin2@univ.ac.id', 'adminuniv2', 'admin', 'nidn', '0220517320002', '', 'Kampus12345'],
+        ];
+
+        const csv = [headers, ...sample]
+            .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            .join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'template-import-users.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <ProtectedLayout>
             <Head title="Kelola User" />
@@ -198,8 +358,133 @@ export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
                                 <Plus className="w-4 h-4" />
                                 Tambah
                             </button>
+                            <button
+                                type="button"
+                                onClick={downloadImportTemplate}
+                                disabled={mocked}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-secondary disabled:opacity-60"
+                            >
+                                <FileDown className="w-4 h-4" />
+                                Template Import
+                            </button>
+                            <button
+                                type="button"
+                                onClick={openImportDialog}
+                                disabled={mocked}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-semibold hover:bg-secondary disabled:opacity-60"
+                            >
+                                <Upload className="w-4 h-4" />
+                                Import CSV/Excel
+                            </button>
                         </div>
                     </div>
+                    <div className="mb-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+                            Format kolom: `name,email,username,role,type,code,jurusan_code,password`. Semua akun baru otomatis masuk ke antrian persetujuan akun. Jika `role=student` dan `password` kosong, sistem otomatis pakai NIM (`code`) sebagai password.
+                        </div>
+                        <label className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">Password default import (non-mahasiswa):</span>
+                            <input
+                                type="text"
+                                value={defaultImportPassword}
+                                onChange={(event) => setDefaultImportPassword(event.target.value)}
+                                className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                        </label>
+                    </div>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv,.xlsx"
+                        className="hidden"
+                        onChange={onFileInputChange}
+                    />
+
+                    <CreateFormModal
+                        open={showImportPreview}
+                        title="Preview Import User"
+                        onClose={cancelImportSelection}
+                        onSubmit={confirmImportUsers}
+                        submitLabel="Lanjut Import"
+                        processing={importingUsers}
+                        disableSubmit={!previewHasValidRows || previewingImport || mocked}
+                        maxWidthClass="max-w-6xl"
+                    >
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
+                                <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                                    <p className="text-muted-foreground">Total Baris</p>
+                                    <p className="font-semibold text-lg">{previewSummary?.total_rows ?? 0}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                                    <p className="text-muted-foreground">Baris Terisi</p>
+                                    <p className="font-semibold text-lg">{previewSummary?.non_empty_rows ?? 0}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                                    <p className="text-muted-foreground">Valid</p>
+                                    <p className="font-semibold text-lg text-success">{previewSummary?.valid_rows ?? 0}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                                    <p className="text-muted-foreground">Akan Dibuat</p>
+                                    <p className="font-semibold text-lg">{previewSummary?.create_candidates ?? 0}</p>
+                                </div>
+                                <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                                    <p className="text-muted-foreground">Akan Diupdate</p>
+                                    <p className="font-semibold text-lg">{previewSummary?.update_candidates ?? 0}</p>
+                                </div>
+                            </div>
+
+                            {!!previewErrors.length && (
+                                <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                                    <p className="text-sm font-semibold text-destructive">Contoh error validasi (maks 20):</p>
+                                    <ul className="mt-2 text-xs text-destructive space-y-1">
+                                        {previewErrors.map((item, idx) => (
+                                            <li key={`${item}-${idx}`}>{item}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm text-muted-foreground">Menampilkan maksimal 10 baris pertama dari file.</p>
+                                <button type="button" onClick={copyImportTemplateHeaders} className="text-xs underline text-muted-foreground hover:text-foreground">
+                                    Salin Header Template
+                                </button>
+                            </div>
+
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                                <table className="w-full min-w-[960px] text-xs">
+                                    <thead className="bg-secondary/40">
+                                        <tr>
+                                            {visiblePreviewHeaders.map((header) => (
+                                                <th key={header} className="text-left px-3 py-2 font-semibold">
+                                                    {formatHeaderLabel(header)}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {previewRows.map((row, rowIdx) => (
+                                            <tr key={`preview-row-${rowIdx}`} className="border-t border-border/70">
+                                                {visiblePreviewHeaders.map((header) => (
+                                                    <td key={`${rowIdx}-${header}`} className="px-3 py-2 text-muted-foreground">
+                                                        {displayCellValue(row, header)}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                        {previewRows.length === 0 && (
+                                            <tr>
+                                                <td colSpan={visiblePreviewHeaders.length} className="px-3 py-6 text-center text-muted-foreground">
+                                                    Tidak ada data preview.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </CreateFormModal>
 
                     <CreateFormModal
                         open={showForm}
@@ -310,21 +595,22 @@ export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         type="button"
+                                                        onClick={() => beginEdit(user)}
+                                                        disabled={mocked || user.is_mock}
+                                                        className="inline-flex items-center gap-1 p-1.5 rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-60"
+                                                        title="Edit"
+                                                        aria-label="Edit user"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         onClick={() => destroyUser(user)}
                                                         disabled={mocked || user.is_mock}
                                                         className="inline-flex items-center gap-1 p-1.5 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-60"
                                                         title="Hapus"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => beginEdit(user)}
-                                                        disabled={mocked || user.is_mock}
-                                                        className="inline-flex items-center gap-1 p-1.5 rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-60"
-                                                        title="Aksi"
-                                                    >
-                                                        <MoreVertical className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </td>

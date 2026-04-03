@@ -147,11 +147,96 @@ class AdminAcademicController extends Controller
         return back()->with('success', 'Data user berhasil dihapus.');
     }
 
+    public function generateJurusanAccounts(Request $request): RedirectResponse
+    {
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+
+        $validated = $request->validate([
+            'students_per_jurusan' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $result = $this->service->generateJurusanAccounts(
+            (int) ($validated['students_per_jurusan'] ?? 10),
+            3
+        );
+
+        if (!($result['ok'] ?? false)) {
+            return back()->withErrors([
+                'users' => (string) ($result['message'] ?? 'Gagal membuat akun otomatis per jurusan.'),
+            ]);
+        }
+
+        return back()->with(
+            'success',
+            "Generate data jurusan selesai: {$result['jurusan_count']} jurusan, {$result['lecturer_count']} dosen, {$result['student_count']} mahasiswa, {$result['course_count']} kursus. Password default akun baru: Kampus12345"
+        );
+    }
+
+    public function importUsers(Request $request): RedirectResponse
+    {
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx', 'max:10240'],
+            'default_password' => ['nullable', 'string', 'min:6', 'max:72'],
+        ]);
+
+        $result = $this->service->importUsersFromFile(
+            $validated['file'],
+            (string) ($validated['default_password'] ?? 'Kampus12345')
+        );
+
+        if (!($result['ok'] ?? false)) {
+            return back()->withErrors([
+                'users' => (string) ($result['message'] ?? 'Import user gagal diproses.'),
+                'import_errors' => implode(' | ', $result['errors'] ?? []),
+            ]);
+        }
+
+        $warningText = '';
+        if (!empty($result['errors'])) {
+            $warningText = ' Catatan: ada beberapa baris dilewati (' . count($result['errors']) . ' error).';
+        }
+
+        return back()->with(
+            'success',
+            "Import user selesai: {$result['created']} dibuat, {$result['updated']} diperbarui, {$result['skipped']} kosong/dilewati." . $warningText
+        );
+    }
+
+    public function previewImportUsers(Request $request): JsonResponse
+    {
+        @set_time_limit(180);
+        @ini_set('max_execution_time', '180');
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt,xlsx', 'max:10240'],
+            'default_password' => ['nullable', 'string', 'min:6', 'max:72'],
+        ]);
+
+        $result = $this->service->previewUsersImportFile(
+            $validated['file'],
+            (string) ($validated['default_password'] ?? 'Kampus12345')
+        );
+
+        if (!($result['ok'] ?? false)) {
+            return response()->json([
+                'ok' => false,
+                'message' => (string) ($result['message'] ?? 'Preview import gagal diproses.'),
+            ], 422);
+        }
+
+        return response()->json($result);
+    }
+
     public function approvals(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
+        $role = trim((string) $request->query('role', 'all'));
 
-        return Inertia::render('AdminAcademic/Approvals', $this->service->getApprovalsData($search));
+        return Inertia::render('AdminAcademic/Approvals', $this->service->getApprovalsData($search, $role));
     }
 
     public function approve(User $user): RedirectResponse
@@ -168,6 +253,23 @@ class AdminAcademicController extends Controller
         $this->service->rejectUser($user);
 
         return back()->with('success', 'Akun ditolak dan dihapus.');
+    }
+
+    public function approveAll(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'role' => ['nullable', 'in:all,admin,finance,teacher,student'],
+        ]);
+
+        $role = (string) ($validated['role'] ?? 'all');
+        $count = $this->service->approveAllPendingByRole($role);
+        if ($count <= 0) {
+            return back()->withErrors([
+                'approvals' => 'Tidak ada akun pending yang sesuai role untuk disetujui.',
+            ]);
+        }
+
+        return back()->with('success', "Berhasil menyetujui {$count} akun pending untuk role {$role}.");
     }
 
     public function categories(): Response
