@@ -34,6 +34,9 @@ class FinanceService
                 ],
                 'recent_activities' => [],
                 'monthly_income' => [],
+                'monthly_finance' => [],
+                'payment_methods' => [],
+                'recent_transactions' => [],
             ];
         }
 
@@ -54,6 +57,71 @@ class FinanceService
                             ->where('status', 'verified')
                             ->whereBetween('paid_at', [$start, $end])
                             ->sum('amount'),
+                    ];
+                })
+                ->values();
+            $monthlyFinance = collect(range(0, 5))
+                ->map(function (int $offset): array {
+                    $date = now()->subMonths(5 - $offset);
+                    $start = $date->copy()->startOfMonth();
+                    $end = $date->copy()->endOfMonth();
+
+                    $income = (float) Payment::query()
+                        ->where('status', 'verified')
+                        ->whereBetween('paid_at', [$start, $end])
+                        ->sum('amount');
+
+                    $billing = (float) Invoice::query()
+                        ->whereBetween('created_at', [$start, $end])
+                        ->sum('amount');
+
+                    return [
+                        'label' => $date->translatedFormat('M Y'),
+                        'income' => $income,
+                        'billing' => $billing,
+                    ];
+                })
+                ->values();
+            $paymentMethodLabels = [
+                'bank_transfer' => 'Transfer Bank',
+                'virtual_account' => 'Virtual Account',
+                'e_wallet' => 'E-Wallet',
+                'credit_card' => 'Kartu Kredit',
+                'cash' => 'Tunai',
+            ];
+            $paymentMethods = Payment::query()
+                ->selectRaw('method, COUNT(*) as value')
+                ->whereNotNull('method')
+                ->groupBy('method')
+                ->orderByDesc('value')
+                ->get()
+                ->map(function ($item) use ($paymentMethodLabels): array {
+                    $method = (string) $item->method;
+                    return [
+                        'label' => $paymentMethodLabels[$method] ?? ucwords(str_replace('_', ' ', $method)),
+                        'value' => (int) $item->value,
+                    ];
+                })
+                ->values();
+            $recentTransactions = Payment::query()
+                ->with([
+                    'student:id,name',
+                    'invoice:id,title',
+                ])
+                ->latest('paid_at')
+                ->latest('id')
+                ->limit(10)
+                ->get(['id', 'student_id', 'invoice_id', 'amount', 'status', 'paid_at'])
+                ->map(function (Payment $payment): array {
+                    $date = $payment->paid_at ? now()->parse((string) $payment->paid_at)->translatedFormat('d M Y') : '-';
+
+                    return [
+                        'id' => (int) $payment->id,
+                        'name' => (string) ($payment->student?->name ?? '-'),
+                        'type' => (string) ($payment->invoice?->title ?? 'Pembayaran'),
+                        'amount' => (float) ($payment->amount ?? 0),
+                        'date' => $date,
+                        'status' => (string) ($payment->status ?? 'pending'),
                     ];
                 })
                 ->values();
@@ -104,6 +172,9 @@ class FinanceService
                 ],
                 'recent_activities' => $recentActivities,
                 'monthly_income' => $monthlyIncome,
+                'monthly_finance' => $monthlyFinance,
+                'payment_methods' => $paymentMethods,
+                'recent_transactions' => $recentTransactions,
             ];
         });
     }

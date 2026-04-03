@@ -9,6 +9,7 @@ use App\Models\Jurusan;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -165,6 +166,10 @@ class AdminAcademicService
         $selectedRole = in_array($role, $allowedRoles, true) ? $role : 'all';
 
         $users = User::query()
+            ->with([
+                'jurusan:id,name,fakultas_id',
+                'jurusan.fakultas:id,name,code',
+            ])
             ->where('role', '!=', 'root')
             ->when($selectedRole !== 'all', fn ($query) => $query->where('role', $selectedRole))
             ->when($search !== '', function ($query) use ($search) {
@@ -177,12 +182,18 @@ class AdminAcademicService
                 });
             })
             ->latest('id')
-            ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'email_verified_at', 'created_at']);
+            ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'jurusan_id', 'email_verified_at', 'created_at']);
+
+        $jurusans = Jurusan::query()
+            ->with('fakultas:id,name,code')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'fakultas_id']);
 
         $mocked = false;
 
         return [
             'users' => $users,
+            'jurusans' => $jurusans,
             'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
@@ -196,6 +207,7 @@ class AdminAcademicService
         $user = User::create([
             ...$payload,
             'type' => $payload['role'] === 'student' ? 'nim' : 'nidn',
+            'jurusan_id' => $this->resolveUserJurusanId($payload),
         ]);
 
         if (app(SystemSettingService::class)->shouldNotifyOnNewUser()) {
@@ -216,6 +228,7 @@ class AdminAcademicService
             'role' => $payload['role'],
             'type' => $payload['role'] === 'student' ? 'nim' : 'nidn',
             'code' => $payload['code'],
+            'jurusan_id' => $this->resolveUserJurusanId($payload),
         ];
 
         if (!empty($payload['password'])) {
@@ -230,11 +243,530 @@ class AdminAcademicService
         $user->delete();
     }
 
-    public function getApprovalsData(string $search): array
+    public function generateJurusanAccounts(int $studentsPerJurusan = 10, int $lecturersPerJurusan = 3): array
     {
+        if (!Schema::hasTable('jurusans') || !Schema::hasTable('users')) {
+            return [
+                'ok' => false,
+                'message' => 'Tabel jurusans/users belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ];
+        }
+
+        if (!Schema::hasTable('courses')) {
+            return [
+                'ok' => false,
+                'message' => 'Tabel courses belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ];
+        }
+
+        $jurusans = Jurusan::query()
+            ->with('fakultas:id,name,code')
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'fakultas_id']);
+
+        if ($jurusans->isEmpty()) {
+            return [
+                'ok' => false,
+                'message' => 'Belum ada jurusan. Tambahkan jurusan terlebih dahulu di menu Kategori.',
+            ];
+        }
+
+        $lecturerCount = 0;
+        $studentCount = 0;
+        $courseCount = 0;
+        $now = now();
+        $courseStudentTableExists = Schema::hasTable('course_student');
+
+        DB::transaction(function () use ($jurusans, $studentsPerJurusan, $lecturersPerJurusan, $courseStudentTableExists, $now, &$lecturerCount, &$studentCount, &$courseCount): void {
+            foreach ($jurusans as $jurusan) {
+                $jurusanCode = $this->normalizeNumericCode((string) ($jurusan->code ?? ''), (int) $jurusan->id, 2);
+                $fakultasCode = $this->normalizeNumericCode((string) ($jurusan->fakultas?->code ?? ''), (int) ($jurusan->fakultas_id ?? 0), 2);
+                $category = (string) ($jurusan->fakultas?->name ?? $jurusan->name);
+                $teacherPrefix = '04' . $this->seederCampusCode() . $fakultasCode . $jurusanCode;
+                $studentPrefix = '07' . $this->seederYearCode() . $fakultasCode . $jurusanCode;
+                $teacherSeq = $this->nextSequenceFromPrefix($teacherPrefix);
+                $studentSeq = $this->nextSequenceFromPrefix($studentPrefix);
+
+                $courses = [];
+                for ($i = 1; $i <= $lecturersPerJurusan; $i++) {
+                    $lecturerName = $this->generateRandomIndonesianName('teacher');
+                    $lecturerIdentity = $this->buildUniqueIdentityFromName($lecturerName, 'teacher');
+                    $lecturerCode = $teacherPrefix . str_pad((string) $teacherSeq, 3, '0', STR_PAD_LEFT);
+                    $teacherSeq++;
+
+                    $lecturer = User::create([
+                        'name' => $lecturerName,
+                        'email' => $lecturerIdentity['email'],
+                        'username' => $lecturerIdentity['username'],
+                        'role' => 'teacher',
+                        'type' => 'nidn',
+                        'code' => $lecturerCode,
+                        'jurusan_id' => (int) $jurusan->id,
+                        'password' => 'Kampus12345',
+                    ]);
+
+                    $course = Course::create([
+                        'title' => $this->buildJurusanCourseTitle((string) $jurusan->name, $i),
+                        'code' => $this->generateUniqueCourseCode($jurusanCode, $i),
+                        'description' => "Kursus otomatis untuk jurusan {$jurusan->name}.",
+                        'category' => $category,
+                        'tags' => ['otomatis', Str::lower((string) $jurusanCode)],
+                        'jurusan_id' => (int) $jurusan->id,
+                        'lecturer_id' => (int) $lecturer->id,
+                        'level' => $i === 1 ? 'dasar' : ($i === 2 ? 'menengah' : 'lanjutan'),
+                        'semester' => $i,
+                        'credit_hours' => 2,
+                        'status' => 'active',
+                        'allow_self_enrollment' => false,
+                        'enrollment_key' => null,
+                    ]);
+
+                    $courses[] = $course;
+                    $lecturerCount++;
+                    $courseCount++;
+                }
+
+                $studentIds = [];
+                for ($i = 1; $i <= $studentsPerJurusan; $i++) {
+                    $studentName = $this->generateRandomIndonesianName('student');
+                    $studentIdentity = $this->buildUniqueIdentityFromName($studentName, 'student');
+                    $studentCode = $studentPrefix . str_pad((string) $studentSeq, 3, '0', STR_PAD_LEFT);
+                    $studentSeq++;
+
+                    $student = User::create([
+                        'name' => $studentName,
+                        'email' => $studentIdentity['email'],
+                        'username' => $studentIdentity['username'],
+                        'role' => 'student',
+                        'type' => 'nim',
+                        'code' => $studentCode,
+                        'jurusan_id' => (int) $jurusan->id,
+                        'password' => $studentCode,
+                    ]);
+
+                    $studentIds[] = (int) $student->id;
+                    $studentCount++;
+                }
+
+                if ($courseStudentTableExists && $studentIds !== [] && $courses !== []) {
+                    $rows = [];
+                    foreach ($studentIds as $studentId) {
+                        foreach ($courses as $course) {
+                            $rows[] = [
+                                'course_id' => (int) $course->id,
+                                'student_id' => $studentId,
+                                'enrolled_at' => $now,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+                    }
+
+                    if ($rows !== []) {
+                        DB::table('course_student')->insertOrIgnore($rows);
+                    }
+                }
+            }
+        });
+
+        return [
+            'ok' => true,
+            'jurusan_count' => $jurusans->count(),
+            'lecturer_count' => $lecturerCount,
+            'student_count' => $studentCount,
+            'course_count' => $courseCount,
+        ];
+    }
+
+    public function importUsersFromFile(UploadedFile $file, string $defaultPassword = 'Kampus12345'): array
+    {
+        if (!Schema::hasTable('users')) {
+            return [
+                'ok' => false,
+                'message' => 'Tabel users belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ];
+        }
+
+        $rows = $this->parseUserImportRows($file);
+        if ($rows === []) {
+            return [
+                'ok' => false,
+                'message' => 'File tidak berisi data user. Pastikan ada header dan minimal 1 baris data.',
+            ];
+        }
+
+        $jurusanById = Jurusan::query()->pluck('id', 'id')->map(fn ($id) => (int) $id)->all();
+        $jurusanByCode = Jurusan::query()
+            ->get(['id', 'code'])
+            ->mapWithKeys(fn (Jurusan $item): array => [strtoupper((string) $item->code) => (int) $item->id])
+            ->all();
+
+        $users = User::query()
+            ->where('role', '!=', 'root')
+            ->get(['id', 'code', 'email', 'username'])
+            ->map(fn (User $user): array => [
+                'id' => (int) $user->id,
+                'code' => strtoupper((string) $user->code),
+                'email' => Str::lower((string) $user->email),
+                'username' => Str::lower((string) $user->username),
+            ]);
+
+        $idByCode = [];
+        $idByEmail = [];
+        $idByUsername = [];
+        foreach ($users as $item) {
+            $idByCode[$item['code']] = $item['id'];
+            $idByEmail[$item['email']] = $item['id'];
+            $idByUsername[$item['username']] = $item['id'];
+        }
+
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = [];
+
+        DB::transaction(function () use (
+            $rows,
+            $defaultPassword,
+            $jurusanById,
+            $jurusanByCode,
+            &$idByCode,
+            &$idByEmail,
+            &$idByUsername,
+            &$created,
+            &$updated,
+            &$skipped,
+            &$errors
+        ): void {
+            foreach ($rows as $index => $row) {
+                $lineNumber = $index + 2;
+                if ($this->isImportRowEmpty($row)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $role = $this->normalizeImportRole((string) ($row['role'] ?? ''));
+                if ($role === null || $role === 'root') {
+                    $errors[] = "Baris {$lineNumber}: role harus salah satu dari admin, finance, teacher, student.";
+                    continue;
+                }
+
+                $name = trim((string) ($row['name'] ?? ''));
+                $email = Str::lower(trim((string) ($row['email'] ?? '')));
+                $username = Str::lower(trim((string) ($row['username'] ?? '')));
+                $code = strtoupper(trim((string) ($row['code'] ?? '')));
+                $password = trim((string) ($row['password'] ?? ''));
+                if ($password === '') {
+                    $password = $role === 'student' ? $code : $defaultPassword;
+                }
+
+                if ($name === '' || $email === '' || $username === '' || $code === '') {
+                    $errors[] = "Baris {$lineNumber}: kolom wajib (`name`, `email`, `username`, `code`) belum lengkap.";
+                    continue;
+                }
+
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $errors[] = "Baris {$lineNumber}: format email tidak valid ({$email}).";
+                    continue;
+                }
+
+                if (strlen($password) < 6) {
+                    $errors[] = "Baris {$lineNumber}: password minimal 6 karakter.";
+                    continue;
+                }
+
+                $matchedId = $idByCode[$code] ?? null;
+                if ($matchedId === null && isset($idByEmail[$email])) {
+                    $matchedId = $idByEmail[$email];
+                }
+                if ($matchedId === null && isset($idByUsername[$username])) {
+                    $matchedId = $idByUsername[$username];
+                }
+
+                if (isset($idByCode[$code]) && $idByCode[$code] !== $matchedId) {
+                    $errors[] = "Baris {$lineNumber}: kode {$code} bentrok dengan user lain.";
+                    continue;
+                }
+                if (isset($idByEmail[$email]) && $idByEmail[$email] !== $matchedId) {
+                    $errors[] = "Baris {$lineNumber}: email {$email} sudah dipakai user lain.";
+                    continue;
+                }
+                if (isset($idByUsername[$username]) && $idByUsername[$username] !== $matchedId) {
+                    $errors[] = "Baris {$lineNumber}: username {$username} sudah dipakai user lain.";
+                    continue;
+                }
+
+                $jurusanId = null;
+                if (in_array($role, ['teacher', 'student'], true)) {
+                    $rawJurusanId = trim((string) ($row['jurusan_id'] ?? ''));
+                    $rawJurusanCode = strtoupper(trim((string) ($row['jurusan_code'] ?? '')));
+                    $rawJurusanCode = $rawJurusanCode !== '' ? $rawJurusanCode : strtoupper(trim((string) ($row['jurusan'] ?? '')));
+
+                    if ($rawJurusanId !== '' && ctype_digit($rawJurusanId)) {
+                        $candidate = (int) $rawJurusanId;
+                        $jurusanId = $jurusanById[$candidate] ?? null;
+                    }
+                    if ($jurusanId === null && $rawJurusanCode !== '') {
+                        $jurusanId = $jurusanByCode[$rawJurusanCode] ?? null;
+                    }
+
+                    if ($jurusanId === null) {
+                        $errors[] = "Baris {$lineNumber}: jurusan wajib untuk role {$role} (isi `jurusan_id` atau `jurusan_code`).";
+                        continue;
+                    }
+                }
+
+                $typeRaw = Str::lower(trim((string) ($row['type'] ?? '')));
+                $type = in_array($typeRaw, ['nidn', 'nim'], true)
+                    ? $typeRaw
+                    : ($role === 'student' ? 'nim' : 'nidn');
+
+                $verifiedRaw = trim((string) ($row['email_verified_at'] ?? ''));
+                $emailVerifiedAt = null;
+                if ($verifiedRaw !== '') {
+                    if (in_array(Str::lower($verifiedRaw), ['1', 'true', 'yes', 'ya'], true)) {
+                        $emailVerifiedAt = now();
+                    } else {
+                        try {
+                            $emailVerifiedAt = Carbon::parse($verifiedRaw);
+                        } catch (\Throwable) {
+                            $emailVerifiedAt = null;
+                        }
+                    }
+                }
+
+                $payload = [
+                    'name' => $name,
+                    'email' => $email,
+                    'username' => $username,
+                    'role' => $role,
+                    'type' => $type,
+                    'code' => $code,
+                    'jurusan_id' => $jurusanId,
+                    'password' => $password,
+                    'email_verified_at' => $emailVerifiedAt,
+                ];
+
+                if ($matchedId !== null) {
+                    $user = User::query()->where('id', $matchedId)->where('role', '!=', 'root')->first();
+                    if (!$user) {
+                        $errors[] = "Baris {$lineNumber}: user target tidak ditemukan.";
+                        continue;
+                    }
+
+                    if ($payload['email_verified_at'] === null) {
+                        unset($payload['email_verified_at']);
+                    }
+
+                    $user->update($payload);
+                    $updated++;
+                } else {
+                    // Akun baru hasil import selalu pending dan harus melalui persetujuan admin.
+                    $payload['email_verified_at'] = null;
+
+                    $user = User::create($payload);
+                    $matchedId = (int) $user->id;
+                    $created++;
+                }
+
+                $idByCode[$code] = $matchedId;
+                $idByEmail[$email] = $matchedId;
+                $idByUsername[$username] = $matchedId;
+            }
+        });
+
+        if ($created === 0 && $updated === 0) {
+            return [
+                'ok' => false,
+                'message' => 'Import gagal. Tidak ada baris yang valid untuk diproses.',
+                'errors' => array_slice($errors, 0, 20),
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'created' => $created,
+            'updated' => $updated,
+            'skipped' => $skipped,
+            'errors' => array_slice($errors, 0, 20),
+        ];
+    }
+
+    public function previewUsersImportFile(UploadedFile $file, string $defaultPassword = 'Kampus12345'): array
+    {
+        $rows = $this->parseUserImportRows($file);
+        if ($rows === []) {
+            return [
+                'ok' => false,
+                'message' => 'File tidak berisi data user. Pastikan ada header dan minimal 1 baris data.',
+            ];
+        }
+
+        $jurusanById = Jurusan::query()->pluck('id', 'id')->map(fn ($id) => (int) $id)->all();
+        $jurusanByCode = Jurusan::query()
+            ->get(['id', 'code'])
+            ->mapWithKeys(fn (Jurusan $item): array => [strtoupper((string) $item->code) => (int) $item->id])
+            ->all();
+
+        $users = User::query()
+            ->where('role', '!=', 'root')
+            ->get(['id', 'code', 'email', 'username'])
+            ->map(fn (User $user): array => [
+                'id' => (int) $user->id,
+                'code' => strtoupper((string) $user->code),
+                'email' => Str::lower((string) $user->email),
+                'username' => Str::lower((string) $user->username),
+            ]);
+
+        $idByCode = [];
+        $idByEmail = [];
+        $idByUsername = [];
+        foreach ($users as $item) {
+            $idByCode[$item['code']] = $item['id'];
+            $idByEmail[$item['email']] = $item['id'];
+            $idByUsername[$item['username']] = $item['id'];
+        }
+
+        $headers = collect($rows)
+            ->take(10)
+            ->flatMap(fn (array $row): array => array_keys($row))
+            ->unique()
+            ->values()
+            ->all();
+
+        $nonEmptyRows = 0;
+        $validRows = 0;
+        $createCandidates = 0;
+        $updateCandidates = 0;
+        $errors = [];
+        $seenCodes = [];
+        $seenEmails = [];
+        $seenUsernames = [];
+
+        foreach ($rows as $index => $row) {
+            $lineNumber = $index + 2;
+            if ($this->isImportRowEmpty($row)) {
+                continue;
+            }
+            $nonEmptyRows++;
+
+            $role = $this->normalizeImportRole((string) ($row['role'] ?? ''));
+            $name = trim((string) ($row['name'] ?? ''));
+            $email = Str::lower(trim((string) ($row['email'] ?? '')));
+            $username = Str::lower(trim((string) ($row['username'] ?? '')));
+            $code = strtoupper(trim((string) ($row['code'] ?? '')));
+            $password = trim((string) ($row['password'] ?? ''));
+            if ($password === '') {
+                $password = $role === 'student' ? $code : $defaultPassword;
+            }
+
+            $lineHasError = false;
+            if ($role === null || $role === 'root') {
+                $errors[] = "Baris {$lineNumber}: role tidak valid.";
+                $lineHasError = true;
+            }
+            if ($name === '' || $email === '' || $username === '' || $code === '') {
+                $errors[] = "Baris {$lineNumber}: kolom wajib belum lengkap.";
+                $lineHasError = true;
+            }
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "Baris {$lineNumber}: format email tidak valid.";
+                $lineHasError = true;
+            }
+            if (strlen($password) < 6) {
+                $errors[] = "Baris {$lineNumber}: password minimal 6 karakter.";
+                $lineHasError = true;
+            }
+
+            if ($code !== '') {
+                if (isset($seenCodes[$code])) {
+                    $errors[] = "Baris {$lineNumber}: kode duplikat dalam file ({$code}).";
+                    $lineHasError = true;
+                }
+                $seenCodes[$code] = true;
+            }
+            if ($email !== '') {
+                if (isset($seenEmails[$email])) {
+                    $errors[] = "Baris {$lineNumber}: email duplikat dalam file ({$email}).";
+                    $lineHasError = true;
+                }
+                $seenEmails[$email] = true;
+            }
+            if ($username !== '') {
+                if (isset($seenUsernames[$username])) {
+                    $errors[] = "Baris {$lineNumber}: username duplikat dalam file ({$username}).";
+                    $lineHasError = true;
+                }
+                $seenUsernames[$username] = true;
+            }
+
+            if (in_array($role, ['teacher', 'student'], true)) {
+                $rawJurusanId = trim((string) ($row['jurusan_id'] ?? ''));
+                $rawJurusanCode = strtoupper(trim((string) ($row['jurusan_code'] ?? '')));
+                $rawJurusanCode = $rawJurusanCode !== '' ? $rawJurusanCode : strtoupper(trim((string) ($row['jurusan'] ?? '')));
+                $jurusanId = null;
+                if ($rawJurusanId !== '' && ctype_digit($rawJurusanId)) {
+                    $candidate = (int) $rawJurusanId;
+                    $jurusanId = $jurusanById[$candidate] ?? null;
+                }
+                if ($jurusanId === null && $rawJurusanCode !== '') {
+                    $jurusanId = $jurusanByCode[$rawJurusanCode] ?? null;
+                }
+                if ($jurusanId === null) {
+                    $errors[] = "Baris {$lineNumber}: jurusan wajib untuk role {$role}.";
+                    $lineHasError = true;
+                }
+            }
+
+            if ($lineHasError) {
+                continue;
+            }
+
+            $validRows++;
+            $matchedId = $idByCode[$code] ?? $idByEmail[$email] ?? $idByUsername[$username] ?? null;
+            if ($matchedId !== null) {
+                $updateCandidates++;
+            } else {
+                $createCandidates++;
+            }
+        }
+
+        $previewRows = collect($rows)
+            ->take(10)
+            ->values()
+            ->map(function (array $row, int $index): array {
+                return [
+                    'line' => $index + 2,
+                    ...$row,
+                ];
+            })
+            ->all();
+
+        return [
+            'ok' => true,
+            'headers' => $headers,
+            'rows' => $previewRows,
+            'summary' => [
+                'total_rows' => count($rows),
+                'non_empty_rows' => $nonEmptyRows,
+                'valid_rows' => $validRows,
+                'create_candidates' => $createCandidates,
+                'update_candidates' => $updateCandidates,
+                'error_count' => count($errors),
+            ],
+            'errors' => array_slice($errors, 0, 20),
+        ];
+    }
+
+    public function getApprovalsData(string $search, string $role): array
+    {
+        $allowedRoles = ['admin', 'finance', 'teacher', 'student'];
+        $selectedRole = in_array($role, $allowedRoles, true) ? $role : 'all';
+
         $pendingUsers = User::query()
             ->where('role', '!=', 'root')
             ->whereNull('email_verified_at')
+            ->when($selectedRole !== 'all', fn ($query) => $query->where('role', $selectedRole))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
                     $subQuery
@@ -246,13 +778,23 @@ class AdminAcademicService
             ->latest('id')
             ->get(['id', 'name', 'email', 'username', 'role', 'code', 'created_at']);
 
+        $roleSummary = [
+            'all' => User::query()->where('role', '!=', 'root')->whereNull('email_verified_at')->count(),
+            'admin' => User::query()->where('role', 'admin')->whereNull('email_verified_at')->count(),
+            'finance' => User::query()->where('role', 'finance')->whereNull('email_verified_at')->count(),
+            'teacher' => User::query()->where('role', 'teacher')->whereNull('email_verified_at')->count(),
+            'student' => User::query()->where('role', 'student')->whereNull('email_verified_at')->count(),
+        ];
+
         $mocked = false;
 
         return [
             'pendingUsers' => $pendingUsers,
+            'roleSummary' => $roleSummary,
             'mocked' => $mocked,
             'filters' => [
                 'search' => $search,
+                'role' => $selectedRole,
             ],
         ];
     }
@@ -265,6 +807,18 @@ class AdminAcademicService
     public function rejectUser(User $user): void
     {
         $user->delete();
+    }
+
+    public function approveAllPendingByRole(string $role = 'all'): int
+    {
+        $allowedRoles = ['admin', 'finance', 'teacher', 'student'];
+        $selectedRole = in_array($role, $allowedRoles, true) ? $role : 'all';
+
+        return User::query()
+            ->where('role', '!=', 'root')
+            ->whereNull('email_verified_at')
+            ->when($selectedRole !== 'all', fn ($query) => $query->where('role', $selectedRole))
+            ->update(['email_verified_at' => now()]);
     }
 
     public function getCategoriesData(): array
@@ -411,9 +965,59 @@ class AdminAcademicService
 
             $coursesCount = 0;
             $activeCoursesCount = 0;
+            $enrollmentTrend = collect();
+            $categoryDistribution = collect();
+            $latestCourses = collect();
             if (Schema::hasTable('courses')) {
                 $coursesCount = Course::count();
                 $activeCoursesCount = Course::where('status', 'active')->count();
+
+                $enrollmentTrend = collect(range(0, 5))
+                    ->map(function (int $offset): array {
+                        $date = now()->subMonths(5 - $offset);
+                        $start = $date->copy()->startOfMonth();
+                        $end = $date->copy()->endOfMonth();
+
+                        $value = Schema::hasTable('course_student')
+                            ? DB::table('course_student')
+                                ->whereBetween(DB::raw('COALESCE(enrolled_at, created_at)'), [$start, $end])
+                                ->count()
+                            : 0;
+
+                        return [
+                            'label' => $date->translatedFormat('M Y'),
+                            'value' => (int) $value,
+                        ];
+                    })
+                    ->values();
+
+                $categoryDistribution = Course::query()
+                    ->selectRaw("COALESCE(NULLIF(TRIM(category), ''), 'Tanpa Kategori') as label")
+                    ->selectRaw('COUNT(*) as value')
+                    ->groupBy('label')
+                    ->orderByDesc('value')
+                    ->limit(6)
+                    ->get()
+                    ->map(fn ($row): array => [
+                        'label' => (string) $row->label,
+                        'value' => (int) $row->value,
+                    ])
+                    ->values();
+
+                $latestCourses = Course::query()
+                    ->with(['lecturer:id,name'])
+                    ->withCount('students')
+                    ->latest('id')
+                    ->limit(8)
+                    ->get(['id', 'title', 'lecturer_id', 'status'])
+                    ->map(fn (Course $course): array => [
+                        'id' => (int) $course->id,
+                        'title' => (string) $course->title,
+                        'instructor' => (string) ($course->lecturer?->name ?? '-'),
+                        'students' => (int) ($course->students_count ?? 0),
+                        'status' => (string) ($course->status ?? 'draft'),
+                    ])
+                    ->values();
             }
 
             return [
@@ -428,6 +1032,9 @@ class AdminAcademicService
                 ],
                 'role_stats' => $usersByRole,
                 'recent_activities' => $recentActivities,
+                'enrollment_trend' => $enrollmentTrend,
+                'category_distribution' => $categoryDistribution,
+                'latest_courses' => $latestCourses,
             ];
         });
     }
@@ -1040,6 +1647,416 @@ class AdminAcademicService
         $payload['tags'] = $normalizedTags === [] ? null : $normalizedTags;
 
         return $payload;
+    }
+
+    private function resolveUserJurusanId(array $payload): ?int
+    {
+        $role = (string) ($payload['role'] ?? '');
+        if (!in_array($role, ['teacher', 'student'], true)) {
+            return null;
+        }
+
+        if (!isset($payload['jurusan_id']) || $payload['jurusan_id'] === null || $payload['jurusan_id'] === '') {
+            return null;
+        }
+
+        return (int) $payload['jurusan_id'];
+    }
+
+    private function buildJurusanCourseTitle(string $jurusanName, int $index): string
+    {
+        $prefix = match ($index) {
+            1 => 'Pengantar',
+            2 => 'Praktikum',
+            default => 'Proyek',
+        };
+
+        return $prefix . ' ' . $jurusanName;
+    }
+
+    private function normalizeJurusanCode(string $code, int $jurusanId): string
+    {
+        $clean = strtoupper((string) preg_replace('/[^A-Z0-9]/', '', $code));
+        if ($clean === '') {
+            return 'JR' . str_pad((string) $jurusanId, 2, '0', STR_PAD_LEFT);
+        }
+
+        return substr($clean, 0, 4);
+    }
+
+    private function normalizeNumericCode(string $rawCode, int $fallbackId, int $length = 2): string
+    {
+        $digits = (string) preg_replace('/\D+/', '', $rawCode);
+        if ($digits === '') {
+            $digits = (string) $fallbackId;
+        }
+
+        return str_pad(substr($digits, -$length), $length, '0', STR_PAD_LEFT);
+    }
+
+    private function seederCampusCode(): string
+    {
+        return '5173';
+    }
+
+    private function seederYearCode(): string
+    {
+        $year = now()->format('Y');
+        return substr($year, -2) . substr($year, 0, 2);
+    }
+
+    private function nextSequenceFromPrefix(string $prefix): int
+    {
+        $maxSeq = User::query()
+            ->where('code', 'like', $prefix . '%')
+            ->pluck('code')
+            ->map(function ($code): int {
+                $code = (string) $code;
+                return (int) substr($code, -3);
+            })
+            ->max();
+
+        return max(1, ((int) $maxSeq) + 1);
+    }
+
+    private function generateRandomIndonesianName(string $role): string
+    {
+        $firstNames = ['Andi', 'Budi', 'Citra', 'Dewi', 'Eka', 'Fajar', 'Gilang', 'Hana', 'Intan', 'Joko', 'Karina', 'Lukman', 'Maya', 'Nadia', 'Putra', 'Rani', 'Satria', 'Tari', 'Vina', 'Yusuf'];
+        $lastNames = ['Herlambang', 'Santoso', 'Lestari', 'Pratama', 'Saputra', 'Nugroho', 'Permata', 'Ramadhan', 'Wijaya', 'Maulana', 'Kusuma', 'Aulia', 'Pranata', 'Susanti', 'Purnomo', 'Hidayat', 'Rahmawati'];
+
+        $first = $firstNames[array_rand($firstNames)];
+        $last = $lastNames[array_rand($lastNames)];
+
+        if ($role === 'teacher') {
+            $titles = ['Dr.', 'Prof.', ''];
+            $title = $titles[array_rand($titles)];
+            $name = trim($title . ' ' . $first . ' ' . $last);
+
+            return preg_replace('/\s+/', ' ', $name) ?? ($first . ' ' . $last);
+        }
+
+        return $first . ' ' . $last;
+    }
+
+    private function buildUniqueIdentityFromName(string $name, string $role): array
+    {
+        $baseUsername = $this->buildSeederStyleUsername($name, $role);
+        $username = $this->generateUniqueValue('users', 'username', $baseUsername, 60);
+        $domain = $role === 'teacher' ? 'lecturer.ac.id' : 'univ.ac.id';
+        $email = $this->generateUniqueEmailFromUsername($username, $domain);
+
+        return [
+            'username' => $username,
+            'email' => $email,
+        ];
+    }
+
+    private function buildSeederStyleUsername(string $name, string $role): string
+    {
+        $plain = Str::lower(Str::ascii($name));
+        $plain = (string) preg_replace('/[^a-z\s]/', ' ', $plain);
+        $parts = collect(explode(' ', $plain))
+            ->map(fn ($item) => trim($item))
+            ->filter()
+            ->values();
+
+        if ($parts->isEmpty()) {
+            return $role === 'teacher' ? 'dosen' : 'mahasiswa';
+        }
+
+        if ($role === 'student' && $parts->count() >= 2) {
+            $first = (string) $parts->first();
+            $last = (string) $parts->last();
+            $lastInitial = substr($last, 0, 1);
+
+            return substr($first . '_' . $lastInitial, 0, 60);
+        }
+
+        return substr($parts->implode(''), 0, 60);
+    }
+
+    private function generateUniqueValue(string $table, string $column, string $base, int $maxLength): string
+    {
+        $candidateBase = trim($base) !== '' ? trim($base) : 'user';
+        $candidate = substr($candidateBase, 0, $maxLength);
+        $counter = 1;
+
+        while (DB::table($table)->where($column, $candidate)->exists()) {
+            $counter++;
+            $suffix = (string) $counter;
+            $candidate = substr($candidateBase, 0, max(1, $maxLength - strlen($suffix))) . $suffix;
+        }
+
+        return $candidate;
+    }
+
+    private function generateUniqueEmailFromUsername(string $username, string $domain): string
+    {
+        $localBase = substr(Str::lower($username), 0, 64);
+        $candidate = $localBase . '@' . $domain;
+        $counter = 1;
+
+        while (DB::table('users')->where('email', $candidate)->exists()) {
+            $counter++;
+            $suffix = (string) $counter;
+            $local = substr($localBase, 0, max(1, 64 - strlen($suffix))) . $suffix;
+            $candidate = $local . '@' . $domain;
+        }
+
+        return $candidate;
+    }
+
+    private function generateUniqueString(string $table, string $column, string $base): string
+    {
+        $normalized = Str::lower(trim($base));
+        $normalized = (string) preg_replace('/[^a-z0-9._-]/', '-', $normalized);
+        $normalized = trim($normalized, '-._');
+        if ($normalized === '') {
+            $normalized = 'user';
+        }
+
+        $suffix = Str::lower(Str::random(6));
+
+        return substr($normalized . '-' . $suffix, 0, 60);
+    }
+
+    private function generateUniqueEmail(string $localPart): string
+    {
+        $normalized = Str::lower(trim($localPart));
+        $normalized = (string) preg_replace('/[^a-z0-9._-]/', '.', $normalized);
+        $normalized = trim($normalized, '.');
+        if ($normalized === '') {
+            $normalized = 'user';
+        }
+
+        $domain = 'kampus.local';
+        $suffix = Str::lower(Str::random(6));
+        $local = substr($normalized . '.' . $suffix, 0, 64);
+
+        return "{$local}@{$domain}";
+    }
+
+    private function generateUniqueCode(string $prefix, string $jurusanCode): string
+    {
+        $base = strtoupper($prefix) . now()->format('ym') . str_pad(substr(strtoupper($jurusanCode), 0, 4), 4, 'X');
+        $suffix = strtoupper(Str::random(6));
+        $candidate = substr($base . $suffix, 0, 40);
+
+        return $candidate;
+    }
+
+    private function generateUniqueCourseCode(string $jurusanCode, int $sequence): string
+    {
+        $base = str_pad(substr(strtoupper($jurusanCode), 0, 4), 4, 'X');
+        $seq = str_pad((string) max(1, $sequence), 2, '0', STR_PAD_LEFT);
+        $candidate = "{$base}-" . now()->format('ym') . "-{$seq}-" . strtoupper(Str::random(4));
+
+        return $candidate;
+    }
+
+    private function parseUserImportRows(UploadedFile $file): array
+    {
+        $extension = Str::lower((string) $file->getClientOriginalExtension());
+        if (in_array($extension, ['xlsx'], true)) {
+            return $this->parseXlsxRows($file);
+        }
+
+        return $this->parseCsvRows($file);
+    }
+
+    private function parseCsvRows(UploadedFile $file): array
+    {
+        $rows = [];
+        $path = $file->getRealPath();
+        if (!$path) {
+            return [];
+        }
+
+        $handle = fopen($path, 'rb');
+        if ($handle === false) {
+            return [];
+        }
+
+        $headers = [];
+        $line = 0;
+        while (($data = fgetcsv($handle, 0, ',')) !== false) {
+            if ($line === 0) {
+                $headers = array_map(fn ($value) => $this->normalizeImportHeader((string) $value), $data);
+                $line++;
+                continue;
+            }
+
+            if ($headers === []) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $idx => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = isset($data[$idx]) ? trim((string) $data[$idx]) : '';
+            }
+            $rows[] = $assoc;
+            $line++;
+        }
+
+        fclose($handle);
+
+        return $rows;
+    }
+
+    private function parseXlsxRows(UploadedFile $file): array
+    {
+        if (!class_exists(\ZipArchive::class)) {
+            return [];
+        }
+
+        $path = $file->getRealPath();
+        if (!$path) {
+            return [];
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            return [];
+        }
+
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($sheetXml === false) {
+            $zip->close();
+            return [];
+        }
+
+        $sharedStrings = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($sharedXml !== false) {
+            $shared = @simplexml_load_string($sharedXml);
+            if ($shared && isset($shared->si)) {
+                foreach ($shared->si as $si) {
+                    if (isset($si->t)) {
+                        $sharedStrings[] = (string) $si->t;
+                        continue;
+                    }
+
+                    $parts = [];
+                    if (isset($si->r)) {
+                        foreach ($si->r as $run) {
+                            $parts[] = (string) ($run->t ?? '');
+                        }
+                    }
+                    $sharedStrings[] = implode('', $parts);
+                }
+            }
+        }
+
+        $sheet = @simplexml_load_string($sheetXml);
+        $zip->close();
+        if (!$sheet || !isset($sheet->sheetData->row)) {
+            return [];
+        }
+
+        $grid = [];
+        foreach ($sheet->sheetData->row as $row) {
+            $rowIndex = (int) ($row['r'] ?? 0);
+            foreach ($row->c as $cell) {
+                $cellRef = (string) ($cell['r'] ?? '');
+                if ($cellRef === '') {
+                    continue;
+                }
+                $colLetters = preg_replace('/\d+/', '', $cellRef);
+                $colIndex = $this->columnLettersToIndex((string) $colLetters);
+                $type = (string) ($cell['t'] ?? '');
+                $value = '';
+
+                if ($type === 's') {
+                    $sharedIndex = (int) ($cell->v ?? -1);
+                    $value = $sharedStrings[$sharedIndex] ?? '';
+                } elseif ($type === 'inlineStr') {
+                    $value = (string) ($cell->is->t ?? '');
+                } else {
+                    $value = (string) ($cell->v ?? '');
+                }
+
+                $grid[$rowIndex][$colIndex] = trim($value);
+            }
+        }
+
+        if (!isset($grid[1])) {
+            return [];
+        }
+
+        $headerRow = $grid[1];
+        ksort($headerRow);
+        $headers = [];
+        foreach ($headerRow as $col => $headerValue) {
+            $headers[$col] = $this->normalizeImportHeader((string) $headerValue);
+        }
+
+        $rows = [];
+        foreach ($grid as $rowNumber => $cells) {
+            if ($rowNumber === 1) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $col => $headerName) {
+                if ($headerName === '') {
+                    continue;
+                }
+                $assoc[$headerName] = isset($cells[$col]) ? trim((string) $cells[$col]) : '';
+            }
+            $rows[] = $assoc;
+        }
+
+        return $rows;
+    }
+
+    private function columnLettersToIndex(string $letters): int
+    {
+        $letters = strtoupper($letters);
+        $length = strlen($letters);
+        $index = 0;
+        for ($i = 0; $i < $length; $i++) {
+            $index = ($index * 26) + (ord($letters[$i]) - 64);
+        }
+
+        return max(1, $index);
+    }
+
+    private function normalizeImportHeader(string $header): string
+    {
+        $normalized = Str::of($header)->lower()->replace([' ', '-', '.'], '_')->value();
+        $normalized = preg_replace('/[^a-z0-9_]/', '', $normalized) ?? '';
+
+        return match ($normalized) {
+            'program_studi', 'prodi' => 'jurusan_code',
+            'jurusanid' => 'jurusan_id',
+            default => $normalized,
+        };
+    }
+
+    private function normalizeImportRole(string $role): ?string
+    {
+        $normalized = Str::lower(trim($role));
+
+        return match ($normalized) {
+            'admin', 'finance', 'teacher', 'student' => $normalized,
+            'dosen' => 'teacher',
+            'mahasiswa' => 'student',
+            default => null,
+        };
+    }
+
+    private function isImportRowEmpty(array $row): bool
+    {
+        foreach ($row as $value) {
+            if (trim((string) $value) !== '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function mockLecturers(): array

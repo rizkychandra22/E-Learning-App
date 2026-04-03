@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search, CheckCircle2, XCircle, Clock3, Eye } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
@@ -7,6 +7,7 @@ import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
 
 const roleLabels = {
+    all: 'Semua Role',
     admin: 'Admin',
     finance: 'Finance',
     teacher: 'Dosen',
@@ -43,14 +44,35 @@ function relativeTime(value) {
     return `${days} hari lalu`;
 }
 
-export default function Approvals({ pendingUsers, filters, mocked }) {
+export default function Approvals({ pendingUsers, filters, mocked, roleSummary: roleSummaryProp }) {
     const { props } = usePage();
     const intlLocale = toIntlLocale(props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
+    const [roleFilter, setRoleFilter] = useState(filters?.role ?? 'all');
+    const [selectedUser, setSelectedUser] = useState(null);
+
+    const roleSummary = useMemo(() => {
+        const source = roleSummaryProp ?? {};
+        return {
+            all: Number(source.all ?? pendingUsers.length ?? 0),
+            admin: Number(source.admin ?? 0),
+            finance: Number(source.finance ?? 0),
+            teacher: Number(source.teacher ?? 0),
+            student: Number(source.student ?? 0),
+        };
+    }, [roleSummaryProp, pendingUsers.length]);
+
+    const roleTabs = [
+        { value: 'all', label: `Semua (${roleSummary.all})` },
+        { value: 'admin', label: `Admin (${roleSummary.admin})` },
+        { value: 'finance', label: `Finance (${roleSummary.finance})` },
+        { value: 'teacher', label: `Dosen (${roleSummary.teacher})` },
+        { value: 'student', label: `Mahasiswa (${roleSummary.student})` },
+    ];
 
     const submitSearch = (event) => {
         event.preventDefault();
-        router.get('/approvals', { search }, { preserveState: true, preserveScroll: true, replace: true });
+        router.get('/approvals', { search, role: roleFilter }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
     const approve = (user) => {
@@ -62,31 +84,91 @@ export default function Approvals({ pendingUsers, filters, mocked }) {
         router.delete(`/approvals/${user.id}/reject`, { preserveScroll: true });
     };
 
+    const approveAllByRole = () => {
+        const label = roleLabels[roleFilter] ?? 'Semua role';
+        const confirmed = window.confirm(`Setujui semua akun pending untuk ${label}?`);
+        if (!confirmed) return;
+
+        router.put(
+            '/approvals/approve-all',
+            { role: roleFilter },
+            { preserveScroll: true }
+        );
+    };
+
+    const openReview = (user) => {
+        setSelectedUser(user);
+    };
+
+    const closeReview = () => {
+        setSelectedUser(null);
+    };
+
+    const approveFromReview = () => {
+        if (!selectedUser) return;
+        approve(selectedUser);
+        closeReview();
+    };
+
+    const rejectFromReview = () => {
+        if (!selectedUser) return;
+        reject(selectedUser);
+        closeReview();
+    };
+
     return (
         <ProtectedLayout>
             <Head title="Persetujuan Akun" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Persetujuan Akun" description="Tinjau dan setujui permintaan pendaftaran akun baru" />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatCard title="Menunggu Persetujuan" value={pendingUsers.length} icon={Clock3} gradient="warm" />
-                    <StatCard title="Disetujui" value={0} icon={CheckCircle2} gradient="success" />
-                    <StatCard title="Ditolak" value={0} icon={XCircle} gradient="accent" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                    <StatCard title="Pending Semua" value={roleSummary.all} icon={Clock3} gradient="warm" />
+                    <StatCard title="Pending Admin" value={roleSummary.admin} icon={Clock3} gradient="primary" />
+                    <StatCard title="Pending Finance" value={roleSummary.finance} icon={Clock3} gradient="accent" />
+                    <StatCard title="Pending Dosen" value={roleSummary.teacher} icon={Clock3} gradient="success" />
+                    <StatCard title="Pending Mahasiswa" value={roleSummary.student} icon={Clock3} gradient="warm" />
                 </div>
 
                 <section className="panel-card p-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                         <h3 className="font-semibold text-2xl">Menunggu Persetujuan <span className="ml-2 text-sm px-2 py-0.5 rounded-full bg-primary/15 text-primary">{pendingUsers.length}</span></h3>
-                        <form onSubmit={submitSearch} className="relative w-full md:w-72">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(event) => setSearch(event.target.value)}
-                                placeholder="Cari akun pending..."
-                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm"
-                            />
-                        </form>
+                        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                            <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 overflow-x-auto">
+                                {roleTabs.map((tab) => (
+                                    <button
+                                        key={tab.value}
+                                        type="button"
+                                        onClick={() => {
+                                            setRoleFilter(tab.value);
+                                            router.get('/approvals', { search, role: tab.value }, { preserveState: true, preserveScroll: true, replace: true });
+                                        }}
+                                        className={`px-2.5 py-1.5 whitespace-nowrap rounded-md text-xs font-medium transition-colors ${roleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <form onSubmit={submitSearch} className="relative w-full md:w-72">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(event) => setSearch(event.target.value)}
+                                    placeholder="Cari akun pending..."
+                                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm"
+                                />
+                            </form>
+                            <button
+                                type="button"
+                                onClick={approveAllByRole}
+                                disabled={mocked || pendingUsers.length === 0}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-success text-white text-xs font-semibold disabled:opacity-60"
+                            >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                ACC Semua Role Ini
+                            </button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
@@ -107,7 +189,7 @@ export default function Approvals({ pendingUsers, filters, mocked }) {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <button type="button" className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium"><Eye className="w-3.5 h-3.5" />Tinjau</button>
+                                    <button type="button" onClick={() => openReview(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium"><Eye className="w-3.5 h-3.5" />Tinjau</button>
                                     <button type="button" onClick={() => approve(user)} disabled={mocked || user.is_mock} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success text-white text-xs font-semibold disabled:opacity-60"><CheckCircle2 className="w-3.5 h-3.5" />Setuju</button>
                                     <button type="button" onClick={() => reject(user)} disabled={mocked || user.is_mock} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive text-white text-xs font-semibold disabled:opacity-60"><XCircle className="w-3.5 h-3.5" />Tolak</button>
                                 </div>
@@ -119,6 +201,75 @@ export default function Approvals({ pendingUsers, filters, mocked }) {
                         )}
                     </div>
                 </section>
+
+                {selectedUser && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <button type="button" className="absolute inset-0 bg-black/40" onClick={closeReview} aria-label="Tutup tinjau akun" />
+                        <div className="relative w-full max-w-xl panel-card p-5">
+                            <h3 className="text-lg font-semibold">Tinjau Akun</h3>
+                            <p className="text-sm text-muted-foreground mt-1">Pastikan data akun sebelum melakukan persetujuan.</p>
+
+                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                <div className="panel-subcard p-3">
+                                    <p className="text-xs text-muted-foreground">Nama</p>
+                                    <p className="font-medium mt-1">{selectedUser.name || '-'}</p>
+                                </div>
+                                <div className="panel-subcard p-3">
+                                    <p className="text-xs text-muted-foreground">Role</p>
+                                    <p className="font-medium mt-1">{roleLabels[selectedUser.role] ?? selectedUser.role ?? '-'}</p>
+                                </div>
+                                <div className="panel-subcard p-3">
+                                    <p className="text-xs text-muted-foreground">Email</p>
+                                    <p className="font-medium mt-1 break-all">{selectedUser.email || '-'}</p>
+                                </div>
+                                <div className="panel-subcard p-3">
+                                    <p className="text-xs text-muted-foreground">Username</p>
+                                    <p className="font-medium mt-1">{selectedUser.username || '-'}</p>
+                                </div>
+                                <div className="panel-subcard p-3">
+                                    <p className="text-xs text-muted-foreground">NIM/ID</p>
+                                    <p className="font-medium mt-1">{selectedUser.code || '-'}</p>
+                                </div>
+                                <div className="panel-subcard p-3">
+                                    <p className="text-xs text-muted-foreground">Diajukan</p>
+                                    <p className="font-medium mt-1">
+                                        {selectedUser.created_at
+                                            ? new Date(selectedUser.created_at).toLocaleString(intlLocale)
+                                            : '-'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-5 flex flex-wrap justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={closeReview}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-border bg-background text-xs font-medium"
+                                >
+                                    Tutup
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={approveFromReview}
+                                    disabled={mocked || selectedUser.is_mock}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-success text-white text-xs font-semibold disabled:opacity-60"
+                                >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    Setuju
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={rejectFromReview}
+                                    disabled={mocked || selectedUser.is_mock}
+                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive text-white text-xs font-semibold disabled:opacity-60"
+                                >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    Tolak
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </ProtectedLayout>
     );

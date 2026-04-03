@@ -71,6 +71,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::get('/manage-users', [AdminAcademicController::class, 'manageUsers']);
         Route::post('/manage-users', [AdminAcademicController::class, 'storeUser']);
+        Route::post('/manage-users/generate-jurusan-accounts', [AdminAcademicController::class, 'generateJurusanAccounts']);
+        Route::post('/manage-users/import/preview', [AdminAcademicController::class, 'previewImportUsers']);
+        Route::post('/manage-users/import', [AdminAcademicController::class, 'importUsers']);
         Route::put('/manage-users/{user}', [AdminAcademicController::class, 'updateUser']);
         Route::delete('/manage-users/{user}', [AdminAcademicController::class, 'destroyUser']);
 
@@ -84,6 +87,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/approvals', [AdminAcademicController::class, 'approvals']);
         Route::put('/approvals/{user}/approve', [AdminAcademicController::class, 'approve']);
+        Route::put('/approvals/approve-all', [AdminAcademicController::class, 'approveAll']);
         Route::delete('/approvals/{user}/reject', [AdminAcademicController::class, 'reject']);
 
         Route::get('/categories', [AdminAcademicController::class, 'categories']);

@@ -1,16 +1,21 @@
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { LifeBuoy, Mail, MessageSquareText, Phone } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 export default function HelpCenter() {
+    const { props } = usePage();
+    const system = props.system ?? {};
+    const supportEmail = system.support_email ?? 'support@univ.ac.id';
+    const platformName = system.platform_name ?? 'Smart Learning';
+
     return (
         <ProtectedLayout>
             <Head title="Pusat Bantuan" />
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner
                     title="Pusat Bantuan"
-                    description="Hubungi tim support untuk kendala akun, kendala pembelajaran, atau pertanyaan teknis."
+                    description={`Hubungi tim support ${platformName} untuk kendala akun, kendala pembelajaran, atau pertanyaan teknis.`}
                 />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -20,8 +25,8 @@ export default function HelpCenter() {
                         </div>
                         <h3 className="font-semibold">Email Support</h3>
                         <p className="text-sm text-muted-foreground mt-1">Respon 1x24 jam hari kerja.</p>
-                        <a href="mailto:support@edulearn.local" className="inline-flex mt-3 text-sm font-medium text-primary hover:opacity-80">
-                            support@edulearn.local
+                        <a href={`mailto:${supportEmail}`} className="inline-flex mt-3 text-sm font-medium text-primary hover:opacity-80">
+                            {supportEmail}
                         </a>
                     </div>
 
@@ -44,7 +49,7 @@ export default function HelpCenter() {
                         <p className="text-sm text-muted-foreground mt-1">Kirim detail kendala agar tim bisa bantu lebih cepat.</p>
                         <button
                             type="button"
-                            onClick={() => window.location.assign('mailto:support@edulearn.local?subject=Butuh%20Bantuan%20E-Learning')}
+                            onClick={() => window.location.assign(`mailto:${supportEmail}?subject=Butuh%20Bantuan%20${encodeURIComponent(platformName)}`)}
                             className="inline-flex mt-3 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary/60 transition-colors"
                         >
                             <LifeBuoy className="w-4 h-4 mr-2" />

@@ -34,7 +34,7 @@ class PlatformDemoSeeder extends Seeder
         }
 
         $academicStructure = $this->seedAcademicStructure();
-        $users = $this->seedUsers();
+        $users = $this->seedUsers($academicStructure);
         $courses = $this->seedCourses($users, $academicStructure);
         $this->seedEnrollmentsAndLearning($courses, $users);
         $this->seedAssessmentsAndDiscussions($courses, $users);
@@ -97,8 +97,10 @@ class PlatformDemoSeeder extends Seeder
         return ['jurusan_id' => $tiJurusanId];
     }
 
-    private function seedUsers(): array
+    private function seedUsers(array $academicStructure): array
     {
+        $jurusanId = $academicStructure['jurusan_id'] ?? null;
+
         $root = User::firstOrCreate(
             ['email' => 'super@univ.ac.id'],
             [
@@ -142,7 +144,7 @@ class PlatformDemoSeeder extends Seeder
             ['name' => 'Dr. Setyo Nugroho', 'email' => 'setyo@lecturer.ac.id', 'username' => 'setyonugroho', 'code' => '0451733144001'],
             ['name' => 'Prof. Rina Susanti', 'email' => 'rina@lecturer.ac.id', 'username' => 'rinasusanti', 'code' => '0451733144002'],
             ['name' => 'Dr. Ahmad Fauzi', 'email' => 'ahmad@lecturer.ac.id', 'username' => 'ahmadfauzi', 'code' => '0451733144003'],
-        ])->map(function (array $item) {
+        ])->map(function (array $item) use ($jurusanId) {
             return User::firstOrCreate(
                 ['email' => $item['email']],
                 [
@@ -151,6 +153,7 @@ class PlatformDemoSeeder extends Seeder
                     'role' => 'teacher',
                     'type' => 'nidn',
                     'code' => $item['code'],
+                    'jurusan_id' => $jurusanId,
                     'password' => 'password',
                     'email_verified_at' => now(),
                 ]
@@ -166,7 +169,7 @@ class PlatformDemoSeeder extends Seeder
             ['name' => 'Fani Maharani', 'email' => 'fani_m@univ.ac.id', 'username' => 'fani_m', 'code' => '0720263131006', 'verified' => true],
             ['name' => 'Gilang Prakoso', 'email' => 'gilang_p@univ.ac.id', 'username' => 'gilang_p', 'code' => '0720263131007', 'verified' => true],
             ['name' => 'Hana Permata', 'email' => 'hana_p@univ.ac.id', 'username' => 'hana_p', 'code' => '0720263131008', 'verified' => false],
-        ])->map(function (array $item) {
+        ])->map(function (array $item) use ($jurusanId) {
             return User::updateOrCreate(
                 ['email' => $item['email']],
                 [
@@ -175,6 +178,7 @@ class PlatformDemoSeeder extends Seeder
                     'role' => 'student',
                     'type' => 'nim',
                     'code' => $item['code'],
+                    'jurusan_id' => $jurusanId,
                     'password' => 'password',
                     'email_verified_at' => $item['verified'] ? now() : null,
                 ]

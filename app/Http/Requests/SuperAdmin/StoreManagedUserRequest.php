@@ -19,7 +19,13 @@ class StoreManagedUserRequest extends FormRequest
             'email' => ['required', 'email', 'max:120', Rule::unique('users', 'email')],
             'username' => ['required', 'string', 'max:60', Rule::unique('users', 'username')],
             'code' => ['required', 'string', 'max:40', Rule::unique('users', 'code')],
+            'jurusan_id' => ['nullable', 'integer', 'exists:jurusans,id', Rule::requiredIf(fn (): bool => $this->needsJurusan())],
             'password' => ['required', 'string', 'min:6', 'max:72'],
         ];
+    }
+
+    private function needsJurusan(): bool
+    {
+        return in_array((string) $this->route('target'), ['lecturers', 'students'], true);
     }
 }

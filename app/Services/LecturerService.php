@@ -16,6 +16,7 @@ use App\Models\QuizAttempt;
 use App\Models\StudentNote;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,6 +27,190 @@ class LecturerService
     public function __construct(
         private readonly NotificationService $notificationService
     ) {
+    }
+
+    public function getDashboardData(int $lecturerId): array
+    {
+        if (!Schema::hasTable('courses')) {
+            return [
+                'summary' => [
+                    'active_classes' => 0,
+                    'total_students' => 0,
+                    'graded_assignments' => 0,
+                    'total_assignments' => 0,
+                    'teaching_hours' => 0,
+                ],
+                'class_progress' => [],
+                'performance_breakdown' => [],
+                'incoming_assignments' => [],
+            ];
+        }
+
+        $courses = Course::query()
+            ->where('lecturer_id', $lecturerId)
+            ->withCount('students')
+            ->latest('id')
+            ->get(['id', 'title', 'status', 'credit_hours']);
+        $courseIds = $courses->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $totalStudents = 0;
+        if ($courseIds !== [] && Schema::hasTable('course_student')) {
+            $totalStudents = (int) DB::table('course_student')
+                ->whereIn('course_id', $courseIds)
+                ->distinct()
+                ->count('student_id');
+        }
+
+        $totalAssignments = 0;
+        $gradedAssignments = 0;
+        $assignmentAverage = 0.0;
+        if ($courseIds !== [] && Schema::hasTable('assignments') && Schema::hasTable('assignment_submissions')) {
+            $assignmentSubmissionsQuery = DB::table('assignment_submissions')
+                ->join('assignments', 'assignments.id', '=', 'assignment_submissions.assignment_id')
+                ->whereIn('assignments.course_id', $courseIds);
+
+            $totalAssignments = (int) (clone $assignmentSubmissionsQuery)->count();
+            $gradedAssignments = (int) (clone $assignmentSubmissionsQuery)
+                ->whereNotNull('assignment_submissions.score')
+                ->count();
+            $assignmentAverage = (float) ((clone $assignmentSubmissionsQuery)
+                ->whereNotNull('assignment_submissions.score')
+                ->avg('assignment_submissions.score') ?? 0.0);
+        }
+
+        $quizAverage = 0.0;
+        if ($courseIds !== [] && Schema::hasTable('quizzes') && Schema::hasTable('quiz_attempts')) {
+            $quizAverage = (float) (DB::table('quiz_attempts')
+                ->join('quizzes', 'quizzes.id', '=', 'quiz_attempts.quiz_id')
+                ->whereIn('quizzes.course_id', $courseIds)
+                ->whereNotNull('quiz_attempts.score')
+                ->avg('quiz_attempts.score') ?? 0.0);
+        }
+
+        $progressByCourse = [];
+        if ($courseIds !== [] && Schema::hasTable('course_modules') && Schema::hasTable('course_lessons') && Schema::hasTable('lesson_progress')) {
+            $progressByCourse = DB::table('lesson_progress')
+                ->join('course_lessons', 'course_lessons.id', '=', 'lesson_progress.lesson_id')
+                ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
+                ->whereIn('course_modules.course_id', $courseIds)
+                ->selectRaw('course_modules.course_id as course_id')
+                ->selectRaw('COUNT(*) as total')
+                ->selectRaw('SUM(CASE WHEN lesson_progress.is_completed = 1 THEN 1 ELSE 0 END) as completed')
+                ->groupBy('course_modules.course_id')
+                ->get()
+                ->mapWithKeys(function ($row): array {
+                    $total = (int) ($row->total ?? 0);
+                    $completed = (int) ($row->completed ?? 0);
+                    $percent = $total > 0 ? (int) round(($completed / $total) * 100) : 0;
+
+                    return [(int) $row->course_id => $percent];
+                })
+                ->all();
+        }
+
+        $classProgress = $courses
+            ->take(6)
+            ->map(function (Course $course) use ($progressByCourse): array {
+                return [
+                    'id' => (int) $course->id,
+                    'title' => (string) $course->title,
+                    'students' => (int) ($course->students_count ?? 0),
+                    'progress' => (int) ($progressByCourse[(int) $course->id] ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $activeStudentCount = 0;
+        if ($courseIds !== [] && Schema::hasTable('course_modules') && Schema::hasTable('course_lessons') && Schema::hasTable('lesson_progress')) {
+            $activeStudentCount = (int) DB::table('lesson_progress')
+                ->join('course_lessons', 'course_lessons.id', '=', 'lesson_progress.lesson_id')
+                ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
+                ->whereIn('course_modules.course_id', $courseIds)
+                ->where('lesson_progress.last_accessed_at', '>=', now()->subDays(30))
+                ->distinct()
+                ->count('lesson_progress.student_id');
+        }
+        $attendance = $totalStudents > 0 ? (int) round(($activeStudentCount / $totalStudents) * 100) : 0;
+
+        $materialsCoverage = 0;
+        if ($courseIds !== [] && Schema::hasTable('course_materials')) {
+            $courseWithMaterials = (int) DB::table('course_materials')
+                ->whereIn('course_id', $courseIds)
+                ->distinct()
+                ->count('course_id');
+            $materialsCoverage = count($courseIds) > 0 ? (int) round(($courseWithMaterials / count($courseIds)) * 100) : 0;
+        }
+
+        $discussionCount = 0;
+        if ($courseIds !== [] && Schema::hasTable('discussions')) {
+            $discussionCount = (int) DB::table('discussions')
+                ->whereIn('course_id', $courseIds)
+                ->where('updated_at', '>=', now()->subDays(30))
+                ->count();
+        }
+        $participation = min(100, $discussionCount * 10);
+        $completionAverage = (int) round(collect($classProgress)->avg('progress') ?? 0);
+
+        $performanceBreakdown = [
+            ['label' => 'Kehadiran', 'value' => max(0, min(100, $attendance))],
+            ['label' => 'Tugas', 'value' => max(0, min(100, (int) round($assignmentAverage)))],
+            ['label' => 'Kuis', 'value' => max(0, min(100, (int) round($quizAverage)))],
+            ['label' => 'Penyelesaian', 'value' => max(0, min(100, $completionAverage))],
+            ['label' => 'Materi', 'value' => max(0, min(100, $materialsCoverage))],
+            ['label' => 'Partisipasi', 'value' => max(0, min(100, $participation))],
+        ];
+
+        $incomingAssignments = [];
+        if (Schema::hasTable('assignments') && Schema::hasTable('assignment_submissions')) {
+            $incomingAssignments = DB::table('assignment_submissions')
+                ->join('assignments', 'assignments.id', '=', 'assignment_submissions.assignment_id')
+                ->join('courses', 'courses.id', '=', 'assignments.course_id')
+                ->leftJoin('users', 'users.id', '=', 'assignment_submissions.student_id')
+                ->where('courses.lecturer_id', $lecturerId)
+                ->orderByDesc(DB::raw('COALESCE(assignment_submissions.submitted_at, assignment_submissions.updated_at)'))
+                ->limit(10)
+                ->get([
+                    'assignment_submissions.id',
+                    'users.name as student_name',
+                    'courses.title as course_title',
+                    'assignments.title as assignment_title',
+                    'assignment_submissions.submitted_at',
+                    'assignment_submissions.updated_at',
+                    'assignment_submissions.score',
+                    'assignment_submissions.status',
+                ])
+                ->map(function ($row): array {
+                    $submittedAtRaw = $row->submitted_at ?? $row->updated_at;
+                    $submittedAt = $submittedAtRaw
+                        ? now()->parse((string) $submittedAtRaw)->translatedFormat('d M Y H:i')
+                        : '-';
+
+                    return [
+                        'id' => (int) $row->id,
+                        'student' => (string) ($row->student_name ?? '-'),
+                        'course' => (string) ($row->course_title ?? '-'),
+                        'task' => (string) ($row->assignment_title ?? '-'),
+                        'submittedAt' => $submittedAt,
+                        'status' => $row->score === null ? 'pending' : 'reviewed',
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
+        return [
+            'summary' => [
+                'active_classes' => (int) $courses->where('status', 'active')->count(),
+                'total_students' => $totalStudents,
+                'graded_assignments' => $gradedAssignments,
+                'total_assignments' => $totalAssignments,
+                'teaching_hours' => (int) $courses->sum(fn (Course $course) => (int) ($course->credit_hours ?? 0)),
+            ],
+            'class_progress' => $classProgress,
+            'performance_breakdown' => $performanceBreakdown,
+            'incoming_assignments' => $incomingAssignments,
+        ];
     }
 
     public function getMyCoursesData(int $lecturerId, string $search, string $status, string $category = 'all'): array
@@ -230,6 +415,7 @@ class LecturerService
             $availableCourses = Course::query()
                 ->where('status', 'active')
                 ->where('allow_self_enrollment', true)
+                ->when(!empty($student->jurusan_id), fn ($query) => $query->where('jurusan_id', (int) $student->jurusan_id))
                 ->whereNotIn('id', $enrolledCourseIds)
                 ->with('lecturer:id,name')
                 ->orderBy('title')
@@ -813,18 +999,24 @@ class LecturerService
 
     public function createCourseForLecturer(int $lecturerId, array $payload): void
     {
+        $lecturerJurusanId = $this->resolveLecturerJurusanId($lecturerId);
+
         Course::create($this->normalizeCoursePayload([
             ...$payload,
             'lecturer_id' => $lecturerId,
+            'jurusan_id' => $lecturerJurusanId,
         ]));
     }
 
     public function updateCourseForLecturer(int $lecturerId, Course $course, array $payload): void
     {
         $this->ensureCourseOwner($lecturerId, $course);
+        $lecturerJurusanId = $this->resolveLecturerJurusanId($lecturerId);
+
         $course->update($this->normalizeCoursePayload([
             ...$payload,
             'lecturer_id' => $lecturerId,
+            'jurusan_id' => $lecturerJurusanId,
         ]));
     }
 
@@ -1375,8 +1567,11 @@ class LecturerService
                 ->get(['users.id', 'users.name', 'users.email', 'users.code']);
         }
 
+        $lecturerJurusanId = User::query()->where('id', $lecturerId)->value('jurusan_id');
+
         $students = User::query()
             ->where('role', 'student')
+            ->when(!empty($lecturerJurusanId), fn ($query) => $query->where('jurusan_id', (int) $lecturerJurusanId))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'code']);
 
@@ -1417,6 +1612,10 @@ class LecturerService
             ->where('id', (int) $payload['student_id'])
             ->where('role', 'student')
             ->firstOrFail();
+
+        abort_if(empty($course->jurusan_id), 422, 'Kursus belum terhubung ke program studi.');
+        abort_if(empty($student->jurusan_id), 422, 'Mahasiswa belum terhubung ke program studi.');
+        abort_if((int) $course->jurusan_id !== (int) $student->jurusan_id, 422, 'Mahasiswa hanya dapat didaftarkan ke kursus program studi yang sama.');
 
         $alreadyEnrolled = $course->students()->where('users.id', $student->id)->exists();
         abort_if($alreadyEnrolled, 422, 'Mahasiswa sudah terdaftar di kursus ini.');
@@ -1466,12 +1665,20 @@ class LecturerService
             abort_if($enrollmentKey === '' || !hash_equals((string) $course->enrollment_key, $enrollmentKey), 422, 'Kunci enrollment tidak valid.');
         }
 
+        $student = User::query()
+            ->where('id', $studentId)
+            ->where('role', 'student')
+            ->firstOrFail();
+
+        abort_if(empty($course->jurusan_id), 422, 'Kursus belum terhubung ke program studi.');
+        abort_if(empty($student->jurusan_id), 422, 'Akun Anda belum terhubung ke program studi.');
+        abort_if((int) $course->jurusan_id !== (int) $student->jurusan_id, 422, 'Kursus ini bukan untuk program studi Anda.');
+
         $alreadyEnrolled = $course->students()->where('users.id', $studentId)->exists();
         abort_if($alreadyEnrolled, 422, 'Anda sudah terdaftar di kursus ini.');
 
         $course->students()->attach($studentId, ['enrolled_at' => now()]);
 
-        $student = User::query()->findOrFail($studentId);
         if ($course->lecturer) {
             $this->notificationService->notifyEnrollment($student, $course->lecturer, (string) $course->title, $studentId, true);
         } else {
@@ -1773,6 +1980,18 @@ class LecturerService
         abort_if(!$course, 404);
 
         return $course;
+    }
+
+    private function resolveLecturerJurusanId(int $lecturerId): int
+    {
+        $lecturer = User::query()
+            ->where('id', $lecturerId)
+            ->where('role', 'teacher')
+            ->firstOrFail();
+
+        abort_if(empty($lecturer->jurusan_id), 422, 'Profil dosen belum terhubung ke program studi.');
+
+        return (int) $lecturer->jurusan_id;
     }
 
     private function findLecturerModule(int $lecturerId, int $moduleId): CourseModule
