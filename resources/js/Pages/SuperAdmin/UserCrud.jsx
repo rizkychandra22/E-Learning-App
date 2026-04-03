@@ -282,19 +282,21 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                                     type="button"
                                                     onClick={() => beginEdit(user)}
                                                     disabled={mocked || user.is_mock}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium hover:opacity-90 disabled:opacity-60"
+                                                    className="inline-flex items-center gap-1 p-1.5 rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-60"
+                                                    title="Edit"
+                                                    aria-label="Edit user"
                                                 >
                                                     <Pencil className="w-3.5 h-3.5" />
-                                                    Edit
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => destroyUser(user)}
                                                     disabled={mocked || user.is_mock}
-                                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium hover:bg-destructive/20 disabled:opacity-60"
+                                                    className="inline-flex items-center gap-1 p-1.5 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                                                    title="Hapus"
+                                                    aria-label="Hapus user"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
-                                                    Hapus
                                                 </button>
                                             </div>
                                         </td>
