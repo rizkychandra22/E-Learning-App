@@ -2,8 +2,13 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { TopNavbar } from '@/components/TopNavbar';
 import { useEffect, useState } from 'react';
 
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
+
 export function DashboardLayout({ children }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    });
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     useEffect(() => {
@@ -28,6 +33,11 @@ export function DashboardLayout({ children }) {
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    }, [collapsed]);
 
     return (
         <div className="flex min-h-screen w-full bg-background">
