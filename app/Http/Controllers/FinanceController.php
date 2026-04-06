@@ -92,7 +92,7 @@ class FinanceController extends Controller
             ]);
         }
 
-        $this->service->createPayment($request->validated());
+        $this->service->createPayment($request->validated(), (int) auth()->id());
 
         return back()->with('success', 'Pembayaran berhasil dicatat.');
     }
