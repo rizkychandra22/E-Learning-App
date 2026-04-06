@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyForm = {
     title: '',
@@ -287,8 +288,8 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                         <span className="inline-flex items-center gap-1"><Clock3 className="w-3 h-3" /> {duration}</span>
                                     </div>
                                     <div className="mt-3 flex items-center gap-2">
-                                        <button type="button" onClick={() => beginEdit(course)} disabled={mocked || course.is_mock} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"><Pencil className="w-3.5 h-3.5" />Edit</button>
-                                        <button type="button" onClick={() => destroyCourse(course)} disabled={mocked || course.is_mock} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                        <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(course)} disabled={mocked || course.is_mock} />
+                                        <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyCourse(course)} disabled={mocked || course.is_mock} />
                                     </div>
                                 </article>
                             );
@@ -323,11 +324,13 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                             onClick={(event) => {
                                                 if (mocked || material.is_mock) event.preventDefault();
                                             }}
-                                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-500 hover:bg-sky-500/10"
+                                            title="Unduh"
+                                            aria-label="Unduh"
                                         >
-                                            <Download className="w-3 h-3" />Unduh
+                                            <Download className="w-4 h-4" />
                                         </a>
-                                        <button type="button" onClick={() => destroyMaterial(material)} disabled={mocked || material.is_mock} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs disabled:opacity-60"><Trash2 className="w-3 h-3" />Hapus</button>
+                                        <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyMaterial(material)} disabled={mocked || material.is_mock} />
                                     </div>
                                 </div>
                             ))}

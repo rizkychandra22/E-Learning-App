@@ -20,7 +20,17 @@ const PERIOD_OPTIONS = [
     { key: 'yearly', label: 'Tahunan', days: 365 },
 ];
 
-export default function Reports({ migrationRequired, summary, top_unpaid = [], cashflow = [], filters, mocked }) {
+export default function Reports({
+    migrationRequired,
+    summary,
+    summary_changes,
+    top_unpaid = [],
+    cashflow = [],
+    payment_methods = [],
+    receivable_by_component = [],
+    filters,
+    mocked,
+}) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [activePeriod, setActivePeriod] = useState('monthly');
 
@@ -35,46 +45,20 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
     }, [cashflow]);
 
     const methodData = useMemo(() => {
-        const verified = Number(summary?.verified_income ?? 0);
-        const pending = Number(summary?.pending_amount ?? 0);
-        const receivables = Number(summary?.receivables ?? 0);
-        const base = Math.max(verified + pending + receivables, 1);
-
-        const spp = Math.round(base * 0.68);
-        const specialCourse = Math.round(base * 0.14);
-        const exam = Math.round(base * 0.1);
-        const scholarship = Math.round(base * 0.05);
-        const others = Math.max(base - spp - specialCourse - exam - scholarship, 0);
-
-        return [
-            { label: 'SPP', value: spp, color: '#6D28D9' },
-            { label: 'Kursus Khusus', value: specialCourse, color: '#10B981' },
-            { label: 'Ujian & Sertifikasi', value: exam, color: '#F59E0B' },
-            { label: 'Beasiswa (IN)', value: scholarship, color: '#3B82F6' },
-            { label: 'Lainnya', value: others, color: '#CBD5E1' },
-        ];
-    }, [summary]);
+        const palette = ['#6D28D9', '#10B981', '#F59E0B', '#3B82F6', '#F43F5E', '#94A3B8'];
+        return payment_methods.map((item, index) => ({
+            label: item.label,
+            value: Number(item.value ?? 0),
+            color: palette[index % palette.length],
+        }));
+    }, [payment_methods]);
 
     const expenseData = useMemo(() => {
-        const pending = Number(summary?.pending_amount ?? 0);
-        if (pending <= 0) {
-            return [
-                { label: 'Operasional', value: 4200000 },
-                { label: 'SDM', value: 3800000 },
-                { label: 'Infrastruktur', value: 1600000 },
-                { label: 'Marketing', value: 900000 },
-                { label: 'Lainnya', value: 300000 },
-            ];
-        }
-
-        return [
-            { label: 'Operasional', value: Math.round(pending * 0.42) },
-            { label: 'SDM', value: Math.round(pending * 0.35) },
-            { label: 'Infrastruktur', value: Math.round(pending * 0.13) },
-            { label: 'Marketing', value: Math.round(pending * 0.07) },
-            { label: 'Lainnya', value: Math.round(pending * 0.03) },
-        ];
-    }, [summary]);
+        return receivable_by_component.map((item) => ({
+            label: item.label,
+            value: Number(item.value ?? 0),
+        }));
+    }, [receivable_by_component]);
 
     const applyPeriod = (period) => {
         setActivePeriod(period.key);
@@ -90,6 +74,39 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
             },
             { preserveState: true, preserveScroll: true, replace: true }
         );
+    };
+
+    const exportCsv = () => {
+        const rows = [
+            ['Metric', 'Value'],
+            ['Date From', filters?.date_from ?? '-'],
+            ['Date To', filters?.date_to ?? '-'],
+            ['Verified Income', Number(summary?.verified_income ?? 0)],
+            ['Pending Amount', Number(summary?.pending_amount ?? 0)],
+            ['Receivables', Number(summary?.receivables ?? 0)],
+            ['Total Invoices', Number(summary?.total_invoices ?? 0)],
+            ['Verified Payments', Number(summary?.verified_payments ?? 0)],
+            ['Pending Payments', Number(summary?.pending_payments ?? 0)],
+            [],
+            ['Cashflow'],
+            ['Month', 'Verified', 'Pending'],
+            ...trendData.map((item) => [item.label, item.income, item.expense]),
+            [],
+            ['Top Unpaid'],
+            ['Invoice', 'Student', 'Amount', 'Status', 'Due Date'],
+            ...top_unpaid.map((item) => [item.invoice_no, item.student?.name ?? '-', Number(item.amount ?? 0), item.status ?? '-', item.due_date ?? '-']),
+        ];
+
+        const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `laporan-keuangan-${filters?.date_from ?? 'awal'}-${filters?.date_to ?? 'akhir'}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     return (
@@ -116,11 +133,11 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
                             </div>
                             <button
                                 type="button"
-                                onClick={() => window.alert('Export PDF akan dihubungkan pada modul laporan cetak.')}
+                                onClick={exportCsv}
                                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium"
                             >
                                 <Download className="w-4 h-4" />
-                                Export PDF
+                                Export CSV
                             </button>
                         </>
                     )}
@@ -147,10 +164,10 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <FinanceStatCard title="Total Pendapatan" value={currency(summary?.verified_income)} meta="↗ +18%" tone="gradient-success" icon={Wallet} />
-                    <FinanceStatCard title="Pembayaran Bulan Ini" value={currency(summary?.verified_income)} meta="↗ +7%" tone="gradient-primary" icon={ReceiptText} />
-                    <FinanceStatCard title="Tunggakan" value={currency(summary?.pending_amount)} meta={`↘ ${top_unpaid.length} mhsv`} tone="bg-gradient-to-r from-pink-600 to-rose-500" icon={TrendingDown} />
-                    <FinanceStatCard title="Beasiswa" value={currency(Math.max(Math.round((summary?.verified_income ?? 0) * 0.35), 0))} meta={`↘ ${top_unpaid.length + 20} penerima`} tone="gradient-accent" icon={Landmark} />
+                    <FinanceStatCard title="Total Pendapatan" value={currency(summary?.verified_income)} meta={summary_changes?.verified_income ?? '0% dari periode sebelumnya'} tone="gradient-success" icon={Wallet} />
+                    <FinanceStatCard title="Total Tagihan Periode" value={new Intl.NumberFormat(intlLocale).format(Number(summary?.total_invoices ?? 0))} meta={summary_changes?.total_invoices ?? '0% dari periode sebelumnya'} tone="gradient-primary" icon={ReceiptText} />
+                    <FinanceStatCard title="Tunggakan Pending" value={currency(summary?.pending_amount)} meta={`${summary?.pending_payments ?? 0} transaksi pending`} tone="bg-gradient-to-r from-pink-600 to-rose-500" icon={TrendingDown} />
+                    <FinanceStatCard title="Total Piutang" value={currency(summary?.receivables)} meta={summary_changes?.receivables ?? '0% dari periode sebelumnya'} tone="gradient-accent" icon={Landmark} />
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-[2.2fr_1fr] gap-4 items-stretch">
@@ -165,7 +182,7 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
                     </section>
 
                     <section className="panel-card p-4">
-                        <h2 className="font-semibold text-2xl mb-4">Komposisi Pendapatan</h2>
+                        <h2 className="font-semibold text-2xl mb-4">Distribusi Metode Pembayaran</h2>
                         <div className="panel-subcard p-4 h-full">
                             <PieBreakdown data={methodData} locale={intlLocale} />
                         </div>
@@ -175,7 +192,7 @@ export default function Reports({ migrationRequired, summary, top_unpaid = [], c
                 <section className="panel-card p-4">
                     <h2 className="font-semibold text-2xl mb-4 flex items-center gap-2">
                         <TrendingDown className="w-5 h-5 text-pink-500" />
-                        Pengeluaran per Kategori (Juta)
+                        Piutang per Komponen
                     </h2>
                     <div className="panel-subcard p-4">
                         <ExpenseBarChart data={expenseData} locale={intlLocale} />
@@ -201,16 +218,7 @@ function FinanceStatCard({ title, value, meta, tone, icon: Icon }) {
 }
 
 function ComparisonAreaChart({ data, locale }) {
-    const rows = data.length
-        ? data
-        : [
-            { label: 'Okt', income: 32000000, expense: 7200000 },
-            { label: 'Nov', income: 37000000, expense: 8200000 },
-            { label: 'Des', income: 35000000, expense: 9000000 },
-            { label: 'Jan', income: 43000000, expense: 8700000 },
-            { label: 'Feb', income: 41000000, expense: 8900000 },
-            { label: 'Mar', income: 42000000, expense: 9100000 },
-        ];
+    const rows = data.length ? data : [{ label: '-', income: 0, expense: 0 }];
 
     const width = 1000;
     const height = 260;

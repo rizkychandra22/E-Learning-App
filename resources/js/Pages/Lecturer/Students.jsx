@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { Mail, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Mail, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyNoteForm = {
     student_id: '',
@@ -149,8 +150,8 @@ export default function Students({ notes, students, courses, roster, filters, mi
                                                 <p className="text-xl font-semibold">{attendance}%</p>
                                                 <p className="text-xs text-muted-foreground">Hadir</p>
                                             </div>
-                                            <button type="button" onClick={() => removeEnrollment(student)} disabled={mocked || migrationRequired?.enrollments || student.is_mock} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs"><Trash2 className="w-3.5 h-3.5" /> Hapus</button>
-                                            <button type="button" className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border"><Mail className="w-4 h-4" /></button>
+                                            <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => removeEnrollment(student)} disabled={mocked || migrationRequired?.enrollments || student.is_mock} />
+                                            <ActionIconButton icon={Mail} label="Kirim Email" tone="info" />
                                         </div>
                                     </div>
                                 </div>
@@ -171,8 +172,8 @@ export default function Students({ notes, students, courses, roster, filters, mi
                                         <p className="text-sm text-muted-foreground mt-1">{note.note}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button type="button" onClick={() => beginEditNote(note)} className="text-xs px-2.5 py-1 rounded-lg border border-border">Edit</button>
-                                        <button type="button" onClick={() => removeNote(note)} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                        <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEditNote(note)} />
+                                        <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => removeNote(note)} />
                                     </div>
                                 </div>
                             ))}
@@ -205,3 +206,4 @@ function StatCard({ title, value, tone }) {
 }
 function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
+

@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const fakultasDefault = { name: '', code: '' };
 const jurusanDefault = { fakultas_id: '', name: '', code: '' };
@@ -100,18 +101,18 @@ export default function Categories({ fakultas, mocked }) {
             <div className="space-y-6 w-full max-w-none">
                 <PageHeroBanner title="Kategori Kursus" description="Kelola kategori dan pengelompokan kursus" />
 
-                <div className="flex justify-end -mt-2">
-                    <button type="button" onClick={() => (showForm ? closeForm() : openCreateForm())} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
-                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                        {showForm ? 'Tutup Form' : 'Tambah Kategori'}
-                    </button>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     <StatCard title="Total Kategori" value={fakultas.length} icon={FolderTree} gradient="primary" />
                     <StatCard title="Total Jurusan" value={totalJurusan} icon={BookOpen} gradient="success" />
                     <StatCard title="Rata-rata Kursus" value={averagePerFakultas} icon={BookOpen} gradient="warm" />
                     <StatCard title="Kategori Aktif" value={fakultas.length} icon={FolderTree} gradient="accent" />
+                </div>
+
+                <div className="flex justify-end -mt-2">
+                    <button type="button" onClick={() => (showForm ? closeForm() : openCreateForm())} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold">
+                        {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                        {showForm ? 'Tutup Form' : 'Tambah Kategori'}
+                    </button>
                 </div>
 
                 <CreateFormModal
@@ -174,8 +175,8 @@ export default function Categories({ fakultas, mocked }) {
                                         <Icon className="w-5 h-5" />
                                     </div>
                                     <div className="flex gap-1.5">
-                                        <button type="button" onClick={() => editFakultas(item)} disabled={mocked || item.is_mock} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-60"><Pencil className="w-4 h-4" /></button>
-                                        <button type="button" onClick={() => destroyFakultas(item)} disabled={mocked || item.is_mock} className="p-1.5 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-60"><Trash2 className="w-4 h-4" /></button>
+                                        <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => editFakultas(item)} disabled={mocked || item.is_mock} />
+                                        <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyFakultas(item)} disabled={mocked || item.is_mock} />
                                     </div>
                                 </div>
                                 <h3 className="mt-4 text-2xl font-semibold">{item.name}</h3>
@@ -188,8 +189,8 @@ export default function Categories({ fakultas, mocked }) {
                                             <div key={major.id} className="flex items-center justify-between rounded-lg bg-secondary/55 px-2.5 py-1.5">
                                                 <span className="text-sm">{major.name}</span>
                                                 <div className="flex gap-1.5">
-                                                    <button type="button" onClick={() => editJurusan(major)} disabled={mocked || major.is_mock} className="p-1 rounded-md hover:bg-background disabled:opacity-60"><Pencil className="w-3.5 h-3.5" /></button>
-                                                    <button type="button" onClick={() => destroyJurusan(major)} disabled={mocked || major.is_mock} className="p-1 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                    <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => editJurusan(major)} disabled={mocked || major.is_mock} className="h-7 w-7" />
+                                                    <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyJurusan(major)} disabled={mocked || major.is_mock} className="h-7 w-7" />
                                                 </div>
                                             </div>
                                         ))}

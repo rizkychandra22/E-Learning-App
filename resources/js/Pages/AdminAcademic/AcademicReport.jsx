@@ -108,6 +108,7 @@ function ProgressCategoryChart({ title, data = [] }) {
 export default function AcademicReport({
     filters,
     summary,
+    summary_changes,
     enrollment_trend = [],
     completion_trend = [],
     progress_distribution = [],
@@ -214,10 +215,10 @@ export default function AcademicReport({
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <StatCard title="Total Pendaftar" value={summary?.total_enrollment ?? 0} change="+14% dari periode lalu" icon={Users} gradient="primary" />
-                    <StatCard title="Kursus Selesai" value={summary?.completed_courses ?? 0} change="+22% dari periode lalu" icon={GraduationCap} gradient="success" />
-                    <StatCard title="Kursus Aktif" value={summary?.active_courses ?? 0} change="0% dari periode lalu" icon={BookOpen} gradient="warm" />
-                    <StatCard title="Rata-rata Nilai" value={summary?.average_score ?? 0} change="+3.2 dari periode lalu" icon={Trophy} gradient="accent" />
+                    <StatCard title="Total Pendaftar" value={summary?.total_enrollment ?? 0} change={summary_changes?.total_enrollment ?? '0% dari periode sebelumnya'} icon={Users} gradient="primary" />
+                    <StatCard title="Kursus Selesai" value={summary?.completed_courses ?? 0} change={summary_changes?.completed_courses ?? '0% dari periode sebelumnya'} icon={GraduationCap} gradient="success" />
+                    <StatCard title="Kursus Aktif" value={summary?.active_courses ?? 0} change={summary_changes?.active_courses ?? '0% dari periode sebelumnya'} icon={BookOpen} gradient="warm" />
+                    <StatCard title="Rata-rata Nilai" value={summary?.average_score ?? 0} change={summary_changes?.average_score ?? '0 poin dari periode sebelumnya'} icon={Trophy} gradient="accent" />
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">

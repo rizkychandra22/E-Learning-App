@@ -30,6 +30,33 @@ export default function Payments({ migrationRequired, payments = [], filters, mo
         router.get('/finance-payments', { search, status: statusFilter }, { preserveState: true, preserveScroll: true, replace: true });
     };
 
+    const exportCsv = () => {
+        const rows = [
+            ['Payment No', 'Student', 'Student Code', 'Invoice', 'Amount', 'Method', 'Paid At', 'Status'],
+            ...payments.map((payment) => [
+                payment.payment_no ?? '-',
+                payment.student?.name ?? '-',
+                payment.student?.code ?? '-',
+                payment.invoice?.title ?? '-',
+                Number(payment.amount ?? 0),
+                payment.method ?? '-',
+                payment.paid_at ?? '-',
+                payment.status ?? '-',
+            ]),
+        ];
+
+        const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'transaksi-pembayaran.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <ProtectedLayout>
             <Head title="Pembayaran" />
@@ -41,11 +68,11 @@ export default function Payments({ migrationRequired, payments = [], filters, mo
                     action={(
                         <button
                             type="button"
-                            onClick={() => window.alert('Export transaksi akan dihubungkan ke file CSV/PDF.')}
+                            onClick={exportCsv}
                             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-secondary text-sm font-medium"
                         >
                             <Download className="w-4 h-4" />
-                            Export
+                            Export CSV
                         </button>
                     )}
                 />

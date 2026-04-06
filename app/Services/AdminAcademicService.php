@@ -1047,8 +1047,24 @@ class AdminAcademicService
 
         $enrollmentTrend = $this->buildEnrollmentTrend($selectedPeriod, $courseId);
         $completionTrend = $analytics['completion_trend'] ?? [];
+        $scoreTrend = $analytics['score_trend'] ?? [];
         $topCourses = $this->buildTopCourses($courseId);
-        $totalEnrollment = collect($topCourses)->sum(fn (array $item) => (int) ($item['enrollment'] ?? 0));
+        $latestEnrollment = $this->extractLatestTrendValue($enrollmentTrend);
+        $previousEnrollment = $this->extractPreviousTrendValue($enrollmentTrend);
+        $latestCompletionRate = $this->extractLatestTrendValue($completionTrend);
+        $previousCompletionRate = $this->extractPreviousTrendValue($completionTrend);
+        $latestScore = (float) ($analytics['summary']['average_score'] ?? 0);
+        $previousScore = $this->extractPreviousTrendValue($scoreTrend);
+
+        $completedEnrollments = (int) round(($latestEnrollment * max(0, $latestCompletionRate)) / 100);
+        $previousCompletedEnrollments = (int) round(($previousEnrollment * max(0, $previousCompletionRate)) / 100);
+
+        $activeCourses = (int) ($dashboard['summary']['active_courses_count'] ?? 0);
+        $periodBuckets = $this->buildPeriodBuckets($selectedPeriod);
+        $previousBucket = $periodBuckets->count() >= 2 ? $periodBuckets[$periodBuckets->count() - 2] : null;
+        $previousActiveCourses = $previousBucket !== null
+            ? $this->resolveActiveCoursesCount($courseId !== null && $courseId > 0 ? $courseId : null, $previousBucket['end'] ?? null)
+            : 0;
 
         return [
             'filters' => [
@@ -1056,10 +1072,16 @@ class AdminAcademicService
                 'course_id' => $analytics['filters']['course_id'] ?? null,
             ],
             'summary' => [
-                'total_enrollment' => $totalEnrollment,
-                'completed_courses' => array_sum(array_map(fn (array $item) => (int) ($item['completed'] ?? 0), $topCourses)),
-                'active_courses' => (int) ($dashboard['summary']['active_courses_count'] ?? 0),
-                'average_score' => (float) ($analytics['summary']['average_score'] ?? 0),
+                'total_enrollment' => $latestEnrollment,
+                'completed_courses' => $completedEnrollments,
+                'active_courses' => $activeCourses,
+                'average_score' => $latestScore,
+            ],
+            'summary_changes' => [
+                'total_enrollment' => $this->formatMetricChange($latestEnrollment, $previousEnrollment, '%'),
+                'completed_courses' => $this->formatMetricChange($completedEnrollments, $previousCompletedEnrollments, '%'),
+                'active_courses' => $this->formatMetricChange($activeCourses, $previousActiveCourses, '%'),
+                'average_score' => $this->formatMetricChange($latestScore, $previousScore, 'point'),
             ],
             'enrollment_trend' => $enrollmentTrend,
             'completion_trend' => $completionTrend,
@@ -1267,45 +1289,114 @@ class AdminAcademicService
 
     private function buildTopCourses(?int $courseId = null): array
     {
-        if (Schema::hasTable('courses')) {
-            $query = Course::query()->with('lecturer:id,name');
-            if ($courseId !== null && $courseId > 0) {
-                $query->where('id', $courseId);
-            }
-
-            if (Schema::hasTable('course_student')) {
-                $query->withCount('students');
-            }
-
-            $courses = $query->limit(5)->get();
-            if ($courses->isNotEmpty()) {
-                return $courses
-                    ->sortByDesc(fn (Course $course) => (int) ($course->students_count ?? 0))
-                    ->values()
-                    ->map(function (Course $course, int $index): array {
-                        $enrollment = (int) ($course->students_count ?? (($index + 3) * 40));
-                        $completion = min(95, max(35, 50 + ($index * 9)));
-
-                        return [
-                            'rank' => $index + 1,
-                            'name' => $course->title,
-                            'instructor' => $course->lecturer?->name ?? '-',
-                            'enrollment' => $enrollment,
-                            'completion' => $completion,
-                            'completed' => (int) round($enrollment * ($completion / 100)),
-                        ];
-                    })
-                    ->all();
-            }
+        if (!Schema::hasTable('courses')) {
+            return [];
         }
 
-        return [
-            ['rank' => 1, 'name' => 'Data Science & ML', 'instructor' => 'Prof. Rina Susanti', 'enrollment' => 450, 'completion' => 72, 'completed' => 324],
-            ['rank' => 2, 'name' => 'Bisnis Digital', 'instructor' => 'Prof. Lina Marlina', 'enrollment' => 340, 'completion' => 85, 'completed' => 289],
-            ['rank' => 3, 'name' => 'Pemrograman Web', 'instructor' => 'Dr. Ahmad Fauzi', 'enrollment' => 320, 'completion' => 68, 'completed' => 218],
-            ['rank' => 4, 'name' => 'Desain UI/UX', 'instructor' => 'Dr. Hendra Wijaya', 'enrollment' => 280, 'completion' => 79, 'completed' => 221],
-            ['rank' => 5, 'name' => 'Matematika Diskrit', 'instructor' => 'Dr. Bambang Purnomo', 'enrollment' => 190, 'completion' => 55, 'completed' => 105],
-        ];
+        $query = Course::query()->with('lecturer:id,name');
+        if ($courseId !== null && $courseId > 0) {
+            $query->where('id', $courseId);
+        }
+
+        if (Schema::hasTable('course_student')) {
+            $query->withCount('students')->orderByDesc('students_count');
+        } else {
+            $query->orderBy('title');
+        }
+
+        $courses = $query->limit(5)->get();
+        if ($courses->isEmpty()) {
+            return [];
+        }
+
+        $courseIds = $courses->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $completionStats = $this->buildTopCourseCompletionStats($courseIds);
+
+        return $courses
+            ->values()
+            ->map(function (Course $course, int $index) use ($completionStats): array {
+                $courseKey = (int) $course->id;
+                $enrollment = (int) ($course->students_count ?? 0);
+                $completion = (float) ($completionStats[$courseKey]['completion'] ?? 0);
+                $completed = (int) ($completionStats[$courseKey]['completed'] ?? 0);
+
+                return [
+                    'rank' => $index + 1,
+                    'name' => $course->title,
+                    'instructor' => $course->lecturer?->name ?? '-',
+                    'enrollment' => $enrollment,
+                    'completion' => $completion,
+                    'completed' => $completed,
+                ];
+            })
+            ->all();
+    }
+
+    private function buildTopCourseCompletionStats(array $courseIds): array
+    {
+        $baseline = collect($courseIds)->mapWithKeys(fn (int $id): array => [$id => ['completion' => 0.0, 'completed' => 0]])->all();
+        if (
+            $courseIds === [] ||
+            !Schema::hasTable('course_student') ||
+            !Schema::hasTable('course_modules') ||
+            !Schema::hasTable('course_lessons') ||
+            !Schema::hasTable('lesson_progress')
+        ) {
+            return $baseline;
+        }
+
+        $enrollmentRows = DB::table('course_student')
+            ->whereIn('course_id', $courseIds)
+            ->select('course_id', DB::raw('COUNT(DISTINCT student_id) as total_students'))
+            ->groupBy('course_id')
+            ->get();
+        $enrollmentByCourse = $enrollmentRows
+            ->mapWithKeys(fn ($row): array => [(int) $row->course_id => (int) $row->total_students])
+            ->all();
+
+        $lessonRows = DB::table('course_lessons')
+            ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
+            ->whereIn('course_modules.course_id', $courseIds)
+            ->select('course_modules.course_id', DB::raw('COUNT(course_lessons.id) as total_lessons'))
+            ->groupBy('course_modules.course_id')
+            ->get();
+        $lessonByCourse = $lessonRows
+            ->mapWithKeys(fn ($row): array => [(int) $row->course_id => (int) $row->total_lessons])
+            ->all();
+
+        $completedRows = DB::table('lesson_progress')
+            ->join('course_lessons', 'course_lessons.id', '=', 'lesson_progress.lesson_id')
+            ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
+            ->join('course_student', function ($join): void {
+                $join->on('course_student.course_id', '=', 'course_modules.course_id')
+                    ->on('course_student.student_id', '=', 'lesson_progress.student_id');
+            })
+            ->whereIn('course_modules.course_id', $courseIds)
+            ->where('lesson_progress.is_completed', true)
+            ->select('course_modules.course_id', DB::raw('COUNT(*) as completed_entries'))
+            ->groupBy('course_modules.course_id')
+            ->get();
+        $completedEntriesByCourse = $completedRows
+            ->mapWithKeys(fn ($row): array => [(int) $row->course_id => (int) $row->completed_entries])
+            ->all();
+
+        return collect($courseIds)->mapWithKeys(function (int $id) use ($enrollmentByCourse, $lessonByCourse, $completedEntriesByCourse): array {
+            $totalStudents = (int) ($enrollmentByCourse[$id] ?? 0);
+            $totalLessons = (int) ($lessonByCourse[$id] ?? 0);
+            $completedEntries = (int) ($completedEntriesByCourse[$id] ?? 0);
+            $denominator = max(1, $totalStudents * $totalLessons);
+            $completion = ($totalStudents > 0 && $totalLessons > 0)
+                ? round(($completedEntries / $denominator) * 100, 1)
+                : 0.0;
+            $completed = (int) round(($completion / 100) * $totalStudents);
+
+            return [
+                $id => [
+                    'completion' => max(0, min(100, $completion)),
+                    'completed' => max(0, $completed),
+                ],
+            ];
+        })->all();
     }
 
     private function estimateAverageScore(array $topCourses): float
@@ -1331,6 +1422,64 @@ class AdminAcademicService
     private function normalizePeriod(string $period): string
     {
         return in_array($period, ['monthly', 'quarterly', 'yearly'], true) ? $period : 'monthly';
+    }
+
+    private function extractLatestTrendValue(array $trend): float
+    {
+        if ($trend === []) {
+            return 0.0;
+        }
+
+        $last = $trend[array_key_last($trend)] ?? ['value' => 0];
+        return (float) ($last['value'] ?? 0);
+    }
+
+    private function extractPreviousTrendValue(array $trend): float
+    {
+        if (count($trend) < 2) {
+            return 0.0;
+        }
+
+        $previous = $trend[count($trend) - 2] ?? ['value' => 0];
+        return (float) ($previous['value'] ?? 0);
+    }
+
+    private function formatMetricChange(float|int $current, float|int $previous, string $mode = '%'): string
+    {
+        if ($previous <= 0) {
+            if ($current <= 0) {
+                return '0% dari periode sebelumnya';
+            }
+
+            return 'Data pembanding belum cukup';
+        }
+
+        if ($mode === 'point') {
+            $delta = round($current - $previous, 1);
+            $sign = $delta > 0 ? '+' : '';
+            return $sign . number_format($delta, 1) . ' poin dari periode sebelumnya';
+        }
+
+        $deltaPercent = round((($current - $previous) / $previous) * 100, 1);
+        $sign = $deltaPercent > 0 ? '+' : '';
+        return $sign . number_format($deltaPercent, 1) . '% dari periode sebelumnya';
+    }
+
+    private function resolveActiveCoursesCount(?int $courseId = null, mixed $createdAtLte = null): int
+    {
+        if (!Schema::hasTable('courses')) {
+            return 0;
+        }
+
+        $query = Course::query()->where('status', 'active');
+        if ($courseId !== null && $courseId > 0) {
+            $query->where('id', $courseId);
+        }
+        if ($createdAtLte !== null) {
+            $query->where('created_at', '<=', $createdAtLte);
+        }
+
+        return (int) $query->count();
     }
 
     private function buildPeriodBuckets(string $period): Collection

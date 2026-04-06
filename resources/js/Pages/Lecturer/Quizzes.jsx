@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { HelpCircle, Plus, Search, Trash2 } from 'lucide-react';
+import { HelpCircle, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const makeEmptyQuestion = (index = 1) => ({
     question_text: '',
@@ -192,8 +193,8 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                 </div>
                                 <p className="text-xs text-muted-foreground">Jadwal: {formatDate(quiz.scheduled_at)}</p>
                                 <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => beginEdit(quiz)} disabled={mocked} className="text-xs px-2.5 py-1 rounded-lg border border-border">Edit</button>
-                                    <button type="button" onClick={() => destroyQuiz(quiz)} disabled={mocked} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                    <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(quiz)} disabled={mocked} />
+                                    <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyQuiz(quiz)} disabled={mocked} />
                                 </div>
                             </div>
                         ))}
@@ -223,7 +224,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                 <div key={`question-${questionIndex}`} className="rounded-lg border border-border p-3 space-y-2">
                                     <div className="flex items-center justify-between gap-2">
                                         <p className="text-xs font-semibold text-muted-foreground">Soal #{questionIndex + 1}</p>
-                                        <button type="button" onClick={() => removeQuestion(questionIndex)} disabled={form.data.questions.length <= 1} className="text-xs px-2 py-1 rounded border border-border disabled:opacity-60">Hapus</button>
+                                        <ActionIconButton icon={Trash2} label="Hapus Pertanyaan" tone="danger" onClick={() => removeQuestion(questionIndex)} disabled={form.data.questions.length <= 1} className="h-7 w-7" />
                                     </div>
                                     <Field label="Pertanyaan" value={question.question_text} onChange={(value) => setQuestionField(questionIndex, 'question_text', value)} error={form.errors[`questions.${questionIndex}.question_text`]} />
                                     <div className="grid grid-cols-2 gap-3">
@@ -268,3 +269,5 @@ function SelectField({ label, value, onChange, error, children }) { return <labe
 function mapStatus(value) { if (value === 'active') return 'Aktif'; if (value === 'closed') return 'Ditutup'; return 'Draft'; }
 function formatDate(value) { if (!value) return '-'; return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
 function toInputDateTime(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return ''; const offset = date.getTimezoneOffset(); const local = new Date(date.getTime() - offset * 60000); return local.toISOString().slice(0, 16); }
+
+

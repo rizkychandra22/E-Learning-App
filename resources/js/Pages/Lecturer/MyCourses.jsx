@@ -4,6 +4,7 @@ import { BookOpen, Layers3, Pencil, Plus, Search, Tags, Trash2 } from 'lucide-re
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 import { cn } from '@/lib/cn';
 
 const emptyForm = {
@@ -184,8 +185,8 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                                     </div>
 
                                     <div className="flex items-center gap-2 pt-1">
-                                        <button type="button" onClick={() => beginEdit(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium disabled:opacity-60"><Pencil className="w-3.5 h-3.5" />Edit</button>
-                                        <button type="button" onClick={() => destroyCourse(course)} disabled={course.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                        <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(course)} disabled={course.is_mock || mocked} />
+                                        <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyCourse(course)} disabled={course.is_mock || mocked} />
                                     </div>
                                 </div>
                             );
@@ -262,3 +263,4 @@ function parseTags(raw) {
     if (!raw) return [];
     return [...new Set(String(raw).split(',').map((item) => item.trim()).filter((item) => item !== ''))];
 }
+

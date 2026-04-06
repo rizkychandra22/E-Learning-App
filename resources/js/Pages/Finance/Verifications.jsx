@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { CheckCircle2, Clock3, Eye, Search, ShieldCheck, TriangleAlert, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const cardTone = {
     pending: 'gradient-warm',
@@ -12,6 +14,7 @@ const cardTone = {
 
 export default function Verifications({ migrationRequired, mocked, filters, summary, verifications = [] }) {
     const [search, setSearch] = useState(filters?.search ?? '');
+    const [previewItem, setPreviewItem] = useState(null);
 
     const submitFilter = (event) => {
         event.preventDefault();
@@ -27,9 +30,10 @@ export default function Verifications({ migrationRequired, mocked, filters, summ
     };
 
     const openProof = (item) => {
-        const invoiceNo = item?.invoice?.invoice_no ?? '-';
-        window.alert(`Bukti pembayaran untuk ${invoiceNo} akan ditampilkan di modal/detail transaksi.`);
+        setPreviewItem(item);
     };
+
+    const closePreview = () => setPreviewItem(null);
 
     return (
         <ProtectedLayout>
@@ -122,30 +126,9 @@ export default function Verifications({ migrationRequired, mocked, filters, summ
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={() => openProof(item)}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-secondary text-xs font-medium"
-                                            >
-                                                <Eye className="w-3.5 h-3.5" />
-                                                Bukti
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => verifyPayment(item.id)}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success text-white text-xs font-semibold hover:opacity-90"
-                                            >
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                                Terima
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => rejectPayment(item.id)}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive text-white text-xs font-semibold hover:opacity-90"
-                                            >
-                                                <XCircle className="w-3.5 h-3.5" />
-                                                Tolak
-                                            </button>
+                                            <ActionIconButton icon={Eye} label="Tinjau Bukti" tone="neutral" onClick={() => openProof(item)} />
+                                            <ActionIconButton icon={CheckCircle2} label="Terima" tone="success" onClick={() => verifyPayment(item.id)} />
+                                            <ActionIconButton icon={XCircle} label="Tolak" tone="danger" onClick={() => rejectPayment(item.id)} />
                                         </div>
                                     </div>
                                 </div>
@@ -159,8 +142,47 @@ export default function Verifications({ migrationRequired, mocked, filters, summ
                         )}
                     </div>
                 </section>
+
+                <CreateFormModal
+                    open={!!previewItem}
+                    title="Tinjau Pembayaran"
+                    onClose={closePreview}
+                    hideFooter
+                    maxWidthClass="max-w-2xl"
+                >
+                    {previewItem && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <ReadOnlyField label="No. Pembayaran" value={previewItem.payment_no ?? '-'} />
+                            <ReadOnlyField label="Status" value={previewItem.status ?? '-'} />
+                            <ReadOnlyField label="Mahasiswa" value={previewItem.student?.name ?? '-'} />
+                            <ReadOnlyField label="NIM" value={previewItem.student?.code ?? '-'} />
+                            <ReadOnlyField label="Email" value={previewItem.student?.email ?? '-'} />
+                            <ReadOnlyField label="No. Tagihan" value={previewItem.invoice?.invoice_no ?? '-'} />
+                            <ReadOnlyField label="Tagihan" value={previewItem.invoice?.title ?? '-'} />
+                            <ReadOnlyField label="Jumlah" value={`Rp ${new Intl.NumberFormat('id-ID').format(Number(previewItem.amount ?? 0))}`} />
+                            <ReadOnlyField label="Metode" value={formatMethod(previewItem.method)} />
+                            <ReadOnlyField label="Tanggal Bayar" value={formatDateTime(previewItem.paid_at)} />
+                            <div className="sm:col-span-2">
+                                <ReadOnlyField label="Catatan" value={previewItem.notes || '-'} multiline />
+                            </div>
+                        </div>
+                    )}
+                </CreateFormModal>
             </div>
         </ProtectedLayout>
+    );
+}
+
+function ReadOnlyField({ label, value, multiline = false }) {
+    const className = multiline
+        ? 'mt-1.5 w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm min-h-[84px] whitespace-pre-wrap'
+        : 'mt-1.5 w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm';
+
+    return (
+        <div>
+            <p className="text-sm font-medium">{label}</p>
+            <div className={className}>{value}</div>
+        </div>
     );
 }
 

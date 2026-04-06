@@ -4,6 +4,7 @@ import { Download, FileText, Search, Trash2, Upload } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyForm = {
     course_id: '',
@@ -99,8 +100,8 @@ export default function Materials({ materials, courses, migrationRequired, filte
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">{detectType(material.file_name)}</span>
-                                    <a href={material.is_mock || mocked ? undefined : `/materials/${material.id}/download`} onClick={(event) => { if (material.is_mock || mocked) event.preventDefault(); }} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium"><Download className="w-3.5 h-3.5" />Unduh</a>
-                                    <button type="button" onClick={() => destroyMaterial(material)} disabled={material.is_mock || mocked} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-destructive/15 text-destructive text-xs font-medium disabled:opacity-60"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                    <a href={material.is_mock || mocked ? undefined : `/materials/${material.id}/download`} onClick={(event) => { if (material.is_mock || mocked) event.preventDefault(); }} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-500 hover:bg-sky-500/10" title="Unduh" aria-label="Unduh"><Download className="w-4 h-4" /></a>
+                                    <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyMaterial(material)} disabled={material.is_mock || mocked} />
                                 </div>
                             </div>
                         ))}
@@ -189,3 +190,4 @@ function formatDate(dateString) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID');
 }
+

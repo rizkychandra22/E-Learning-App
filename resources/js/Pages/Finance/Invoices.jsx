@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { CreateFormModal } from '@/components/CreateFormModal';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyForm = {
     student_id: '',
@@ -30,6 +31,7 @@ export default function Invoices({ migrationRequired, invoices = [], students = 
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [detailInvoice, setDetailInvoice] = useState(null);
     const form = useForm(emptyForm);
 
     const summary = useMemo(() => {
@@ -85,6 +87,34 @@ export default function Invoices({ migrationRequired, invoices = [], students = 
     const removeInvoice = (invoice) => {
         if (!window.confirm(`Hapus tagihan ${invoice.invoice_no}?`)) return;
         router.delete(`/finance-invoices/${invoice.id}`, { preserveScroll: true });
+    };
+
+    const openDetail = (invoice) => {
+        setDetailInvoice(invoice);
+    };
+
+    const closeDetail = () => {
+        setDetailInvoice(null);
+    };
+
+    const sendReminder = (invoice) => {
+        const to = invoice?.student?.email;
+        if (!to) {
+            window.alert('Email mahasiswa belum tersedia.');
+            return;
+        }
+
+        const subject = encodeURIComponent(`Pengingat Tagihan ${invoice.invoice_no}`);
+        const body = encodeURIComponent(
+            `Halo ${invoice?.student?.name ?? 'Mahasiswa'},\n\n` +
+            `Mohon melakukan pembayaran untuk tagihan berikut:\n` +
+            `- Nomor: ${invoice.invoice_no}\n` +
+            `- Jenis: ${invoice.title}\n` +
+            `- Jumlah: Rp ${new Intl.NumberFormat(intlLocale).format(Number(invoice.amount ?? 0))}\n` +
+            `- Jatuh tempo: ${formatDate(invoice.due_date)}\n\n` +
+            `Terima kasih.`
+        );
+        window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
     };
 
     return (
@@ -203,6 +233,31 @@ export default function Invoices({ migrationRequired, invoices = [], students = 
                         </div>
                     </CreateFormModal>
 
+                    <CreateFormModal
+                        open={!!detailInvoice}
+                        title="Detail Tagihan"
+                        onClose={closeDetail}
+                        hideFooter
+                        maxWidthClass="max-w-2xl"
+                    >
+                        {detailInvoice && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                <ReadOnlyField label="No. Tagihan" value={detailInvoice.invoice_no} />
+                                <ReadOnlyField label="Status" value={statusText(detailInvoice.status)} />
+                                <ReadOnlyField label="Mahasiswa" value={detailInvoice.student?.name ?? '-'} />
+                                <ReadOnlyField label="NIM" value={detailInvoice.student?.code ?? '-'} />
+                                <ReadOnlyField label="Email" value={detailInvoice.student?.email ?? '-'} />
+                                <ReadOnlyField label="Komponen" value={detailInvoice.fee_component?.name ?? '-'} />
+                                <ReadOnlyField label="Jenis Tagihan" value={detailInvoice.title ?? '-'} />
+                                <ReadOnlyField label="Jumlah" value={`Rp ${new Intl.NumberFormat(intlLocale).format(Number(detailInvoice.amount ?? 0))}`} />
+                                <ReadOnlyField label="Jatuh Tempo" value={formatDate(detailInvoice.due_date)} />
+                                <div className="sm:col-span-2">
+                                    <ReadOnlyField label="Catatan" value={detailInvoice.description || '-'} multiline />
+                                </div>
+                            </div>
+                        )}
+                    </CreateFormModal>
+
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[980px] text-sm">
                             <thead>
@@ -230,18 +285,10 @@ export default function Invoices({ migrationRequired, invoices = [], students = 
                                         <td className="py-2.5 px-2">{statusBadge(invoice.status)}</td>
                                         <td className="py-2.5 px-2">
                                             <div className="inline-flex items-center gap-2">
-                                                <button type="button" onClick={() => window.alert(`Detail ${invoice.invoice_no}`)} className="text-muted-foreground hover:text-foreground">
-                                                    <Eye className="w-4 h-4" />
-                                                </button>
-                                                <button type="button" onClick={() => window.alert(`Kirim pengingat ${invoice.invoice_no}`)} className="text-info hover:opacity-80">
-                                                    <Send className="w-4 h-4" />
-                                                </button>
-                                                <button type="button" onClick={() => openEdit(invoice)} disabled={mocked || invoice.is_mock} className="text-primary hover:opacity-80 disabled:opacity-50">
-                                                    <FileText className="w-4 h-4" />
-                                                </button>
-                                                <button type="button" onClick={() => removeInvoice(invoice)} disabled={mocked || invoice.is_mock} className="text-destructive hover:opacity-80 disabled:opacity-50">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <ActionIconButton icon={Eye} label="Lihat" tone="neutral" onClick={() => openDetail(invoice)} />
+                                                <ActionIconButton icon={Send} label="Kirim Pengingat" tone="info" onClick={() => sendReminder(invoice)} />
+                                                <ActionIconButton icon={FileText} label="Edit" tone="primary" onClick={() => openEdit(invoice)} disabled={mocked || invoice.is_mock} />
+                                                <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => removeInvoice(invoice)} disabled={mocked || invoice.is_mock} />
                                             </div>
                                         </td>
                                     </tr>
@@ -252,6 +299,19 @@ export default function Invoices({ migrationRequired, invoices = [], students = 
                 </section>
             </div>
         </ProtectedLayout>
+    );
+}
+
+function ReadOnlyField({ label, value, multiline = false }) {
+    const className = multiline
+        ? 'mt-1.5 w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm min-h-[84px] whitespace-pre-wrap'
+        : 'mt-1.5 w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm';
+
+    return (
+        <div>
+            <p className="text-sm font-medium">{label}</p>
+            <div className={className}>{value}</div>
+        </div>
     );
 }
 
@@ -315,4 +375,16 @@ function statusBadge(status) {
     };
 
     return <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${map[status] ?? map.cancelled}`}>{labelMap[status] ?? status}</span>;
+}
+
+function statusText(status) {
+    const labelMap = {
+        paid: 'Lunas',
+        unpaid: 'Belum Bayar',
+        partial: 'Sebagian',
+        overdue: 'Terlambat',
+        cancelled: 'Dibatalkan',
+    };
+
+    return labelMap[status] ?? status;
 }
