@@ -85,8 +85,7 @@ class FinanceService
             $paymentMethodLabels = [
                 'bank_transfer' => 'Transfer Bank',
                 'virtual_account' => 'Virtual Account',
-                'e_wallet' => 'E-Wallet',
-                'credit_card' => 'Kartu Kredit',
+                'ewallet' => 'E-Wallet',
                 'cash' => 'Tunai',
             ];
             $paymentMethods = Payment::query()
@@ -201,7 +200,7 @@ class FinanceService
         $this->refreshOverdueInvoices();
 
         $invoices = Invoice::query()
-            ->with(['student:id,name,code', 'feeComponent:id,name,code'])
+            ->with(['student:id,name,code,email', 'feeComponent:id,name,code'])
             ->when($selectedStatus !== 'all', fn ($query) => $query->where('status', $selectedStatus))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
@@ -241,9 +240,14 @@ class FinanceService
     public function createInvoice(array $payload, int $creatorId): void
     {
         $data = $payload;
+        $settings = $this->getSettings($creatorId);
         $data['invoice_no'] = $this->generateInvoiceNo();
         $data['created_by'] = $creatorId;
         $data['status'] = $data['status'] ?? 'unpaid';
+        if (empty($data['due_date'])) {
+            $dueDays = max(1, (int) ($settings['default_due_days'] ?? 14));
+            $data['due_date'] = now()->addDays($dueDays)->toDateString();
+        }
 
         Invoice::create($data);
         Cache::forget('dashboard:finance');
@@ -281,7 +285,7 @@ class FinanceService
         }
 
         $payments = Payment::query()
-            ->with(['invoice:id,invoice_no,title,status,amount', 'student:id,name,code'])
+            ->with(['invoice:id,invoice_no,title,status,amount', 'student:id,name,code,email'])
             ->when($selectedStatus !== 'all', fn ($query) => $query->where('status', $selectedStatus))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($subQuery) use ($search) {
@@ -336,7 +340,7 @@ class FinanceService
 
         $pendingQuery = Payment::query()
             ->with([
-                'student:id,name,code',
+                'student:id,name,code,email',
                 'invoice:id,invoice_no,title,status,due_date,amount',
             ])
             ->where('status', 'pending')
@@ -368,11 +372,20 @@ class FinanceService
         ];
     }
 
-    public function createPayment(array $payload): void
+    public function createPayment(array $payload, int $actorId): void
     {
-        DB::transaction(function () use ($payload) {
+        DB::transaction(function () use ($payload, $actorId) {
             $data = $payload;
+            $settings = $this->getSettings($actorId);
+            $autoVerify = (bool) ($settings['auto_verify_payment'] ?? false);
             $data['payment_no'] = $this->generatePaymentNo();
+            if (empty($data['paid_at'])) {
+                $data['paid_at'] = now()->toDateTimeString();
+            }
+            if ($autoVerify) {
+                $data['status'] = 'verified';
+                $data['verified_by'] = $actorId;
+            }
             $payment = Payment::create($data);
 
             if ($payment->status === 'verified' && $payment->invoice_id) {
@@ -423,9 +436,19 @@ class FinanceService
                     'pending_amount' => 0,
                     'receivables' => 0,
                     'total_invoices' => 0,
+                    'verified_payments' => 0,
+                    'pending_payments' => 0,
+                ],
+                'summary_changes' => [
+                    'verified_income' => '0% dari periode sebelumnya',
+                    'pending_amount' => '0% dari periode sebelumnya',
+                    'receivables' => '0% dari periode sebelumnya',
+                    'total_invoices' => '0% dari periode sebelumnya',
                 ],
                 'top_unpaid' => [],
                 'cashflow' => [],
+                'payment_methods' => [],
+                'receivable_by_component' => [],
                 'mocked' => false,
                 'filters' => [
                     'date_from' => $dateFrom,
@@ -434,10 +457,15 @@ class FinanceService
             ];
         }
 
-        $rawFrom = $dateFrom;
-        $rawTo = $dateTo;
         $from = $dateFrom ? now()->parse($dateFrom)->startOfDay() : now()->startOfMonth();
         $to = $dateTo ? now()->parse($dateTo)->endOfDay() : now()->endOfDay();
+        if ($from->greaterThan($to)) {
+            [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
+        }
+
+        $rangeDays = max(1, $from->diffInDays($to) + 1);
+        $previousTo = $from->copy()->subSecond();
+        $previousFrom = $previousTo->copy()->subDays($rangeDays - 1)->startOfDay();
 
         $verifiedIncome = (float) Payment::query()
             ->where('status', 'verified')
@@ -452,6 +480,33 @@ class FinanceService
         $receivables = (float) Invoice::query()
             ->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->sum('amount');
+        $verifiedPayments = (int) Payment::query()
+            ->where('status', 'verified')
+            ->whereBetween('paid_at', [$from, $to])
+            ->count();
+        $pendingPayments = (int) Payment::query()
+            ->where('status', 'pending')
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+        $totalInvoices = (int) Invoice::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        $previousVerifiedIncome = (float) Payment::query()
+            ->where('status', 'verified')
+            ->whereBetween('paid_at', [$previousFrom, $previousTo])
+            ->sum('amount');
+        $previousPendingAmount = (float) Payment::query()
+            ->where('status', 'pending')
+            ->whereBetween('created_at', [$previousFrom, $previousTo])
+            ->sum('amount');
+        $previousReceivables = (float) Invoice::query()
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->where('created_at', '<=', $previousTo)
+            ->sum('amount');
+        $previousTotalInvoices = (int) Invoice::query()
+            ->whereBetween('created_at', [$previousFrom, $previousTo])
+            ->count();
 
         $topUnpaid = Invoice::query()
             ->with('student:id,name,code')
@@ -459,6 +514,46 @@ class FinanceService
             ->orderByDesc('amount')
             ->limit(10)
             ->get(['id', 'invoice_no', 'student_id', 'amount', 'due_date', 'status']);
+
+        $paymentMethodLabels = [
+            'bank_transfer' => 'Transfer Bank',
+            'virtual_account' => 'Virtual Account',
+            'ewallet' => 'E-Wallet',
+            'cash' => 'Tunai',
+        ];
+        $paymentMethods = Payment::query()
+            ->selectRaw('method, COUNT(*) as total')
+            ->where('status', 'verified')
+            ->whereBetween('paid_at', [$from, $to])
+            ->whereNotNull('method')
+            ->groupBy('method')
+            ->orderByDesc('total')
+            ->get()
+            ->map(function ($row) use ($paymentMethodLabels): array {
+                $method = (string) $row->method;
+                return [
+                    'label' => $paymentMethodLabels[$method] ?? ucwords(str_replace('_', ' ', $method)),
+                    'value' => (int) $row->total,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $receivableByComponent = Invoice::query()
+            ->leftJoin('fee_components', 'fee_components.id', '=', 'invoices.fee_component_id')
+            ->whereIn('invoices.status', ['unpaid', 'partial', 'overdue'])
+            ->selectRaw("COALESCE(NULLIF(TRIM(fee_components.name), ''), 'Lainnya') as label")
+            ->selectRaw('SUM(invoices.amount) as total_amount')
+            ->groupBy('label')
+            ->orderByDesc('total_amount')
+            ->limit(6)
+            ->get()
+            ->map(fn ($row): array => [
+                'label' => (string) $row->label,
+                'value' => (float) ($row->total_amount ?? 0),
+            ])
+            ->values()
+            ->all();
 
         $cashflow = collect(range(0, 5))
             ->map(function (int $offset) {
@@ -482,10 +577,20 @@ class FinanceService
                 'verified_income' => $verifiedIncome,
                 'pending_amount' => $pendingAmount,
                 'receivables' => $receivables,
-                'total_invoices' => Invoice::count(),
+                'total_invoices' => $totalInvoices,
+                'verified_payments' => $verifiedPayments,
+                'pending_payments' => $pendingPayments,
+            ],
+            'summary_changes' => [
+                'verified_income' => $this->formatPercentDelta($verifiedIncome, $previousVerifiedIncome),
+                'pending_amount' => $this->formatPercentDelta($pendingAmount, $previousPendingAmount),
+                'receivables' => $this->formatPercentDelta($receivables, $previousReceivables),
+                'total_invoices' => $this->formatPercentDelta($totalInvoices, $previousTotalInvoices),
             ],
             'top_unpaid' => $topUnpaid,
             'cashflow' => $cashflow,
+            'payment_methods' => $paymentMethods,
+            'receivable_by_component' => $receivableByComponent,
             'mocked' => $mocked,
             'filters' => [
                 'date_from' => $from->toDateString(),
@@ -505,6 +610,16 @@ class FinanceService
             'grace_period_days' => 7,
             'auto_invoice_enabled' => true,
             'auto_reminder_enabled' => true,
+            'bank_name' => 'Bank Negara Indonesia',
+            'bank_account_name' => 'Smart Learning',
+            'bank_account_number' => '',
+            'finance_contact_email' => 'finance@univ.ac.id',
+            'finance_contact_phone' => '',
+            'notify_on_new_registration' => true,
+            'notify_on_invoice_created' => true,
+            'notify_on_payment_verified' => true,
+            'security_require_note_on_reject' => true,
+            'security_allow_manual_invoice_status' => true,
         ];
 
         if (!Schema::hasTable('system_settings')) {
@@ -525,6 +640,16 @@ class FinanceService
             'grace_period_days' => (int) ($stored[$prefix . 'grace_period_days'] ?? $defaults['grace_period_days']),
             'auto_invoice_enabled' => ($stored[$prefix . 'auto_invoice_enabled'] ?? ($defaults['auto_invoice_enabled'] ? '1' : '0')) === '1',
             'auto_reminder_enabled' => ($stored[$prefix . 'auto_reminder_enabled'] ?? ($defaults['auto_reminder_enabled'] ? '1' : '0')) === '1',
+            'bank_name' => (string) ($stored[$prefix . 'bank_name'] ?? $defaults['bank_name']),
+            'bank_account_name' => (string) ($stored[$prefix . 'bank_account_name'] ?? $defaults['bank_account_name']),
+            'bank_account_number' => (string) ($stored[$prefix . 'bank_account_number'] ?? $defaults['bank_account_number']),
+            'finance_contact_email' => (string) ($stored[$prefix . 'finance_contact_email'] ?? $defaults['finance_contact_email']),
+            'finance_contact_phone' => (string) ($stored[$prefix . 'finance_contact_phone'] ?? $defaults['finance_contact_phone']),
+            'notify_on_new_registration' => ($stored[$prefix . 'notify_on_new_registration'] ?? ($defaults['notify_on_new_registration'] ? '1' : '0')) === '1',
+            'notify_on_invoice_created' => ($stored[$prefix . 'notify_on_invoice_created'] ?? ($defaults['notify_on_invoice_created'] ? '1' : '0')) === '1',
+            'notify_on_payment_verified' => ($stored[$prefix . 'notify_on_payment_verified'] ?? ($defaults['notify_on_payment_verified'] ? '1' : '0')) === '1',
+            'security_require_note_on_reject' => ($stored[$prefix . 'security_require_note_on_reject'] ?? ($defaults['security_require_note_on_reject'] ? '1' : '0')) === '1',
+            'security_allow_manual_invoice_status' => ($stored[$prefix . 'security_allow_manual_invoice_status'] ?? ($defaults['security_allow_manual_invoice_status'] ? '1' : '0')) === '1',
         ];
     }
 
@@ -592,6 +717,25 @@ class FinanceService
     private function generatePaymentNo(): string
     {
         return 'PAY-' . now()->format('Ymd-His') . '-' . strtoupper(substr(md5((string) microtime(true)), 0, 4));
+    }
+
+    private function formatPercentDelta(float|int $current, float|int $previous): string
+    {
+        $currentValue = (float) $current;
+        $previousValue = (float) $previous;
+
+        if ($previousValue <= 0.0) {
+            if ($currentValue <= 0.0) {
+                return '0% dari periode sebelumnya';
+            }
+
+            return 'Data pembanding belum cukup';
+        }
+
+        $delta = round((($currentValue - $previousValue) / $previousValue) * 100, 1);
+        $sign = $delta > 0 ? '+' : '';
+
+        return $sign . number_format($delta, 1) . '% dari periode sebelumnya';
     }
 
     private function settingsPrefix(int $financeId): string
