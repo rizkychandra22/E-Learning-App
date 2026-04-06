@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyForm = {
     name: '',
@@ -278,26 +279,8 @@ export default function UserCrud({ title, description, target, endpoint, users, 
                                         <td className="py-3 px-2 text-muted-foreground">{relativeTime(user.created_at)}</td>
                                         <td className="py-3 px-2">
                                             <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => beginEdit(user)}
-                                                    disabled={mocked || user.is_mock}
-                                                    className="inline-flex items-center gap-1 p-1.5 rounded-md text-muted-foreground hover:bg-secondary disabled:opacity-60"
-                                                    title="Edit"
-                                                    aria-label="Edit user"
-                                                >
-                                                    <Pencil className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => destroyUser(user)}
-                                                    disabled={mocked || user.is_mock}
-                                                    className="inline-flex items-center gap-1 p-1.5 rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-60"
-                                                    title="Hapus"
-                                                    aria-label="Hapus user"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
+                                                <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(user)} disabled={mocked || user.is_mock} />
+                                                <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyUser(user)} disabled={mocked || user.is_mock} />
                                             </div>
                                         </td>
                                     </tr>
