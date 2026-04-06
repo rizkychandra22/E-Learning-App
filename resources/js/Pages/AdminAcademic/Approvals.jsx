@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { StatCard } from '@/components/StatCard';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const roleLabels = {
     all: 'Semua Role',
@@ -189,9 +190,9 @@ export default function Approvals({ pendingUsers, filters, mocked, roleSummary: 
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => openReview(user)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-medium"><Eye className="w-3.5 h-3.5" />Tinjau</button>
-                                    <button type="button" onClick={() => approve(user)} disabled={mocked || user.is_mock} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-success text-white text-xs font-semibold disabled:opacity-60"><CheckCircle2 className="w-3.5 h-3.5" />Setuju</button>
-                                    <button type="button" onClick={() => reject(user)} disabled={mocked || user.is_mock} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-destructive text-white text-xs font-semibold disabled:opacity-60"><XCircle className="w-3.5 h-3.5" />Tolak</button>
+                                    <ActionIconButton icon={Eye} label="Tinjau" tone="neutral" onClick={() => openReview(user)} />
+                                    <ActionIconButton icon={CheckCircle2} label="Setuju" tone="success" onClick={() => approve(user)} disabled={mocked || user.is_mock} />
+                                    <ActionIconButton icon={XCircle} label="Tolak" tone="danger" onClick={() => reject(user)} disabled={mocked || user.is_mock} />
                                 </div>
                             </div>
                         ))}
@@ -248,24 +249,8 @@ export default function Approvals({ pendingUsers, filters, mocked, roleSummary: 
                                 >
                                     Tutup
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={approveFromReview}
-                                    disabled={mocked || selectedUser.is_mock}
-                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-success text-white text-xs font-semibold disabled:opacity-60"
-                                >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    Setuju
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={rejectFromReview}
-                                    disabled={mocked || selectedUser.is_mock}
-                                    className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-destructive text-white text-xs font-semibold disabled:opacity-60"
-                                >
-                                    <XCircle className="w-3.5 h-3.5" />
-                                    Tolak
-                                </button>
+                                <ActionIconButton icon={CheckCircle2} label="Setuju" tone="success" onClick={approveFromReview} disabled={mocked || selectedUser.is_mock} className="h-9 w-9" />
+                                <ActionIconButton icon={XCircle} label="Tolak" tone="danger" onClick={rejectFromReview} disabled={mocked || selectedUser.is_mock} className="h-9 w-9" />
                             </div>
                         </div>
                     </div>
