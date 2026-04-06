@@ -4,6 +4,7 @@ import { Award, BarChart3, BookOpenCheck, Download, Search, Sparkles, Star, Tren
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 import { cn } from '@/lib/cn';
 
 const statusLabel = {
@@ -422,9 +423,12 @@ export default function Grades({ assignmentSubmissions = [], quizAttempts = [], 
                                             </span>
                                         </td>
                                         <td className="py-2.5 px-2">
-                                            <button type="button" onClick={() => openGradeForm(item.type, item.type === 'assignment' ? assignmentSubmissions.find((row) => row.id === item.id) : quizAttempts.find((row) => row.id === item.id))} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-accent text-accent-foreground text-xs font-medium">
-                                                <BookOpenCheck className="w-3.5 h-3.5" /> Nilai
-                                            </button>
+                                            <ActionIconButton
+                                                icon={BookOpenCheck}
+                                                label="Nilai"
+                                                tone="primary"
+                                                onClick={() => openGradeForm(item.type, item.type === 'assignment' ? assignmentSubmissions.find((row) => row.id === item.id) : quizAttempts.find((row) => row.id === item.id))}
+                                            />
                                         </td>
                                     </tr>
                                 ))}
@@ -572,3 +576,5 @@ function formatDate(value) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
+
+

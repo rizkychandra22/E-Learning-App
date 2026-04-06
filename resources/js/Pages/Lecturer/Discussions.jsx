@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { MessageSquare, Plus, Search, Trash2 } from 'lucide-react';
+import { MessageSquare, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyForm = {
     title: '',
@@ -114,8 +115,8 @@ export default function Discussions({ discussions, courses, filters, migrationRe
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className={`text-xs px-2.5 py-1 rounded-full ${discussion.status === 'open' ? 'bg-warning/20 text-warning' : 'bg-success/15 text-success'}`}>{discussion.status === 'open' ? 'Belum dijawab' : 'Terjawab'}</span>
-                                    <button type="button" onClick={() => beginEdit(discussion)} disabled={discussion.is_mock || mocked} className="text-xs px-2.5 py-1 rounded-lg border border-border">Edit</button>
-                                    <button type="button" onClick={() => destroyDiscussion(discussion)} disabled={discussion.is_mock || mocked} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                    <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(discussion)} disabled={discussion.is_mock || mocked} />
+                                    <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyDiscussion(discussion)} disabled={discussion.is_mock || mocked} />
                                 </div>
                             </div>
                         ))}
@@ -141,3 +142,4 @@ function StatCard({ title, value, tone }) {
 function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function formatDateTime(dateString) { if (!dateString) return '-'; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return '-'; return date.toLocaleString('id-ID'); }
+

@@ -1,9 +1,10 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { ClipboardList, Plus, Search, Trash2 } from 'lucide-react';
+import { ClipboardList, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyForm = {
     title: '',
@@ -131,8 +132,8 @@ export default function Assignments({ assignments, courses, filters, migrationRe
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary">{mapStatus(assignment.status)}</span>
-                                            <button type="button" onClick={() => beginEdit(assignment)} disabled={assignment.is_mock || mocked} className="text-xs px-2.5 py-1 rounded-lg border border-border">Edit</button>
-                                            <button type="button" onClick={() => destroyAssignment(assignment)} disabled={assignment.is_mock || mocked} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-destructive/15 text-destructive"><Trash2 className="w-3.5 h-3.5" />Hapus</button>
+                                            <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(assignment)} disabled={assignment.is_mock || mocked} />
+                                            <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyAssignment(assignment)} disabled={assignment.is_mock || mocked} />
                                         </div>
                                     </div>
                                     <div className="h-2 rounded-full bg-secondary overflow-hidden"><div className="h-full gradient-primary rounded-full" style={{ width: `${pct}%` }} /></div>
@@ -188,3 +189,4 @@ function mapStatus(value) {
     if (value === 'closed') return 'Ditutup';
     return 'Draft';
 }
+

@@ -3,6 +3,7 @@ import { BookOpen, ChevronRight, Layers3, PlayCircle, Plus, Trash2 } from 'lucid
 import { useMemo, useState } from 'react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
+import { ActionIconButton } from '@/components/ActionIconButton';
 
 const emptyModuleForm = { course_id: '', title: '', description: '', sort_order: 1 };
 const emptyLessonForm = { course_module_id: '', title: '', summary: '', content_type: 'video', video_url: '', content: '', duration_minutes: 10, sort_order: 1 };
@@ -82,9 +83,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                                                 <h3 className="text-lg font-semibold mt-3">{module.title}</h3>
                                                 <p className="text-sm text-muted-foreground mt-1">{module.description || 'Tanpa deskripsi modul.'}</p>
                                             </div>
-                                            <button type="button" onClick={() => destroyModule(module.id)} className="inline-flex items-center gap-1 rounded-xl bg-destructive/10 text-destructive px-3 py-2 text-xs font-medium">
-                                                <Trash2 className="w-3.5 h-3.5" /> Hapus Modul
-                                            </button>
+                                            <ActionIconButton icon={Trash2} label="Hapus Modul" tone="danger" onClick={() => destroyModule(module.id)} />
                                         </div>
 
                                         <div className="space-y-3">
@@ -100,7 +99,7 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
                                                             <span className="rounded-full bg-secondary px-2.5 py-1">{lesson.duration_minutes} menit</span>
                                                         </div>
                                                     </div>
-                                                    <button type="button" onClick={() => destroyLesson(lesson.id)} className="text-xs text-destructive font-medium">Hapus</button>
+                                                    <ActionIconButton icon={Trash2} label="Hapus Lesson" tone="danger" onClick={() => destroyLesson(lesson.id)} />
                                                 </div>
                                             )) : <div className="text-sm text-muted-foreground">Belum ada lesson pada modul ini.</div>}
                                         </div>
@@ -152,6 +151,8 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
         </ProtectedLayout>
     );
 }
+
+
 
 
 
