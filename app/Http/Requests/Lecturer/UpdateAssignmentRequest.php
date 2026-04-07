@@ -17,7 +17,7 @@ class UpdateAssignmentRequest extends FormRequest
             'title' => ['required', 'string', 'max:180'],
             'description' => ['nullable', 'string', 'max:2000'],
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
-            'due_at' => ['nullable', 'date'],
+            'due_at' => ['required', 'date'],
             'max_score' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'status' => ['required', 'in:draft,active,closed'],
         ];

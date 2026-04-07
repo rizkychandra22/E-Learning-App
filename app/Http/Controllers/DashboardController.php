@@ -24,6 +24,7 @@ class DashboardController extends Controller
         $authUser = auth()->user();
         $superAdminData = null;
         $adminAcademicData = null;
+        $adminAcademicSettings = null;
         $financeData = null;
         $lecturerData = null;
 
@@ -37,6 +38,7 @@ class DashboardController extends Controller
 
         if ($authUser?->role === 'admin') {
             $adminAcademicData = $this->adminAcademicService->getDashboardData();
+            $adminAcademicSettings = $this->adminAcademicService->getSettings((int) $authUser->id);
         }
 
         if ($authUser?->role === 'finance') {
@@ -50,6 +52,7 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'superAdmin' => $superAdminData,
             'adminAcademic' => $adminAcademicData,
+            'adminAcademicSettings' => $adminAcademicSettings,
             'financeData' => $financeData,
             'lecturerData' => $lecturerData,
         ]);

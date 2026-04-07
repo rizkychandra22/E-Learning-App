@@ -22,6 +22,7 @@ const emptyForm = {
     duration_minutes: '',
     total_questions: '',
     scheduled_at: '',
+    due_at: '',
     status: 'draft',
     questions: [makeEmptyQuestion(1)],
 };
@@ -77,6 +78,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
             duration_minutes: quiz.duration_minutes ?? '',
             total_questions: quiz.total_questions ?? questions.length,
             scheduled_at: toInputDateTime(quiz.scheduled_at),
+            due_at: toInputDateTime(quiz.due_at),
             status: quiz.status ?? 'draft',
             questions,
         });
@@ -191,7 +193,8 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                     <p>{quiz.participants_count ?? 0} peserta</p>
                                     <p>Avg: {quiz.avg_score ?? '-'}%</p>
                                 </div>
-                                <p className="text-xs text-muted-foreground">Jadwal: {formatDate(quiz.scheduled_at)}</p>
+                                <p className="text-xs text-muted-foreground">Mulai: {formatDate(quiz.scheduled_at)}</p>
+                                <p className="text-xs text-muted-foreground">Batas pengumpulan: {formatDate(quiz.due_at)}</p>
                                 <div className="flex items-center gap-2">
                                     <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(quiz)} disabled={mocked} />
                                     <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyQuiz(quiz)} disabled={mocked} />
@@ -210,7 +213,10 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                             <Field label="Durasi (menit)" type="number" value={form.data.duration_minutes} error={form.errors.duration_minutes} onChange={(value) => form.setData('duration_minutes', value)} />
                             <Field label="Jumlah Soal" type="number" value={form.data.total_questions || form.data.questions.length} error={form.errors.total_questions} onChange={(value) => form.setData('total_questions', value)} />
                         </div>
-                        <Field label="Jadwal" type="datetime-local" value={form.data.scheduled_at} error={form.errors.scheduled_at} onChange={(value) => form.setData('scheduled_at', value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <Field label="Jadwal Mulai" type="datetime-local" value={form.data.scheduled_at} error={form.errors.scheduled_at} onChange={(value) => form.setData('scheduled_at', value)} />
+                            <Field label="Batas Pengumpulan" type="datetime-local" value={form.data.due_at} error={form.errors.due_at} onChange={(value) => form.setData('due_at', value)} />
+                        </div>
                         <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}><option value="draft">Draft</option><option value="active">Aktif</option><option value="closed">Ditutup</option></SelectField>
 
                         <div className="rounded-xl border border-border p-3 space-y-3">
@@ -269,5 +275,4 @@ function SelectField({ label, value, onChange, error, children }) { return <labe
 function mapStatus(value) { if (value === 'active') return 'Aktif'; if (value === 'closed') return 'Ditutup'; return 'Draft'; }
 function formatDate(value) { if (!value) return '-'; return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
 function toInputDateTime(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return ''; const offset = date.getTimezoneOffset(); const local = new Date(date.getTime() - offset * 60000); return local.toISOString().slice(0, 16); }
-
 

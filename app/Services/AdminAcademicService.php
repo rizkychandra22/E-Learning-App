@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseMaterial;
+use App\Models\FeeComponent;
 use App\Models\Fakultas;
+use App\Models\Invoice;
 use App\Models\Jurusan;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -160,7 +162,7 @@ class AdminAcademicService
         return Storage::disk('public')->download($material->file_path, $material->file_name);
     }
 
-    public function getManageUsersData(string $search, string $role): array
+    public function getManageUsersData(string $search, string $role, bool $showPendingFirst = true): array
     {
         $allowedRoles = ['teacher', 'student', 'finance', 'admin'];
         $selectedRole = in_array($role, $allowedRoles, true) ? $role : 'all';
@@ -180,6 +182,9 @@ class AdminAcademicService
                         ->orWhere('username', 'like', '%' . $search . '%')
                         ->orWhere('code', 'like', '%' . $search . '%');
                 });
+            })
+            ->when($showPendingFirst, function ($query) {
+                $query->orderByRaw('CASE WHEN email_verified_at IS NULL THEN 0 ELSE 1 END');
             })
             ->latest('id')
             ->get(['id', 'name', 'email', 'username', 'role', 'type', 'code', 'jurusan_id', 'email_verified_at', 'created_at']);
@@ -202,7 +207,7 @@ class AdminAcademicService
         ];
     }
 
-    public function createUser(array $payload): void
+    public function createUser(array $payload, ?int $adminId = null): void
     {
         $user = User::create([
             ...$payload,
@@ -216,6 +221,14 @@ class AdminAcademicService
                 'role' => $user->role,
                 'source' => 'admin-academic',
             ]);
+        }
+
+        if ($this->shouldSendAdminUserEmailNotification($adminId)) {
+            app(NotificationService::class)->sendSimpleEmail(
+                $user->email,
+                'Akun Baru Dibuat',
+                "Halo {$user->name},\n\nAkun Anda telah dibuat oleh admin universitas. Silakan menunggu proses verifikasi akun.\n"
+            );
         }
     }
 
@@ -243,7 +256,7 @@ class AdminAcademicService
         $user->delete();
     }
 
-    public function generateJurusanAccounts(int $studentsPerJurusan = 10, int $lecturersPerJurusan = 3): array
+    public function generateJurusanAccounts(int $studentsPerJurusan = 10, int $lecturersPerJurusan = 3, ?int $adminId = null): array
     {
         if (!Schema::hasTable('jurusans') || !Schema::hasTable('users')) {
             return [
@@ -274,10 +287,11 @@ class AdminAcademicService
         $lecturerCount = 0;
         $studentCount = 0;
         $courseCount = 0;
+        $createdUserIds = [];
         $now = now();
         $courseStudentTableExists = Schema::hasTable('course_student');
 
-        DB::transaction(function () use ($jurusans, $studentsPerJurusan, $lecturersPerJurusan, $courseStudentTableExists, $now, &$lecturerCount, &$studentCount, &$courseCount): void {
+        DB::transaction(function () use ($jurusans, $studentsPerJurusan, $lecturersPerJurusan, $courseStudentTableExists, $now, &$lecturerCount, &$studentCount, &$courseCount, &$createdUserIds): void {
             foreach ($jurusans as $jurusan) {
                 $jurusanCode = $this->normalizeNumericCode((string) ($jurusan->code ?? ''), (int) $jurusan->id, 2);
                 $fakultasCode = $this->normalizeNumericCode((string) ($jurusan->fakultas?->code ?? ''), (int) ($jurusan->fakultas_id ?? 0), 2);
@@ -304,6 +318,7 @@ class AdminAcademicService
                         'jurusan_id' => (int) $jurusan->id,
                         'password' => 'Kampus12345',
                     ]);
+                    $createdUserIds[] = (int) $lecturer->id;
 
                     $course = Course::create([
                         'title' => $this->buildJurusanCourseTitle((string) $jurusan->name, $i),
@@ -343,6 +358,7 @@ class AdminAcademicService
                         'jurusan_id' => (int) $jurusan->id,
                         'password' => $studentCode,
                     ]);
+                    $createdUserIds[] = (int) $student->id;
 
                     $studentIds[] = (int) $student->id;
                     $studentCount++;
@@ -369,6 +385,19 @@ class AdminAcademicService
             }
         });
 
+        if ($this->shouldSendAdminUserEmailNotification($adminId) && $createdUserIds !== []) {
+            User::query()
+                ->whereIn('id', array_values(array_unique($createdUserIds)))
+                ->get(['id', 'name', 'email'])
+                ->each(function (User $user): void {
+                    app(NotificationService::class)->sendSimpleEmail(
+                        $user->email,
+                        'Akun Baru Dibuat',
+                        "Halo {$user->name},\n\nAkun Anda telah dibuat oleh admin universitas. Silakan menunggu proses verifikasi akun.\n"
+                    );
+                });
+        }
+
         return [
             'ok' => true,
             'jurusan_count' => $jurusans->count(),
@@ -378,7 +407,7 @@ class AdminAcademicService
         ];
     }
 
-    public function importUsersFromFile(UploadedFile $file, string $defaultPassword = 'Kampus12345'): array
+    public function importUsersFromFile(UploadedFile $file, string $defaultPassword = 'Kampus12345', ?int $adminId = null): array
     {
         if (!Schema::hasTable('users')) {
             return [
@@ -423,6 +452,7 @@ class AdminAcademicService
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $newUserIds = [];
         $errors = [];
 
         DB::transaction(function () use (
@@ -436,6 +466,7 @@ class AdminAcademicService
             &$created,
             &$updated,
             &$skipped,
+            &$newUserIds,
             &$errors
         ): void {
             foreach ($rows as $index => $row) {
@@ -566,6 +597,7 @@ class AdminAcademicService
 
                     $user = User::create($payload);
                     $matchedId = (int) $user->id;
+                    $newUserIds[] = $matchedId;
                     $created++;
                 }
 
@@ -581,6 +613,19 @@ class AdminAcademicService
                 'message' => 'Import gagal. Tidak ada baris yang valid untuk diproses.',
                 'errors' => array_slice($errors, 0, 20),
             ];
+        }
+
+        if ($this->shouldSendAdminUserEmailNotification($adminId) && $newUserIds !== []) {
+            User::query()
+                ->whereIn('id', array_values(array_unique($newUserIds)))
+                ->get(['id', 'name', 'email'])
+                ->each(function (User $user): void {
+                    app(NotificationService::class)->sendSimpleEmail(
+                        $user->email,
+                        'Akun Baru Dibuat',
+                        "Halo {$user->name},\n\nAkun Anda telah dibuat oleh admin universitas. Silakan menunggu proses verifikasi akun.\n"
+                    );
+                });
         }
 
         return [
@@ -801,7 +846,14 @@ class AdminAcademicService
 
     public function approveUser(User $user): void
     {
-        $user->update(['email_verified_at' => now()]);
+        DB::transaction(function () use ($user): void {
+            $wasPending = $user->email_verified_at === null;
+            $user->update(['email_verified_at' => now()]);
+
+            if ($wasPending) {
+                $this->createAutoInvoiceForApprovedStudent($user);
+            }
+        });
     }
 
     public function rejectUser(User $user): void
@@ -814,11 +866,88 @@ class AdminAcademicService
         $allowedRoles = ['admin', 'finance', 'teacher', 'student'];
         $selectedRole = in_array($role, $allowedRoles, true) ? $role : 'all';
 
-        return User::query()
+        $pendingQuery = User::query()
             ->where('role', '!=', 'root')
             ->whereNull('email_verified_at')
-            ->when($selectedRole !== 'all', fn ($query) => $query->where('role', $selectedRole))
+            ->when($selectedRole !== 'all', fn ($query) => $query->where('role', $selectedRole));
+
+        $pendingUsers = $pendingQuery
+            ->get(['id', 'role']);
+
+        if ($pendingUsers->isEmpty()) {
+            return 0;
+        }
+
+        $pendingIds = $pendingUsers->pluck('id')->values();
+
+        User::query()
+            ->whereIn('id', $pendingIds)
             ->update(['email_verified_at' => now()]);
+
+        $studentIds = $pendingUsers
+            ->where('role', 'student')
+            ->pluck('id')
+            ->values();
+
+        if ($studentIds->isNotEmpty()) {
+            User::query()
+                ->whereIn('id', $studentIds)
+                ->get(['id', 'name', 'role', 'code'])
+                ->each(function (User $student): void {
+                    $this->createAutoInvoiceForApprovedStudent($student);
+                });
+        }
+
+        return $pendingIds->count();
+    }
+
+    public function backfillApprovedStudentInvoices(bool $dryRun = false): array
+    {
+        if (!Schema::hasTable('users') || !Schema::hasTable('invoices')) {
+            return [
+                'ok' => false,
+                'message' => 'Tabel users/invoices belum tersedia.',
+                'total' => 0,
+                'created' => 0,
+                'skipped' => 0,
+            ];
+        }
+
+        $students = User::query()
+            ->where('role', 'student')
+            ->whereNotNull('email_verified_at')
+            ->orderBy('id')
+            ->get(['id', 'name', 'role', 'code']);
+
+        $created = 0;
+        $skipped = 0;
+        foreach ($students as $student) {
+            if ($dryRun) {
+                $wouldCreate = $this->wouldCreateAutoInvoiceForStudent($student);
+                if ($wouldCreate) {
+                    $created++;
+                } else {
+                    $skipped++;
+                }
+
+                continue;
+            }
+
+            $didCreate = $this->createAutoInvoiceForApprovedStudent($student);
+            if ($didCreate) {
+                $created++;
+            } else {
+                $skipped++;
+            }
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'Backfill tagihan mahasiswa selesai diproses.',
+            'total' => $students->count(),
+            'created' => $created,
+            'skipped' => $skipped,
+        ];
     }
 
     public function getCategoriesData(): array
@@ -2206,6 +2335,190 @@ class AdminAcademicService
         }
 
         return true;
+    }
+
+    private function createAutoInvoiceForApprovedStudent(User $user): bool
+    {
+        if ($user->role !== 'student' || !Schema::hasTable('invoices')) {
+            return false;
+        }
+
+        if (!$this->isFinanceAutoInvoiceEnabled()) {
+            return false;
+        }
+
+        $periodLabel = $this->currentAcademicPeriodLabel();
+        $title = 'Tagihan UKT Semester ' . $periodLabel;
+
+        $alreadyExists = Invoice::query()
+            ->where('student_id', $user->id)
+            ->where('title', $title)
+            ->exists();
+
+        if ($alreadyExists) {
+            return false;
+        }
+
+        $amount = $this->resolveAutoSemesterAmount();
+        $dueDays = $this->resolveFinanceDefaultDueDays();
+        $financeUserId = (int) (User::query()->where('role', 'finance')->orderBy('id')->value('id') ?? 0);
+        $feeComponentId = $this->resolveAutoFeeComponentId($amount);
+
+        Invoice::create([
+            'invoice_no' => $this->generateAutoInvoiceNumber(),
+            'student_id' => $user->id,
+            'fee_component_id' => $feeComponentId,
+            'title' => $title,
+            'description' => 'Tagihan dibuat otomatis setelah akun mahasiswa disetujui admin universitas.',
+            'amount' => $amount,
+            'due_date' => now()->addDays($dueDays)->toDateString(),
+            'status' => 'unpaid',
+            'created_by' => $financeUserId > 0 ? $financeUserId : null,
+        ]);
+
+        if ($this->shouldNotifyFinanceOnNewRegistration() && $financeUserId > 0) {
+            app(NotificationService::class)->notify(
+                $financeUserId,
+                'finance',
+                'Mahasiswa Baru Disetujui',
+                "Mahasiswa {$user->name} telah disetujui dan tagihan otomatis dibuat.",
+                '/finance-invoices',
+                [
+                    'student_id' => $user->id,
+                    'student_code' => $user->code,
+                ],
+                $financeUserId
+            );
+        }
+
+        Cache::forget('dashboard:finance');
+
+        return true;
+    }
+
+    private function wouldCreateAutoInvoiceForStudent(User $user): bool
+    {
+        if ($user->role !== 'student' || !Schema::hasTable('invoices')) {
+            return false;
+        }
+
+        if (!$this->isFinanceAutoInvoiceEnabled()) {
+            return false;
+        }
+
+        $title = 'Tagihan UKT Semester ' . $this->currentAcademicPeriodLabel();
+
+        return !Invoice::query()
+            ->where('student_id', $user->id)
+            ->where('title', $title)
+            ->exists();
+    }
+
+    private function isFinanceAutoInvoiceEnabled(): bool
+    {
+        return $this->resolveFinanceSettingValue('auto_invoice_enabled', '1') === '1';
+    }
+
+    private function resolveAutoSemesterAmount(): int
+    {
+        $value = (int) $this->resolveFinanceSettingValue('nominal_spp', '3600000');
+        return $value > 0 ? $value : 3600000;
+    }
+
+    private function resolveFinanceDefaultDueDays(): int
+    {
+        $value = (int) $this->resolveFinanceSettingValue('default_due_days', '14');
+        return $value > 0 ? $value : 14;
+    }
+
+    private function resolveFinanceSettingValue(string $key, string $default): string
+    {
+        if (!Schema::hasTable('system_settings')) {
+            return $default;
+        }
+
+        $financeId = (int) (User::query()->where('role', 'finance')->orderBy('id')->value('id') ?? 0);
+        if ($financeId <= 0) {
+            return $default;
+        }
+
+        $value = SystemSetting::query()
+            ->where('key', 'finance_' . $financeId . '_' . $key)
+            ->value('value');
+
+        return $value !== null ? (string) $value : $default;
+    }
+
+    private function shouldNotifyFinanceOnNewRegistration(): bool
+    {
+        return $this->resolveFinanceSettingValue('notify_on_new_registration', '1') === '1';
+    }
+
+    private function resolveAutoFeeComponentId(int $amount): ?int
+    {
+        if (!Schema::hasTable('fee_components')) {
+            return null;
+        }
+
+        $component = FeeComponent::query()
+            ->where('is_active', true)
+            ->where('type', 'recurring')
+            ->whereIn('code', ['UKT-SEM', 'SPP-SEM', 'SPP'])
+            ->orderBy('id')
+            ->first();
+
+        if ($component) {
+            return (int) $component->id;
+        }
+
+        $component = FeeComponent::firstOrCreate(
+            ['code' => 'UKT-SEM'],
+            [
+                'name' => 'UKT Semester',
+                'amount' => $amount,
+                'type' => 'recurring',
+                'is_active' => true,
+            ]
+        );
+
+        return (int) $component->id;
+    }
+
+    private function generateAutoInvoiceNumber(): string
+    {
+        do {
+            $number = 'INV-AUTO-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(4));
+        } while (Invoice::query()->where('invoice_no', $number)->exists());
+
+        return $number;
+    }
+
+    private function currentAcademicPeriodLabel(): string
+    {
+        $month = (int) now()->format('n');
+        $year = (int) now()->format('Y');
+        $isOddSemester = $month >= 8 || $month <= 1;
+        $period = $isOddSemester ? 'Ganjil' : 'Genap';
+
+        if ($month >= 8) {
+            $startYear = $year;
+            $endYear = $year + 1;
+        } else {
+            $startYear = $year - 1;
+            $endYear = $year;
+        }
+
+        return $period . ' ' . $startYear . '/' . $endYear;
+    }
+
+    private function shouldSendAdminUserEmailNotification(?int $adminId): bool
+    {
+        if (!$adminId || $adminId <= 0) {
+            return false;
+        }
+
+        $settings = $this->getSettings($adminId);
+        return (bool) ($settings['enable_user_email_notification'] ?? false);
     }
 
     private function mockLecturers(): array

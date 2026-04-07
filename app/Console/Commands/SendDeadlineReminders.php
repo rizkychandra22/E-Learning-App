@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Services\FinanceService;
 use App\Services\NotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -17,7 +18,8 @@ class SendDeadlineReminders extends Command
     protected $description = 'Send assignment and invoice deadline reminders via in-app notification and queued email.';
 
     public function __construct(
-        private readonly NotificationService $notificationService
+        private readonly NotificationService $notificationService,
+        private readonly FinanceService $financeService
     ) {
         parent::__construct();
     }
@@ -111,8 +113,18 @@ class SendDeadlineReminders extends Command
             return 0;
         }
 
+        $financeId = (int) (User::query()->where('role', 'finance')->orderBy('id')->value('id') ?? 0);
+        $reminderDays = 3;
+        if ($financeId > 0) {
+            $settings = $this->financeService->getSettings($financeId);
+            if (!(bool) ($settings['auto_reminder_enabled'] ?? true)) {
+                return 0;
+            }
+            $reminderDays = max(1, (int) ($settings['overdue_reminder_days'] ?? 3));
+        }
+
         $today = now()->startOfDay();
-        $nearDue = $today->copy()->addDays(3);
+        $nearDue = $today->copy()->addDays($reminderDays);
         $sent = 0;
 
         $invoices = Invoice::query()

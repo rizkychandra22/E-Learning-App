@@ -119,14 +119,21 @@ class AdminAcademicController extends Controller
     public function manageUsers(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
-        $role = trim((string) $request->query('role', 'all'));
+        $role = trim((string) $request->query('role', ''));
+        $settings = $this->service->getSettings((int) auth()->id());
+        $defaultRoleFilter = (string) ($settings['default_user_role_filter'] ?? 'all');
+        $showPendingFirst = (bool) ($settings['show_pending_first'] ?? true);
 
-        return Inertia::render('AdminAcademic/ManageUsers', $this->service->getManageUsersData($search, $role));
+        if ($role === '') {
+            $role = $defaultRoleFilter;
+        }
+
+        return Inertia::render('AdminAcademic/ManageUsers', $this->service->getManageUsersData($search, $role, $showPendingFirst));
     }
 
     public function storeUser(StoreUserRequest $request): RedirectResponse
     {
-        $this->service->createUser($request->validated());
+        $this->service->createUser($request->validated(), (int) auth()->id());
 
         return back()->with('success', 'Data user berhasil ditambahkan.');
     }
@@ -158,7 +165,8 @@ class AdminAcademicController extends Controller
 
         $result = $this->service->generateJurusanAccounts(
             (int) ($validated['students_per_jurusan'] ?? 10),
-            3
+            3,
+            (int) auth()->id()
         );
 
         if (!($result['ok'] ?? false)) {
@@ -185,7 +193,8 @@ class AdminAcademicController extends Controller
 
         $result = $this->service->importUsersFromFile(
             $validated['file'],
-            (string) ($validated['default_password'] ?? 'Kampus12345')
+            (string) ($validated['default_password'] ?? 'Kampus12345'),
+            (int) auth()->id()
         );
 
         if (!($result['ok'] ?? false)) {

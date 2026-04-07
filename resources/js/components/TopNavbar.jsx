@@ -42,6 +42,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes' },
         { title: 'Diskusi', url: '/discussions' },
         { title: 'Mahasiswa', url: '/students' },
+        { title: 'Absensi', url: '/attendance' },
         { title: 'Notifikasi', url: '/notifications' },
         { title: 'Profil Saya', url: '/profile' },
     ],

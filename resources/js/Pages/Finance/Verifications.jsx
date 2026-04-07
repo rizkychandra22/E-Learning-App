@@ -12,7 +12,7 @@ const cardTone = {
     rejected: 'bg-gradient-to-r from-pink-600 to-rose-500',
 };
 
-export default function Verifications({ migrationRequired, mocked, filters, summary, verifications = [] }) {
+export default function Verifications({ migrationRequired, mocked, filters, summary, verifications = [], settings = {} }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [previewItem, setPreviewItem] = useState(null);
 
@@ -26,6 +26,15 @@ export default function Verifications({ migrationRequired, mocked, filters, summ
     };
 
     const rejectPayment = (paymentId) => {
+        const requireNote = Boolean(settings?.security_require_note_on_reject);
+        if (requireNote) {
+            const note = window.prompt('Masukkan alasan penolakan pembayaran:');
+            if (note === null) return;
+            if (String(note).trim() === '') return;
+            router.put(`/finance-payments/${paymentId}/reject`, { notes: String(note).trim() }, { preserveScroll: true });
+            return;
+        }
+
         router.put(`/finance-payments/${paymentId}/reject`, {}, { preserveScroll: true });
     };
 
