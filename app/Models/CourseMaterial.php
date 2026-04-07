@@ -11,6 +11,7 @@ class CourseMaterial extends Model
         'course_id',
         'uploaded_by',
         'title',
+        'meeting_number',
         'file_name',
         'file_path',
         'mime_type',
@@ -18,6 +19,7 @@ class CourseMaterial extends Model
     ];
 
     protected $casts = [
+        'meeting_number' => 'integer',
         'file_size' => 'integer',
     ];
 
@@ -31,4 +33,3 @@ class CourseMaterial extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 }
-
