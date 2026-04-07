@@ -9,6 +9,7 @@ import { ActionIconButton } from '@/components/ActionIconButton';
 const emptyForm = {
     course_id: '',
     title: '',
+    meeting_number: '',
     file: null,
 };
 
@@ -95,7 +96,12 @@ export default function Materials({ materials, courses, migrationRequired, filte
                             <div key={material.id} className="panel-subcard p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="font-medium truncate">{material.title}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{material.course?.title ?? '-'} · {material.file_name}</p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        {material.course?.title ?? '-'}
+                                        {material.meeting_number ? ` · Pertemuan ${material.meeting_number}` : ''}
+                                        {' · '}
+                                        {material.file_name}
+                                    </p>
                                     <p className="text-xs text-muted-foreground">{formatBytes(material.file_size)} · {formatDate(material.created_at)}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -123,7 +129,10 @@ export default function Materials({ materials, courses, migrationRequired, filte
                             <option value="">Pilih Kursus</option>
                             {courses.map((course) => (<option key={course.id} value={course.id}>{course.title}</option>))}
                         </SelectField>
-                        <Field label="Judul Materi" value={form.data.title} onChange={(value) => form.setData('title', value)} error={form.errors.title} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <Field label="Judul Materi" value={form.data.title} onChange={(value) => form.setData('title', value)} error={form.errors.title} />
+                            <Field label="Pertemuan Ke-" type="number" value={form.data.meeting_number} onChange={(value) => form.setData('meeting_number', value)} error={form.errors.meeting_number} />
+                        </div>
                         <label className="block">
                             <span className="text-sm font-medium">File Materi</span>
                             <input type="file" onChange={(event) => form.setData('file', event.target.files?.[0] ?? null)} className="mt-1 w-full text-sm rounded-lg border border-border bg-background px-3 py-2 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-primary/15 file:text-primary" />
@@ -190,4 +199,3 @@ function formatDate(dateString) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID');
 }
-
