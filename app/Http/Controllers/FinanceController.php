@@ -51,7 +51,7 @@ class FinanceController extends Controller
             ]);
         }
 
-        $this->service->updateInvoice($invoice, $request->validated());
+        $this->service->updateInvoice($invoice, $request->validated(), (int) auth()->id());
 
         return back()->with('success', 'Tagihan berhasil diperbarui.');
     }
@@ -74,14 +74,14 @@ class FinanceController extends Controller
         $search = trim((string) $request->query('search', ''));
         $status = trim((string) $request->query('status', 'all'));
 
-        return Inertia::render('Finance/Payments', $this->service->getPaymentsData($search, $status));
+        return Inertia::render('Finance/Payments', $this->service->getPaymentsData($search, $status, (int) auth()->id()));
     }
 
     public function verifications(Request $request): Response
     {
         $search = trim((string) $request->query('search', ''));
 
-        return Inertia::render('Finance/Verifications', $this->service->getVerificationData($search));
+        return Inertia::render('Finance/Verifications', $this->service->getVerificationData($search, (int) auth()->id()));
     }
 
     public function storePayment(StorePaymentRequest $request): RedirectResponse
@@ -110,7 +110,7 @@ class FinanceController extends Controller
         return back()->with('success', 'Pembayaran berhasil diverifikasi.');
     }
 
-    public function rejectPayment(Payment $payment): RedirectResponse
+    public function rejectPayment(Request $request, Payment $payment): RedirectResponse
     {
         if (!$this->service->hasFinanceTables()) {
             return back()->withErrors([
@@ -118,7 +118,19 @@ class FinanceController extends Controller
             ]);
         }
 
-        $this->service->rejectPayment($payment, (int) auth()->id());
+        $settings = $this->service->getSettings((int) auth()->id());
+        $validated = $request->validate([
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+        $note = trim((string) ($validated['notes'] ?? ''));
+
+        if ((bool) ($settings['security_require_note_on_reject'] ?? true) && $note === '') {
+            return back()->withErrors([
+                'notes' => 'Catatan penolakan wajib diisi sesuai pengaturan keamanan.',
+            ]);
+        }
+
+        $this->service->rejectPayment($payment, (int) auth()->id(), $note === '' ? null : $note);
 
         return back()->with('success', 'Pembayaran ditandai ditolak.');
     }

@@ -12,7 +12,7 @@ const FILTERS = [
     { key: 'rejected', label: 'Gagal' },
 ];
 
-export default function Payments({ migrationRequired, payments = [], filters, mocked }) {
+export default function Payments({ migrationRequired, payments = [], filters, mocked, paymentInfo = {} }) {
     const intlLocale = toIntlLocale(usePage().props?.system?.default_language);
     const [search, setSearch] = useState(filters?.search ?? '');
     const [statusFilter, setStatusFilter] = useState(filters?.status ?? 'all');
@@ -105,6 +105,17 @@ export default function Payments({ migrationRequired, payments = [], filters, mo
                 </div>
 
                 <section className="panel-card p-4">
+                    <h2 className="font-semibold text-lg">Informasi Pembayaran Aktif</h2>
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 text-sm">
+                        <InfoItem label="Bank" value={paymentInfo.bank_name} />
+                        <InfoItem label="Nama Rekening" value={paymentInfo.bank_account_name} />
+                        <InfoItem label="Nomor Rekening" value={paymentInfo.bank_account_number} />
+                        <InfoItem label="Email Finance" value={paymentInfo.finance_contact_email} />
+                        <InfoItem label="Kontak Finance" value={paymentInfo.finance_contact_phone} />
+                    </div>
+                </section>
+
+                <section className="panel-card p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <h2 className="font-semibold text-xl">Riwayat Transaksi</h2>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -167,6 +178,15 @@ export default function Payments({ migrationRequired, payments = [], filters, mo
                 </section>
             </div>
         </ProtectedLayout>
+    );
+}
+
+function InfoItem({ label, value }) {
+    return (
+        <div className="rounded-xl border border-border bg-background px-3 py-2.5">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="mt-1 font-medium break-all">{value ? String(value) : '-'}</p>
+        </div>
     );
 }
 

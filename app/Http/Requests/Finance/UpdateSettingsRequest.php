@@ -14,9 +14,9 @@ class UpdateSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'default_due_days' => ['required', 'integer', 'min:1', 'max:90'],
-            'auto_verify_payment' => ['required', 'boolean'],
-            'overdue_reminder_days' => ['required', 'integer', 'min:1', 'max:30'],
+            'default_due_days' => ['nullable', 'integer', 'min:1', 'max:90'],
+            'auto_verify_payment' => ['nullable', 'boolean'],
+            'overdue_reminder_days' => ['nullable', 'integer', 'min:1', 'max:30'],
             'nominal_spp' => ['nullable', 'integer', 'min:0', 'max:1000000000'],
             'late_fee_per_day' => ['nullable', 'integer', 'min:0', 'max:100000000'],
             'grace_period_days' => ['nullable', 'integer', 'min:0', 'max:90'],

@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\Schema;
 
 class FinanceService
 {
+    public function __construct(
+        private readonly NotificationService $notificationService
+    ) {
+    }
+
     public function hasFinanceTables(): bool
     {
         return Schema::hasTable('fee_components')
@@ -249,12 +254,22 @@ class FinanceService
             $data['due_date'] = now()->addDays($dueDays)->toDateString();
         }
 
-        Invoice::create($data);
+        $invoice = Invoice::create($data);
+
+        if ((bool) ($settings['notify_on_invoice_created'] ?? true)) {
+            $this->notifyStudentInvoiceCreated($invoice, $creatorId);
+        }
+
         Cache::forget('dashboard:finance');
     }
 
-    public function updateInvoice(Invoice $invoice, array $payload): void
+    public function updateInvoice(Invoice $invoice, array $payload, int $actorId): void
     {
+        $settings = $this->getSettings($actorId);
+        if (!(bool) ($settings['security_allow_manual_invoice_status'] ?? true)) {
+            unset($payload['status']);
+        }
+
         $invoice->update($payload);
         Cache::forget('dashboard:finance');
     }
@@ -265,10 +280,12 @@ class FinanceService
         Cache::forget('dashboard:finance');
     }
 
-    public function getPaymentsData(string $search, string $status): array
+    public function getPaymentsData(string $search, string $status, ?int $financeId = null): array
     {
         $allowedStatus = ['all', 'pending', 'verified', 'rejected'];
         $selectedStatus = in_array($status, $allowedStatus, true) ? $status : 'all';
+        $resolvedFinanceId = $financeId ?? (int) (User::query()->where('role', 'finance')->orderBy('id')->value('id') ?? 0);
+        $settings = $resolvedFinanceId > 0 ? $this->getSettings($resolvedFinanceId) : $this->getSettings(0);
 
         if (!$this->hasFinanceTables()) {
             return [
@@ -277,6 +294,13 @@ class FinanceService
                 'invoices' => [],
                 'students' => [],
                 'mocked' => false,
+                'paymentInfo' => [
+                    'bank_name' => (string) ($settings['bank_name'] ?? ''),
+                    'bank_account_name' => (string) ($settings['bank_account_name'] ?? ''),
+                    'bank_account_number' => (string) ($settings['bank_account_number'] ?? ''),
+                    'finance_contact_email' => (string) ($settings['finance_contact_email'] ?? ''),
+                    'finance_contact_phone' => (string) ($settings['finance_contact_phone'] ?? ''),
+                ],
                 'filters' => [
                     'search' => $search,
                     'status' => $selectedStatus,
@@ -315,6 +339,13 @@ class FinanceService
             'invoices' => $invoices,
             'students' => $students,
             'mocked' => $mocked,
+            'paymentInfo' => [
+                'bank_name' => (string) ($settings['bank_name'] ?? ''),
+                'bank_account_name' => (string) ($settings['bank_account_name'] ?? ''),
+                'bank_account_number' => (string) ($settings['bank_account_number'] ?? ''),
+                'finance_contact_email' => (string) ($settings['finance_contact_email'] ?? ''),
+                'finance_contact_phone' => (string) ($settings['finance_contact_phone'] ?? ''),
+            ],
             'filters' => [
                 'search' => $search,
                 'status' => $selectedStatus,
@@ -322,8 +353,11 @@ class FinanceService
         ];
     }
 
-    public function getVerificationData(string $search = ''): array
+    public function getVerificationData(string $search = '', ?int $financeId = null): array
     {
+        $resolvedFinanceId = $financeId ?? (int) (User::query()->where('role', 'finance')->orderBy('id')->value('id') ?? 0);
+        $settings = $resolvedFinanceId > 0 ? $this->getSettings($resolvedFinanceId) : $this->getSettings(0);
+
         if (!$this->hasFinanceTables()) {
             return [
                 'migrationRequired' => true,
@@ -335,6 +369,9 @@ class FinanceService
                     'rejected' => 0,
                 ],
                 'verifications' => [],
+                'settings' => [
+                    'security_require_note_on_reject' => (bool) ($settings['security_require_note_on_reject'] ?? true),
+                ],
             ];
         }
 
@@ -369,6 +406,9 @@ class FinanceService
             'filters' => ['search' => $search],
             'summary' => $summary,
             'verifications' => $pending,
+            'settings' => [
+                'security_require_note_on_reject' => (bool) ($settings['security_require_note_on_reject'] ?? true),
+            ],
         ];
     }
 
@@ -407,16 +447,22 @@ class FinanceService
             if ($payment->invoice_id) {
                 $this->syncInvoiceStatus((int) $payment->invoice_id);
             }
+
+            $settings = $this->getSettings($verifierId);
+            if ((bool) ($settings['notify_on_payment_verified'] ?? true)) {
+                $this->notifyStudentPaymentVerified($payment, $verifierId);
+            }
         });
 
         Cache::forget('dashboard:finance');
     }
 
-    public function rejectPayment(Payment $payment, int $verifierId): void
+    public function rejectPayment(Payment $payment, int $verifierId, ?string $note = null): void
     {
         $payment->update([
             'status' => 'rejected',
             'verified_by' => $verifierId,
+            'notes' => $note !== null ? trim($note) : $payment->notes,
         ]);
 
         if ($payment->invoice_id) {
@@ -659,6 +705,9 @@ class FinanceService
             return false;
         }
 
+        // Ensure every tab save keeps a complete, consistent setting snapshot.
+        $payload = array_merge($this->getSettings($financeId), $payload);
+
         $prefix = $this->settingsPrefix($financeId);
         foreach ($payload as $key => $value) {
             SystemSetting::updateOrCreate(
@@ -677,12 +726,15 @@ class FinanceService
             return;
         }
 
+        $settings = $this->resolveInvoiceSettings($invoice);
+        $targetAmount = $this->applyLateFeeAndGetTargetAmount($invoice, $settings);
+
         $verifiedPaid = (float) Payment::query()
             ->where('invoice_id', $invoiceId)
             ->where('status', 'verified')
             ->sum('amount');
 
-        if ($verifiedPaid >= (float) $invoice->amount) {
+        if ($verifiedPaid >= $targetAmount) {
             $invoice->update(['status' => 'paid']);
             return;
         }
@@ -692,7 +744,7 @@ class FinanceService
             return;
         }
 
-        if ($invoice->due_date && now()->toDateString() > (string) $invoice->due_date) {
+        if ($this->isOverdueBasedOnSettings($invoice, $settings)) {
             $invoice->update(['status' => 'overdue']);
             return;
         }
@@ -703,10 +755,10 @@ class FinanceService
     private function refreshOverdueInvoices(): void
     {
         Invoice::query()
-            ->whereIn('status', ['unpaid', 'partial'])
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->whereNotNull('due_date')
-            ->whereDate('due_date', '<', now()->toDateString())
-            ->update(['status' => 'overdue']);
+            ->pluck('id')
+            ->each(fn (int $invoiceId) => $this->syncInvoiceStatus($invoiceId));
     }
 
     private function generateInvoiceNo(): string
@@ -741,6 +793,138 @@ class FinanceService
     private function settingsPrefix(int $financeId): string
     {
         return 'finance_' . $financeId . '_';
+    }
+
+    private function resolveInvoiceSettings(Invoice $invoice): array
+    {
+        $financeId = (int) ($invoice->created_by ?? 0);
+        if ($financeId <= 0) {
+            $financeId = (int) (User::query()->where('role', 'finance')->orderBy('id')->value('id') ?? 0);
+        }
+
+        return $this->getSettings($financeId);
+    }
+
+    private function isOverdueBasedOnSettings(Invoice $invoice, array $settings): bool
+    {
+        if (!$invoice->due_date) {
+            return false;
+        }
+
+        $graceDays = max(0, (int) ($settings['grace_period_days'] ?? 0));
+        $overdueStart = now()->parse((string) $invoice->due_date)->addDays($graceDays)->startOfDay();
+
+        return now()->startOfDay()->greaterThan($overdueStart);
+    }
+
+    private function applyLateFeeAndGetTargetAmount(Invoice $invoice, array $settings): float
+    {
+        $baseAmount = $this->ensureInvoiceBaseAmount($invoice);
+        $lateFeePerDay = max(0, (int) ($settings['late_fee_per_day'] ?? 0));
+        $graceDays = max(0, (int) ($settings['grace_period_days'] ?? 0));
+
+        if (!$invoice->due_date || $lateFeePerDay <= 0) {
+            return round($baseAmount, 2);
+        }
+
+        $overdueStart = now()->parse((string) $invoice->due_date)->addDays($graceDays)->startOfDay();
+        $today = now()->startOfDay();
+        $overdueDays = $today->greaterThan($overdueStart) ? $overdueStart->diffInDays($today) : 0;
+        $targetAmount = round($baseAmount + ($overdueDays * $lateFeePerDay), 2);
+
+        if (abs(((float) $invoice->amount) - $targetAmount) > 0.009) {
+            $invoice->update(['amount' => $targetAmount]);
+            $invoice->refresh();
+        }
+
+        return $targetAmount;
+    }
+
+    private function ensureInvoiceBaseAmount(Invoice $invoice): float
+    {
+        $description = (string) ($invoice->description ?? '');
+        if (preg_match('/\[BASE_AMOUNT:(\d+(?:\.\d+)?)\]/', $description, $matches) === 1) {
+            return (float) $matches[1];
+        }
+
+        $baseAmount = round((float) $invoice->amount, 2);
+        $marker = '[BASE_AMOUNT:' . number_format($baseAmount, 2, '.', '') . ']';
+        $newDescription = trim($description) === '' ? $marker : trim($description) . "\n" . $marker;
+
+        $invoice->update(['description' => $newDescription]);
+        $invoice->refresh();
+
+        return $baseAmount;
+    }
+
+    private function notifyStudentInvoiceCreated(Invoice $invoice, int $actorId): void
+    {
+        if (!$invoice->student_id) {
+            return;
+        }
+
+        $student = User::query()->find($invoice->student_id);
+        if (!$student) {
+            return;
+        }
+
+        $title = 'Tagihan Baru';
+        $message = "Tagihan {$invoice->invoice_no} sebesar Rp " . number_format((float) $invoice->amount, 0, ',', '.') . ' telah dibuat.';
+
+        $this->notificationService->notify(
+            (int) $student->id,
+            'finance',
+            $title,
+            $message,
+            '/finance-payments',
+            [
+                'invoice_id' => $invoice->id,
+                'invoice_no' => $invoice->invoice_no,
+            ],
+            $actorId
+        );
+
+        $this->notificationService->sendSimpleEmail(
+            $student->email,
+            $title . ': ' . $invoice->invoice_no,
+            "Halo {$student->name},\n\n{$message}\nJatuh tempo: " . ($invoice->due_date ?? '-') . ".\n"
+        );
+    }
+
+    private function notifyStudentPaymentVerified(Payment $payment, int $actorId): void
+    {
+        if (!$payment->student_id) {
+            return;
+        }
+
+        $student = User::query()->find($payment->student_id);
+        if (!$student) {
+            return;
+        }
+
+        $invoiceNo = (string) ($payment->invoice?->invoice_no ?? '-');
+        $title = 'Pembayaran Diverifikasi';
+        $message = "Pembayaran {$payment->payment_no} untuk tagihan {$invoiceNo} telah diverifikasi.";
+
+        $this->notificationService->notify(
+            (int) $student->id,
+            'finance',
+            $title,
+            $message,
+            '/finance-payments',
+            [
+                'payment_id' => $payment->id,
+                'payment_no' => $payment->payment_no,
+                'invoice_id' => $payment->invoice_id,
+            ],
+            $actorId
+        );
+
+        $this->notificationService->sendSimpleEmail(
+            $student->email,
+            $title . ': ' . $payment->payment_no,
+            "Halo {$student->name},\n\n{$message}\nJumlah: Rp " . number_format((float) $payment->amount, 0, ',', '.') . ".\n"
+        );
     }
 
     private function mockStudents(): array
