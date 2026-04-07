@@ -16,11 +16,13 @@ class Quiz extends Model
         'duration_minutes',
         'total_questions',
         'scheduled_at',
+        'due_at',
         'status',
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'due_at' => 'datetime',
         'duration_minutes' => 'integer',
         'total_questions' => 'integer',
     ];
