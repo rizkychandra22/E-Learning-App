@@ -832,6 +832,7 @@ class LecturerService
                     'duration_minutes' => $quiz->duration_minutes,
                     'total_questions' => $quiz->total_questions,
                     'scheduled_at' => $quiz->scheduled_at?->toISOString(),
+                    'due_at' => $quiz->due_at?->toISOString(),
                     'questions' => $quiz->questions->map(fn (Question $question) => [
                         'id' => $question->id,
                         'question_text' => $question->question_text,
@@ -1088,15 +1089,22 @@ class LecturerService
 
         $file = $payload['file'];
         $storedPath = $file->store('course-materials/' . $course->id, 'public');
-
-        $course->materials()->create([
+        $materialPayload = [
             'uploaded_by' => $lecturerId,
             'title' => trim((string) $payload['title']),
             'file_name' => $file->getClientOriginalName(),
             'file_path' => $storedPath,
             'mime_type' => $file->getClientMimeType(),
             'file_size' => $file->getSize() ?? 0,
-        ]);
+        ];
+
+        if (Schema::hasColumn('course_materials', 'meeting_number')) {
+            $materialPayload['meeting_number'] = isset($payload['meeting_number']) && $payload['meeting_number'] !== ''
+                ? (int) $payload['meeting_number']
+                : null;
+        }
+
+        $course->materials()->create($materialPayload);
     }
 
     public function deleteMaterialForLecturer(int $lecturerId, CourseMaterial $material): void
@@ -1203,7 +1211,9 @@ class LecturerService
         $normalizedStatus = in_array($status, ['all', 'draft', 'active', 'closed'], true) ? $status : 'all';
         $selectedCourseId = trim($courseId) !== '' ? (int) $courseId : null;
 
-        $migrationRequired = !Schema::hasTable('quizzes') || !Schema::hasTable('questions');
+        $migrationRequired = !Schema::hasTable('quizzes')
+            || !Schema::hasTable('questions')
+            || !Schema::hasColumn('quizzes', 'due_at');
         $quizzes = collect();
         if (!$migrationRequired) {
             $quizzes = Quiz::query()
@@ -1231,6 +1241,7 @@ class LecturerService
                         'duration_minutes' => $quiz->duration_minutes,
                         'total_questions' => $quiz->total_questions,
                         'scheduled_at' => $quiz->scheduled_at?->toISOString(),
+                        'due_at' => $quiz->due_at?->toISOString(),
                         'status' => $quiz->status,
                         'participants_count' => (int) ($quiz->attempts_count ?? 0),
                         'avg_score' => $avgScore,
@@ -1271,14 +1282,16 @@ class LecturerService
 
     public function canManageQuizzes(): bool
     {
-        return Schema::hasTable('quizzes') && Schema::hasTable('questions');
+        return Schema::hasTable('quizzes')
+            && Schema::hasTable('questions')
+            && Schema::hasColumn('quizzes', 'due_at');
     }
 
     public function createQuiz(int $lecturerId, array $payload): void
     {
         $courseId = $this->resolveCourseId($lecturerId, $payload['course_id'] ?? null);
 
-        $quiz = Quiz::create([
+        $quizPayload = [
             'lecturer_id' => $lecturerId,
             'course_id' => $courseId,
             'title' => $payload['title'],
@@ -1287,7 +1300,13 @@ class LecturerService
             'total_questions' => isset($payload['questions']) ? count($payload['questions']) : ($payload['total_questions'] ?? null),
             'scheduled_at' => $payload['scheduled_at'] ?? null,
             'status' => $payload['status'],
-        ]);
+        ];
+
+        if (Schema::hasColumn('quizzes', 'due_at')) {
+            $quizPayload['due_at'] = $payload['due_at'] ?? null;
+        }
+
+        $quiz = Quiz::create($quizPayload);
 
         $this->syncQuizQuestions($quiz, $payload['questions'] ?? []);
     }
@@ -1297,7 +1316,7 @@ class LecturerService
         $this->ensureOwned($lecturerId, $quiz);
         $courseId = $this->resolveCourseId($lecturerId, $payload['course_id'] ?? null);
 
-        $quiz->update([
+        $quizPayload = [
             'course_id' => $courseId,
             'title' => $payload['title'],
             'description' => $payload['description'] ?? null,
@@ -1305,7 +1324,13 @@ class LecturerService
             'total_questions' => isset($payload['questions']) ? count($payload['questions']) : ($payload['total_questions'] ?? null),
             'scheduled_at' => $payload['scheduled_at'] ?? null,
             'status' => $payload['status'],
-        ]);
+        ];
+
+        if (Schema::hasColumn('quizzes', 'due_at')) {
+            $quizPayload['due_at'] = $payload['due_at'] ?? null;
+        }
+
+        $quiz->update($quizPayload);
 
         if (array_key_exists('questions', $payload)) {
             $this->syncQuizQuestions($quiz, $payload['questions'] ?? []);
@@ -1592,6 +1617,119 @@ class LecturerService
                 'enrollments' => $enrollmentsMigrationRequired,
             ],
             'mocked' => $mocked,
+        ];
+    }
+
+    public function getAttendanceData(int $lecturerId, string $search, string $courseId): array
+    {
+        $selectedCourseId = trim($courseId) !== '' ? (int) $courseId : null;
+        $trimmedSearch = trim($search);
+
+        $migrationRequired = [
+            'modules' => !Schema::hasTable('course_modules') || !Schema::hasTable('course_lessons'),
+            'progress' => !Schema::hasTable('lesson_progress'),
+            'enrollments' => !Schema::hasTable('course_student'),
+        ];
+
+        $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
+        $records = collect();
+        $totalStudents = 0;
+
+        if (
+            $selectedCourseId
+            && !$migrationRequired['modules']
+            && !$migrationRequired['progress']
+            && !$migrationRequired['enrollments']
+        ) {
+            $course = $this->findLecturerCourse($lecturerId, $selectedCourseId);
+            $totalStudents = (int) $course->students()->count();
+
+            $lessonsQuery = DB::table('course_lessons')
+                ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
+                ->where('course_modules.course_id', $course->id)
+                ->select([
+                    'course_lessons.id as lesson_id',
+                    'course_lessons.title as lesson_title',
+                    'course_lessons.sort_order as lesson_sort_order',
+                    'course_modules.title as module_title',
+                    'course_modules.sort_order as module_sort_order',
+                ]);
+
+            if ($trimmedSearch !== '') {
+                $lessonsQuery->where(function ($query) use ($trimmedSearch) {
+                    $query
+                        ->where('course_lessons.title', 'like', '%' . $trimmedSearch . '%')
+                        ->orWhere('course_modules.title', 'like', '%' . $trimmedSearch . '%');
+                });
+            }
+
+            $lessons = $lessonsQuery
+                ->orderBy('course_modules.sort_order')
+                ->orderBy('course_lessons.sort_order')
+                ->get();
+
+            $lessonIds = collect($lessons)->pluck('lesson_id')->map(fn ($id) => (int) $id)->all();
+
+            $progressByLesson = collect();
+            if ($lessonIds !== []) {
+                $progressByLesson = DB::table('lesson_progress')
+                    ->whereIn('lesson_id', $lessonIds)
+                    ->selectRaw('lesson_id')
+                    ->selectRaw('COUNT(DISTINCT CASE WHEN progress_percent > 0 OR last_accessed_at IS NOT NULL THEN student_id END) as attended_count')
+                    ->selectRaw('COUNT(DISTINCT CASE WHEN is_completed = 1 THEN student_id END) as completed_count')
+                    ->selectRaw('MAX(last_accessed_at) as last_accessed_at')
+                    ->groupBy('lesson_id')
+                    ->get()
+                    ->mapWithKeys(fn ($row) => [
+                        (int) $row->lesson_id => [
+                            'attended_count' => (int) ($row->attended_count ?? 0),
+                            'completed_count' => (int) ($row->completed_count ?? 0),
+                            'last_accessed_at' => $row->last_accessed_at,
+                        ],
+                    ]);
+            }
+
+            $records = collect($lessons)
+                ->values()
+                ->map(function ($lesson, int $index) use ($progressByLesson, $totalStudents): array {
+                    $progress = $progressByLesson->get((int) $lesson->lesson_id, []);
+                    $attendedCount = (int) ($progress['attended_count'] ?? 0);
+                    $completedCount = (int) ($progress['completed_count'] ?? 0);
+                    $attendancePercent = $totalStudents > 0 ? (int) round(($attendedCount / $totalStudents) * 100) : 0;
+                    $completionPercent = $totalStudents > 0 ? (int) round(($completedCount / $totalStudents) * 100) : 0;
+
+                    return [
+                        'lesson_id' => (int) $lesson->lesson_id,
+                        'meeting_number' => $index + 1,
+                        'module_title' => (string) $lesson->module_title,
+                        'lesson_title' => (string) $lesson->lesson_title,
+                        'attended_count' => $attendedCount,
+                        'completed_count' => $completedCount,
+                        'students_total' => $totalStudents,
+                        'attendance_percent' => max(0, min(100, $attendancePercent)),
+                        'completion_percent' => max(0, min(100, $completionPercent)),
+                        'last_accessed_at' => !empty($progress['last_accessed_at']) ? now()->parse((string) $progress['last_accessed_at'])->toISOString() : null,
+                    ];
+                });
+        }
+
+        $summary = [
+            'total_students' => $totalStudents,
+            'total_meetings' => $records->count(),
+            'average_attendance_percent' => (int) round((float) ($records->avg('attendance_percent') ?? 0)),
+            'average_completion_percent' => (int) round((float) ($records->avg('completion_percent') ?? 0)),
+        ];
+
+        return [
+            'courses' => $courses,
+            'records' => $records->values(),
+            'summary' => $summary,
+            'filters' => [
+                'search' => $trimmedSearch,
+                'course' => $selectedCourseId,
+            ],
+            'migrationRequired' => $migrationRequired,
+            'mocked' => false,
         ];
     }
 
@@ -2122,6 +2260,7 @@ class LecturerService
                 'id' => 1201,
                 'course_id' => $courses[0]['id'],
                 'title' => 'Slide Pengantar UX',
+                'meeting_number' => 1,
                 'file_name' => 'ux-introduction.pdf',
                 'file_size' => 820000,
                 'created_at' => now()->subDays(3)->toISOString(),
@@ -2132,6 +2271,7 @@ class LecturerService
                 'id' => 1202,
                 'course_id' => $courses[1]['id'],
                 'title' => 'Brief Project Web',
+                'meeting_number' => 2,
                 'file_name' => 'project-brief.docx',
                 'file_size' => 450000,
                 'created_at' => now()->subDays(5)->toISOString(),
@@ -2142,6 +2282,7 @@ class LecturerService
                 'id' => 1203,
                 'course_id' => $courses[2]['id'],
                 'title' => 'Dataset & Panduan',
+                'meeting_number' => 3,
                 'file_name' => 'dataset-guide.zip',
                 'file_size' => 2450000,
                 'created_at' => now()->subDays(7)->toISOString(),
@@ -2192,6 +2333,7 @@ class LecturerService
                 'duration_minutes' => 30,
                 'total_questions' => 20,
                 'scheduled_at' => now()->addDays(2)->toISOString(),
+                'due_at' => now()->addDays(3)->toISOString(),
                 'status' => 'active',
                 'course' => $courses[0],
                 'is_mock' => true,
@@ -2204,6 +2346,7 @@ class LecturerService
                 'duration_minutes' => 45,
                 'total_questions' => 25,
                 'scheduled_at' => now()->addDays(6)->toISOString(),
+                'due_at' => now()->addDays(7)->toISOString(),
                 'status' => 'draft',
                 'course' => $courses[2],
                 'is_mock' => true,
