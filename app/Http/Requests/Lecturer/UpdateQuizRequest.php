@@ -20,6 +20,7 @@ class UpdateQuizRequest extends FormRequest
             'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:240'],
             'total_questions' => ['nullable', 'integer', 'min:1', 'max:200'],
             'scheduled_at' => ['nullable', 'date'],
+            'due_at' => ['required', 'date', 'after_or_equal:scheduled_at'],
             'status' => ['required', 'in:draft,active,closed'],
             'questions' => ['nullable', 'array', 'min:1', 'max:200'],
             'questions.*.question_text' => ['required_with:questions', 'string', 'max:2000'],
