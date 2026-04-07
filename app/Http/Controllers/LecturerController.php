@@ -548,6 +548,19 @@ class LecturerController extends Controller
         return Inertia::render('Lecturer/Students', $this->service->getStudentNotesData((int) $user->id, $search, $status, $courseId));
     }
 
+    public function attendance(Request $request): Response
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'teacher') {
+            return $this->placeholder('Absensi', 'Rekap kehadiran mahasiswa per pertemuan');
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $courseId = trim((string) $request->query('course', ''));
+
+        return Inertia::render('Lecturer/Attendance', $this->service->getAttendanceData((int) $user->id, $search, $courseId));
+    }
+
     public function storeStudentNote(StoreStudentNoteRequest $request): RedirectResponse
     {
         $user = $this->requireLecturer();
