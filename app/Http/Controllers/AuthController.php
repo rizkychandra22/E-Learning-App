@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Services\AuthService;
+use App\Services\NotificationService;
 use App\Services\SystemSettingService;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
@@ -22,7 +23,8 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly AuthService $authService,
-        private readonly SystemSettingService $systemSettings
+        private readonly SystemSettingService $systemSettings,
+        private readonly NotificationService $notificationService
     ) {
     }
 
@@ -111,7 +113,7 @@ class AuthController extends Controller
 
         $validated = $request->validated();
 
-        User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'username' => $validated['username'],
             'email' => $validated['email'],
@@ -127,6 +129,25 @@ class AuthController extends Controller
                 'role' => 'student',
                 'source' => 'self-register',
             ]);
+
+            $recipientIds = User::query()
+                ->whereIn('role', ['root', 'admin'])
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $this->notificationService->notifyMany(
+                $recipientIds,
+                'approval',
+                'Pendaftaran Mahasiswa Baru',
+                "Akun {$user->name} menunggu persetujuan admin universitas.",
+                '/approvals',
+                [
+                    'new_user_id' => (int) $user->id,
+                    'new_user_role' => 'student',
+                ],
+                null
+            );
         }
 
         return redirect('/login')->with('success', 'Registrasi berhasil. Akun Anda akan aktif setelah disetujui admin akademik.');

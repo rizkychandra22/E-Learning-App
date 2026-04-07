@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import {
     Activity,
     Award,
@@ -20,7 +20,7 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
-import { Head, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
@@ -751,6 +751,7 @@ export default function Dashboard() {
 
     const superAdmin = props.superAdmin;
     const adminAcademic = props.adminAcademic;
+    const adminAcademicSettings = props.adminAcademicSettings;
     const financeData = props.financeData;
     const lecturerData = props.lecturerData;
     const intlLocale = toIntlLocale(props?.system?.default_language);
@@ -769,6 +770,22 @@ export default function Dashboard() {
     const dosenClassProgress = lecturerData?.class_progress ?? [];
     const dosenRadarData = lecturerData?.performance_breakdown ?? [];
     const dosenIncomingAssignments = lecturerData?.incoming_assignments ?? [];
+    const adminRefreshSeconds = Number(adminAcademicSettings?.dashboard_refresh_seconds ?? 0);
+
+    useEffect(() => {
+        if (user.role !== 'admin') return undefined;
+        if (!Number.isFinite(adminRefreshSeconds) || adminRefreshSeconds < 10) return undefined;
+
+        const timer = window.setInterval(() => {
+            router.reload({
+                only: ['adminAcademic', 'adminAcademicSettings'],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        }, adminRefreshSeconds * 1000);
+
+        return () => window.clearInterval(timer);
+    }, [user.role, adminRefreshSeconds]);
 
     const displayName = user?.full_name || user?.name || user?.username || 'Pengguna';
 
