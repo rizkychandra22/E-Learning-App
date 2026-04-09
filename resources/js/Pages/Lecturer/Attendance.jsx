@@ -54,7 +54,7 @@ export default function Attendance({ courses, records, summary, filters, migrati
                                 />
                             </div>
                             <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-64">
-                                <option value="">Pilih kursus</option>
+                                <option value="">Pilih mata kuliah</option>
                                 {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
                             </select>
                             <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
@@ -69,10 +69,10 @@ export default function Attendance({ courses, records, summary, filters, migrati
                     )}
 
                     <div className="p-4">
-                        {!courseFilter && <p className="text-sm text-muted-foreground text-center py-8">Pilih kursus untuk melihat rekap absensi per pertemuan.</p>}
+                        {!courseFilter && <p className="text-sm text-muted-foreground text-center py-8">Pilih mata kuliah untuk melihat rekap absensi per pertemuan.</p>}
 
                         {courseFilter && records.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-8">Belum ada data absensi untuk kursus ini.</p>
+                            <p className="text-sm text-muted-foreground text-center py-8">Belum ada data absensi untuk mata kuliah ini.</p>
                         )}
 
                         {courseFilter && records.length > 0 && (
@@ -134,3 +134,5 @@ function Badge({ value, icon }) {
         </span>
     );
 }
+
+

@@ -97,7 +97,7 @@ export default function Discussions({ discussions, courses, filters, migrationRe
                                     <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari diskusi..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
                                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="all">Semua</option><option value="open">Belum dijawab</option><option value="closed">Sudah dijawab</option></select>
-                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
+                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua mata kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
                                 <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
                             </form>
                             <button type="button" onClick={beginCreate} disabled={migrationRequired || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"><Plus className="w-4 h-4" /> Buat Thread</button>
@@ -126,7 +126,7 @@ export default function Discussions({ discussions, courses, filters, migrationRe
                 <CreateFormModal open={showForm} title={isEditing ? 'Edit Thread' : 'Tambah Thread'} onClose={closeForm} onSubmit={submitForm} submitLabel={isEditing ? 'Simpan' : 'Tambah'} processing={form.processing} disableSubmit={migrationRequired || mocked} maxWidthClass="max-w-3xl">
                     <div className="space-y-3">
                         <Field label="Judul Diskusi" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                        <SelectField label="Kursus" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <SelectField label="Mata Kuliah" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Mata Kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
                         <label className="block"><span className="text-sm font-medium">Isi Diskusi</span><textarea value={form.data.body} onChange={(event) => form.setData('body', event.target.value)} rows={4} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{form.errors.body && <span className="text-xs text-destructive mt-1 block">{form.errors.body}</span>}</label>
                         <SelectField label="Status" value={form.data.status} onChange={(value) => form.setData('status', value)} error={form.errors.status}><option value="open">Open</option><option value="closed">Closed</option></SelectField>
                     </div>
@@ -142,4 +142,6 @@ function StatCard({ title, value, tone }) {
 function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function formatDateTime(dateString) { if (!dateString) return '-'; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return '-'; return date.toLocaleString('id-ID'); }
+
+
 
