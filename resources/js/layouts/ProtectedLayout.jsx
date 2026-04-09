@@ -13,3 +13,4 @@ export function ProtectedLayout({ children }) {
     if (!user) return null;
     return <DashboardLayout>{children}</DashboardLayout>;
 }
+

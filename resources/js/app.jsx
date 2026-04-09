@@ -40,3 +40,4 @@ createInertiaApp({
         initPerformanceProfiling();
     },
 });
+
