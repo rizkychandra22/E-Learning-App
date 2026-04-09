@@ -355,3 +355,4 @@ function ServiceCard({ title, metrics = [], status = 'Normal', warning = false }
         </div>
     );
 }
+

@@ -228,3 +228,4 @@ function SwitchRow({ title, description, checked, onChange }) {
         </label>
     );
 }
+
