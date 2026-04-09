@@ -44,7 +44,7 @@ export default function StudentDiscussions() {
     const { user } = useAuth();
     const { props } = usePage();
     const [search, setSearch] = useState('');
-    const [courseFilter, setCourseFilter] = useState('Semua Kursus');
+    const [courseFilter, setCourseFilter] = useState('Semua Mata Kuliah');
     if (!user) return null;
 
     const intlLocale = toIntlLocale(props?.system?.default_language);
@@ -59,9 +59,9 @@ export default function StudentDiscussions() {
         [intlLocale]
     );
 
-    const courseOptions = ['Semua Kursus', 'React JS Fundamental', 'Database Design', 'Node.js Advanced', 'UI/UX Design Basics'];
+    const courseOptions = ['Semua Mata Kuliah', 'React JS Fundamental', 'Database Design', 'Node.js Advanced', 'UI/UX Design Basics'];
     const visibleThreads = THREADS.filter((item) => {
-        const byCourse = courseFilter === 'Semua Kursus' || item.course === courseFilter;
+        const byCourse = courseFilter === 'Semua Mata Kuliah' || item.course === courseFilter;
         const bySearch = search.trim() === '' || `${item.title} ${item.course} ${item.author}`.toLowerCase().includes(search.trim().toLowerCase());
         return byCourse && bySearch;
     });
@@ -103,3 +103,4 @@ export default function StudentDiscussions() {
         </ProtectedLayout>
     );
 }
+

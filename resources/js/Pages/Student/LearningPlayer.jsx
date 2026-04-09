@@ -53,7 +53,7 @@ export default function LearningPlayer({ course, activeLesson }) {
                         <div className="flex flex-wrap gap-3">
                             <button type="button" onClick={() => submitProgress(50)} className="px-4 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium">Tandai Sedang Dipelajari</button>
                             <button type="button" onClick={() => submitProgress(100)} className="px-4 py-2 rounded-xl gradient-primary text-primary-foreground text-sm font-medium">Tandai Selesai</button>
-                            <Link href="/my-courses" className="px-4 py-2 rounded-xl border border-border text-sm font-medium">Kembali ke Kursus</Link>
+                            <Link href="/my-courses" className="px-4 py-2 rounded-xl border border-border text-sm font-medium">Kembali ke Mata Kuliah</Link>
                         </div>
                     </div>
 
@@ -104,5 +104,6 @@ export default function LearningPlayer({ course, activeLesson }) {
         </ProtectedLayout>
     );
 }
+
 
 

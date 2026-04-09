@@ -64,7 +64,7 @@ export default function AssignmentDetail() {
             <div className="space-y-6">
                 <PageHeroBanner
                     title={assignment.title}
-                    description={`Kursus: ${assignment?.course?.title ?? 'Tanpa kursus'}`}
+                    description={`Mata Kuliah: ${assignment?.course?.title ?? 'Tanpa mata kuliah'}`}
                 />
 
                 {migrationRequired && (
@@ -196,3 +196,4 @@ export default function AssignmentDetail() {
         </ProtectedLayout>
     );
 }
+

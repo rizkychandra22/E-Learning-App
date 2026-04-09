@@ -33,7 +33,7 @@ function QuizCard({ quiz, draft, onChangeAnswer, onSubmit }) {
         <div className={cn(UI.panel, 'space-y-3')}>
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs text-muted-foreground">{quiz?.course?.title ?? 'Tanpa kursus'}</p>
+                    <p className="text-xs text-muted-foreground">{quiz?.course?.title ?? 'Tanpa mata kuliah'}</p>
                     <h3 className="font-semibold">{quiz?.title}</h3>
                 </div>
                 <span className={cn(UI.chip, statusTone[quiz?.status] ?? 'bg-secondary text-secondary-foreground')}>{quiz?.status?.toUpperCase()}</span>
@@ -216,3 +216,4 @@ export default function StudentQuizzes() {
         </ProtectedLayout>
     );
 }
+

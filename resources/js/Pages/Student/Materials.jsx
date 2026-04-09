@@ -77,7 +77,7 @@ export default function StudentMaterials() {
             <div className="space-y-6">
                 <PageHeroBanner
                     title="Materi"
-                    description="Koleksi materi terbaru dari semua kursus aktif."
+                    description="Koleksi materi terbaru dari semua mata kuliah aktif."
                 />
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,7 +92,7 @@ export default function StudentMaterials() {
                         </span>
                         <span className={UI.chip}>
                             <FolderOpen className="w-3.5 h-3.5" />
-                            3 kursus
+                            3 mata kuliah
                         </span>
                     </div>
                     <button type="button" className="text-xs font-medium text-primary hover:opacity-80 flex items-center gap-1">
@@ -110,4 +110,5 @@ export default function StudentMaterials() {
         </ProtectedLayout>
     );
 }
+
 

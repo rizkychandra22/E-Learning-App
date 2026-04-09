@@ -191,7 +191,7 @@ export default function StudentGrades() {
         if (!records.length) return [];
         const map = new Map();
         records.forEach((item) => {
-            const courseTitle = item?.course?.title ?? 'Tanpa Kursus';
+            const courseTitle = item?.course?.title ?? 'Tanpa Mata Kuliah';
             const normalizedType = normalizeType(item?.type);
             const score = Number(item?.score) || 0;
             const maxScore = Number(item?.max_score) || 0;
@@ -272,7 +272,7 @@ export default function StudentGrades() {
 
                 <div className="grid grid-cols-1 min-[540px]:grid-cols-2 xl:grid-cols-4 gap-3">
                     <StatCard title="Rata-rata Keseluruhan" value={summary.average} icon={TrendingUp} tone="primary" />
-                    <StatCard title="Kursus Aktif" value={activeCoursesCount} icon={BookOpen} tone="success" />
+                    <StatCard title="Mata Kuliah Aktif" value={activeCoursesCount} icon={BookOpen} tone="success" />
                     <StatCard title="IPK Sementara" value={semesterIpk.toFixed(2)} icon={GraduationCap} tone="accent" />
                     <StatCard title="Predikat" value={predicate} icon={Award} tone="warm" />
                 </div>
@@ -309,13 +309,13 @@ export default function StudentGrades() {
                 <div className={UI.panel}>
                     <h3 className="font-semibold flex items-center gap-2">
                         <BarChart3 className="w-4 h-4 text-primary" />
-                        Detail Nilai per Kursus
+                        Detail Nilai per Mata Kuliah
                     </h3>
                     <div className="mt-4 overflow-x-auto">
                         <table className="w-full min-w-[840px] text-sm">
                             <thead>
                                 <tr className="text-left text-muted-foreground border-b border-border">
-                                    <th className="py-2 px-2 font-medium">Kursus</th>
+                                    <th className="py-2 px-2 font-medium">Mata Kuliah</th>
                                     <th className="py-2 px-2 font-medium">Tugas</th>
                                     <th className="py-2 px-2 font-medium">Kuis</th>
                                     <th className="py-2 px-2 font-medium">UTS</th>
@@ -362,3 +362,4 @@ export default function StudentGrades() {
         </ProtectedLayout>
     );
 }
+

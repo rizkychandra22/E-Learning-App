@@ -158,10 +158,10 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
     const countDone = courses.filter((course) => Number(course.progress_percent ?? 0) >= 100).length;
 
     const stats = [
-        { label: 'Kursus Aktif', value: String(summary.active_courses ?? 0), helper: 'Kursus yang sedang dipelajari', icon: BookOpen, tone: 'primary' },
+        { label: 'Mata Kuliah Aktif', value: String(summary.active_courses ?? 0), helper: 'Mata Kuliah yang sedang dipelajari', icon: BookOpen, tone: 'primary' },
         { label: 'Lesson Selesai', value: String(summary.completed_lessons ?? 0), helper: 'Akumulasi semua course', icon: CheckCircle2, tone: 'accent' },
         { label: 'Rata-rata Progress', value: `${summary.average_progress ?? 0}%`, helper: 'Ringkasan progres belajar', icon: Target, tone: 'success' },
-        { label: 'Kursus Selesai', value: String(countDone), helper: 'Kelas dengan progress 100%', icon: CheckCircle2, tone: 'warm' },
+        { label: 'Mata Kuliah Selesai', value: String(countDone), helper: 'Kelas dengan progress 100%', icon: CheckCircle2, tone: 'warm' },
     ];
 
     const filteredCourses = useMemo(() => {
@@ -178,9 +178,9 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
 
     return (
         <ProtectedLayout>
-            <Head title="Kursus Saya" />
+            <Head title="Mata Kuliah Saya" />
             <div className="space-y-6">
-                <PageHeroBanner title="Kursus Saya" description="Pantau progress belajarmu di sini." />
+                <PageHeroBanner title="Mata Kuliah Saya" description="Pantau progress belajarmu di sini." />
 
                 <div className="flex flex-wrap gap-3 text-sm">
                     <span className={UI.chip}><CalendarDays className="w-3.5 h-3.5" />{today}</span>
@@ -204,17 +204,17 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                             <UserPlus className="w-4 h-4 text-primary" />
                             Self Enrollment
                         </h3>
-                        <p className="text-xs text-muted-foreground mt-1">Daftar kursus aktif yang membuka pendaftaran mandiri.</p>
+                        <p className="text-xs text-muted-foreground mt-1">Daftar mata kuliah aktif yang membuka pendaftaran mandiri.</p>
 
                         <form onSubmit={submitEnroll} className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                             <label className="block md:col-span-2">
-                                <span className="text-sm font-medium">Pilih kursus</span>
+                                <span className="text-sm font-medium">Pilih mata kuliah</span>
                                 <select
                                     value={enrollForm.data.course_id}
                                     onChange={(event) => enrollForm.setData('course_id', event.target.value)}
                                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 >
-                                    <option value="">Pilih kursus</option>
+                                    <option value="">Pilih mata kuliah</option>
                                     {available_courses.map((course) => (
                                         <option key={course.id} value={course.id}>{course.title} ({course.code})</option>
                                     ))}
@@ -240,7 +240,7 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                                 className="md:col-span-3 inline-flex items-center justify-center gap-2 rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
                             >
                                 <UserPlus className="w-4 h-4" />
-                                Daftar Kursus
+                                Daftar Mata Kuliah
                             </button>
                         </form>
                     </div>
@@ -253,7 +253,7 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                                 type="text"
                                 value={search}
                                 onChange={(event) => setSearch(event.target.value)}
-                                placeholder="Cari kursus..."
+                                placeholder="Cari mata kuliah..."
                                 className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm"
                             />
                         </label>
@@ -279,7 +279,7 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                         {filteredCourses.length > 0 ? filteredCourses.map((course, index) => <CourseCard key={course.id} course={course} index={index} />) : (
                             <div className={cn(UI.panel, 'text-sm text-muted-foreground lg:col-span-2 xl:col-span-3')}>
-                                Belum ada kursus yang sesuai filter.
+                                Belum ada mata kuliah yang sesuai filter.
                             </div>
                         )}
                     </div>
@@ -288,3 +288,4 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
         </ProtectedLayout>
     );
 }
+

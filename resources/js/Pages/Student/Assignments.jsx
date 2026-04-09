@@ -23,7 +23,7 @@ function AssignmentCard({ assignment, intlLocale }) {
         <div className={cn(UI.panel, 'space-y-3')}>
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs text-muted-foreground">{assignment?.course?.title ?? 'Tanpa kursus'}</p>
+                    <p className="text-xs text-muted-foreground">{assignment?.course?.title ?? 'Tanpa mata kuliah'}</p>
                     <h3 className="font-semibold">{assignment?.title}</h3>
                 </div>
                 <span className={UI.chip}>{assignment?.max_score ?? 100} poin</span>
@@ -114,4 +114,5 @@ export default function StudentAssignments() {
         </ProtectedLayout>
     );
 }
+
 
