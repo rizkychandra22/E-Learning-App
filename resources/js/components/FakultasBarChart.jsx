@@ -175,3 +175,4 @@ export function FakultasBarChart({ data = [], title = 'Statistik Fakultas' }) {
     );
 }
 
+

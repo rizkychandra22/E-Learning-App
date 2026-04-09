@@ -22,7 +22,7 @@ const navByRole = {
     admin: [
         { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
         { title: 'Kelola User', url: '/manage-users', icon: Users },
-        { title: 'Kelola Kursus', url: '/manage-courses', icon: BookOpen },
+        { title: 'Kelola Mata Kuliah', url: '/manage-courses', icon: BookOpen },
         { title: 'Persetujuan Akun', url: '/approvals', icon: UserCheck },
         { title: 'Kategori', url: '/categories', icon: FolderOpen },
         { title: 'Laporan Akademik', url: '/academic-reports', icon: BarChart3 },
@@ -40,7 +40,7 @@ const navByRole = {
     ],
     dosen: [
         { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-        { title: 'Kursus Saya', url: '/my-courses', icon: BookOpen },
+        { title: 'Mata Kuliah Saya', url: '/my-courses', icon: BookOpen },
         { title: 'Materi', url: '/materials', icon: FileText },
         { title: 'Tugas', url: '/assignments', icon: ClipboardList },
         { title: 'Kuis', url: '/quizzes', icon: Award },
@@ -52,7 +52,7 @@ const navByRole = {
     ],
     mahasiswa: [
         { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-        { title: 'Kursus Saya', url: '/my-courses', icon: BookOpen },
+        { title: 'Mata Kuliah Saya', url: '/my-courses', icon: BookOpen },
         { title: 'Materi', url: '/materials', icon: FileText },
         { title: 'Tugas', url: '/assignments', icon: ClipboardList },
         { title: 'Kuis', url: '/quizzes', icon: Award },
@@ -174,3 +174,4 @@ export function AppSidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMob
         </>
     );
 }
+

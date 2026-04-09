@@ -22,3 +22,4 @@ export function StatCard({ title, value, change, changeType = 'neutral', icon: I
         </div>
     );
 }
+

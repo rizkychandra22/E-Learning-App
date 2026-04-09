@@ -47,3 +47,4 @@ export function MiniRoleCard({ title, value, icon: Icon, iconVariant = 'primary'
 export function EqualCard({ children, className }) {
     return <div className={cn('h-full min-h-[124px] [&>*]:h-full', className)}>{children}</div>;
 }
+

@@ -17,3 +17,4 @@ export function PageHeroBanner({ title, description, icon: Icon, action = null, 
         </section>
     );
 }
+
