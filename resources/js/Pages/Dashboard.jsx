@@ -211,7 +211,7 @@ function CourseProgress() {
 
     return (
         <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '300ms' }}>
-            <SectionTitle icon={GraduationCap}>Progress Kursus</SectionTitle>
+            <SectionTitle icon={GraduationCap}>Progress Mata Kuliah</SectionTitle>
             <div className="mb-4" />
             <div className="space-y-4">
                 {courses.map((course, index) => (
@@ -799,10 +799,10 @@ export default function Dashboard() {
 
     const roleSubtitle = {
         super_admin: 'Pantau seluruh aktivitas lintas role, performa pengguna, dan kesehatan platform E-Learning secara real-time.',
-        admin: 'Pantau operasional akademik, approval akun, serta kualitas data dan kursus dalam satu tampilan.',
+        admin: 'Pantau operasional akademik, approval akun, serta kualitas data dan mata kuliah dalam satu tampilan.',
         finance: 'Kontrol tagihan, verifikasi pembayaran, dan cashflow pembelajaran dengan alur kerja yang lebih cepat.',
         dosen: 'Kelola kelas, materi, penilaian, dan respons mahasiswa dari dashboard yang ringkas dan fokus.',
-        mahasiswa: 'Ikuti ritme belajarmu dengan progress kursus, jadwal penting, dan aktivitas terbaru.',
+        mahasiswa: 'Ikuti ritme belajarmu dengan progress mata kuliah, jadwal penting, dan aktivitas terbaru.',
     };
 
     const superAdminChartData = monthlyUsers.map((item) => ({
@@ -879,8 +879,8 @@ export default function Dashboard() {
                             cards={[
                                 { title: 'Total User Akademik', value: adminAcademic?.summary?.total_users ?? 0, change: `+${adminAcademic?.summary?.new_users_month ?? 0} bulan ini`, changeType: 'up', icon: Users, gradient: 'primary', delay: 0 },
                                 { title: 'Menunggu Persetujuan', value: adminAcademic?.summary?.pending_approvals ?? 0, icon: Clock, gradient: 'warm', delay: 80 },
-                                { title: 'Total Kursus', value: adminAcademic?.summary?.courses_count ?? 0, icon: BookOpen, gradient: 'accent', delay: 160 },
-                                { title: 'Kursus Aktif', value: adminAcademic?.summary?.active_courses_count ?? 0, icon: FileText, gradient: 'success', delay: 240 },
+                                { title: 'Total Mata Kuliah', value: adminAcademic?.summary?.courses_count ?? 0, icon: BookOpen, gradient: 'accent', delay: 160 },
+                                { title: 'Mata Kuliah Aktif', value: adminAcademic?.summary?.active_courses_count ?? 0, icon: FileText, gradient: 'success', delay: 240 },
                             ]}
                         />
                         <div className={UI.miniGridFourClass}>
@@ -909,7 +909,7 @@ export default function Dashboard() {
                             {superAdminChartData.length > 0
                                 ? <ModernTrendChart title="Pertumbuhan Pengguna" data={superAdminChartData} tone="primary" />
                                 : <TrendEmptyState title="Pertumbuhan Pengguna" />}
-                            <BarColumnChart title="Aktivitas Kursus Mingguan" data={superWeeklyActivityData} />
+                            <BarColumnChart title="Aktivitas Mata Kuliah Mingguan" data={superWeeklyActivityData} />
                         </div>
                         <div className="xl:col-span-4 space-y-4 sm:space-y-6">
                             <DonutCategoryChart title="Distribusi Role" data={roleDistributionData} />
@@ -922,10 +922,10 @@ export default function Dashboard() {
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div>
                                     <SectionTitle icon={Shield}>Admin Universitas Dashboard</SectionTitle>
-                                    <p className="text-sm text-muted-foreground mt-1">Kelola kursus, dosen, dan mahasiswa universitas</p>
+                                    <p className="text-sm text-muted-foreground mt-1">Kelola mata kuliah, dosen, dan mahasiswa universitas</p>
                                 </div>
                                 <a href="/manage-courses" className="inline-flex items-center justify-center px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold no-underline">
-                                    + Tambah Kursus
+                                    + Tambah Mata Kuliah
                                 </a>
                             </div>
                         </div>
@@ -935,16 +935,16 @@ export default function Dashboard() {
                                 <BarColumnChart title="Tren Enrollment" data={adminEnrollmentData} />
                             </div>
                             <div className="xl:col-span-4 h-full">
-                                <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />
+                                <DonutCategoryChart title="Kategori Mata Kuliah" data={adminCategoryData} />
                             </div>
                             <div className="xl:col-span-12">
                                 <div className={cn(UI.panelClass, 'animate-fade-in')} style={{ animationDelay: '420ms' }}>
-                                    <SectionTitle icon={BookOpen}>Daftar Kursus Terbaru</SectionTitle>
+                                    <SectionTitle icon={BookOpen}>Daftar Mata Kuliah Terbaru</SectionTitle>
                                     <div className="mt-4 overflow-x-auto">
                                         <table className="w-full min-w-[760px] text-sm">
                                             <thead>
                                                 <tr className="text-left text-muted-foreground border-b border-border">
-                                                    <th className="py-2 px-2 font-medium">Kursus</th>
+                                                    <th className="py-2 px-2 font-medium">Mata Kuliah</th>
                                                     <th className="py-2 px-2 font-medium">Instruktur</th>
                                                     <th className="py-2 px-2 font-medium">Mahasiswa</th>
                                                     <th className="py-2 px-2 font-medium">Status</th>
@@ -1072,7 +1072,7 @@ export default function Dashboard() {
                                             <thead>
                                                 <tr className="text-left text-muted-foreground border-b border-border">
                                                     <th className="py-2 px-2 font-medium">Mahasiswa</th>
-                                                    <th className="py-2 px-2 font-medium">Kursus</th>
+                                                    <th className="py-2 px-2 font-medium">Mata Kuliah</th>
                                                     <th className="py-2 px-2 font-medium">Tugas</th>
                                                     <th className="py-2 px-2 font-medium">Dikumpulkan</th>
                                                     <th className="py-2 px-2 font-medium">Status</th>
@@ -1130,7 +1130,7 @@ export default function Dashboard() {
                         )}
                         </div>
                         <div className="space-y-4 sm:space-y-6">
-                        {user.role === 'admin' && <DonutCategoryChart title="Kategori Kursus" data={adminCategoryData} />}
+                        {user.role === 'admin' && <DonutCategoryChart title="Kategori Mata Kuliah" data={adminCategoryData} />}
                         {(user.role === 'mahasiswa' || user.role === 'dosen') && <CourseProgress />}
                         <UpcomingSchedule />
                         </div>
@@ -1140,6 +1140,7 @@ export default function Dashboard() {
         </ProtectedLayout>
     );
 }
+
 
 
 
