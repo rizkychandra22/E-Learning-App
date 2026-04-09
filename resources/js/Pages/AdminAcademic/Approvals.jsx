@@ -259,3 +259,4 @@ export default function Approvals({ pendingUsers, filters, mocked, roleSummary: 
         </ProtectedLayout>
     );
 }
+

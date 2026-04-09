@@ -99,12 +99,12 @@ export default function Categories({ fakultas, mocked }) {
         <ProtectedLayout>
             <Head title="Kategori" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Kategori Kursus" description="Kelola kategori dan pengelompokan kursus" />
+                <PageHeroBanner title="Kategori Mata Kuliah" description="Kelola kategori dan pengelompokan mata kuliah" />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     <StatCard title="Total Kategori" value={fakultas.length} icon={FolderTree} gradient="primary" />
                     <StatCard title="Total Jurusan" value={totalJurusan} icon={BookOpen} gradient="success" />
-                    <StatCard title="Rata-rata Kursus" value={averagePerFakultas} icon={BookOpen} gradient="warm" />
+                    <StatCard title="Rata-rata Mata Kuliah" value={averagePerFakultas} icon={BookOpen} gradient="warm" />
                     <StatCard title="Kategori Aktif" value={fakultas.length} icon={FolderTree} gradient="accent" />
                 </div>
 
@@ -228,3 +228,4 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+

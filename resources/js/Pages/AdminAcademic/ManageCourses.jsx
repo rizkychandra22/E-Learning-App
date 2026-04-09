@@ -128,7 +128,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
     };
 
     const destroyCourse = (course) => {
-        if (!window.confirm(`Hapus kursus "${course.title}"?`)) return;
+        if (!window.confirm(`Hapus mata kuliah "${course.title}"?`)) return;
         router.delete(`/manage-courses/${course.id}`, { preserveScroll: true });
     };
 
@@ -151,12 +151,12 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
 
     return (
         <ProtectedLayout>
-            <Head title="Kelola Kursus" />
+            <Head title="Kelola Mata Kuliah" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Kelola Kursus" description="Manajemen seluruh kursus yang tersedia di platform" />
+                <PageHeroBanner title="Kelola Mata Kuliah" description="Manajemen seluruh mata kuliah yang tersedia di platform" />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <StatCard title="Total Kursus" value={stats.total} icon={BookOpen} gradient="primary" />
+                    <StatCard title="Total Mata Kuliah" value={stats.total} icon={BookOpen} gradient="primary" />
                     <StatCard title="Aktif" value={stats.active} icon={BookOpen} gradient="success" />
                     <StatCard title="Draft" value={stats.draft} icon={BookOpen} gradient="warm" />
                     <StatCard title="Total Peserta" value={new Intl.NumberFormat('id-ID').format(stats.participantTotal)} icon={Users} gradient="accent" />
@@ -164,7 +164,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
 
                 <section className="panel-card p-4">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
-                        <h3 className="font-semibold text-2xl">Daftar Kursus</h3>
+                        <h3 className="font-semibold text-2xl">Daftar Mata Kuliah</h3>
                         <div className="flex flex-col md:flex-row gap-2 w-full lg:w-auto">
                             <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 overflow-x-auto">
                                 {['all', 'active', 'draft', 'archived'].map((status) => (
@@ -188,7 +188,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                     type="text"
                                     value={search}
                                     onChange={(event) => setSearch(event.target.value)}
-                                    placeholder="Cari kursus..."
+                                    placeholder="Cari mata kuliah..."
                                     className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 />
                             </form>
@@ -216,7 +216,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
 
                     <CreateFormModal
                         open={showForm}
-                        title={isEditing ? 'Edit Kursus' : 'Tambah Kursus'}
+                        title={isEditing ? 'Edit Mata Kuliah' : 'Tambah Mata Kuliah'}
                         onClose={closeForm}
                         onSubmit={submitForm}
                         submitLabel="Simpan"
@@ -224,8 +224,8 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                         disableSubmit={mocked || migrationRequired}
                     >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Field label="Nama Kursus" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                            <Field label="Kode Kursus" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                            <Field label="Nama Mata Kuliah" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
+                            <Field label="Kode Mata Kuliah" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
                             <Field label="Kategori" value={form.data.category} error={form.errors.category} onChange={(value) => form.setData('category', value)} />
                             <Field label="Tags" value={form.data.tags} error={form.errors.tags} onChange={(value) => form.setData('tags', value)} placeholder="react, laravel" />
                             <SelectField label="Program Studi" value={form.data.jurusan_id} error={form.errors.jurusan_id} onChange={(value) => form.setData('jurusan_id', value)}>
@@ -294,13 +294,13 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                 </article>
                             );
                         })}
-                        {courses.length === 0 && <div className="xl:col-span-3 text-sm text-muted-foreground p-6 text-center">Belum ada kursus.</div>}
+                        {courses.length === 0 && <div className="xl:col-span-3 text-sm text-muted-foreground p-6 text-center">Belum ada mata kuliah.</div>}
                     </div>
                 </section>
 
                 {isEditing && (
                     <section className="panel-card p-4">
-                        <h3 className="font-semibold text-xl mb-3">Materi Kursus: {selectedCourse?.title}</h3>
+                        <h3 className="font-semibold text-xl mb-3">Materi Mata Kuliah: {selectedCourse?.title}</h3>
 
                         <form onSubmit={submitMaterial} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 mb-4">
                             <Field label="Judul Materi" value={materialForm.data.title} error={materialForm.errors.title} onChange={(value) => materialForm.setData('title', value)} />
@@ -334,7 +334,7 @@ export default function ManageCourses({ courses, jurusans, lecturers, migrationR
                                     </div>
                                 </div>
                             ))}
-                            {(selectedCourse?.materials ?? []).length === 0 && <p className="text-sm text-muted-foreground">Belum ada materi kursus.</p>}
+                            {(selectedCourse?.materials ?? []).length === 0 && <p className="text-sm text-muted-foreground">Belum ada materi mata kuliah.</p>}
                         </div>
                     </section>
                 )}
@@ -370,3 +370,4 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+
