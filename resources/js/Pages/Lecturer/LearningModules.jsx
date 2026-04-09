@@ -173,3 +173,5 @@ export default function LearningModules({ courses = [], selectedCourseId = null,
         </ProtectedLayout>
     );
 }
+
+

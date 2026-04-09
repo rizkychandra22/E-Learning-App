@@ -1065,8 +1065,10 @@ class LecturerService
 
             $courses = Course::query()
                 ->where('lecturer_id', $lecturerId)
+                ->withCount('materials')
+                ->withMax('materials', 'created_at')
                 ->orderBy('title')
-                ->get(['id', 'title', 'code']);
+                ->get(['id', 'title', 'code', 'category', 'status', 'semester', 'credit_hours']);
         }
 
         $mocked = false;
