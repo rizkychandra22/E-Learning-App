@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, CalendarDays, CheckCircle2, Play, Star, Target, UserPlus } from 'lucide-react';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { cn } from '@/lib/cn';
@@ -71,9 +71,21 @@ function CourseCard({ course, index }) {
     const theme = COURSE_CARD_THEMES[index % COURSE_CARD_THEMES.length];
     const category = course.category?.trim() ? course.category : 'Programming';
     const rating = ((4.3 + (index % 5) * 0.15)).toFixed(1);
+    const openMaterials = () => router.get('/materials', { course: course.id });
 
     return (
-        <article className="panel-card overflow-hidden p-0">
+        <article
+            className="panel-card overflow-hidden p-0 cursor-pointer transition hover:shadow-card-lg"
+            role="button"
+            tabIndex={0}
+            onClick={openMaterials}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openMaterials();
+                }
+            }}
+        >
             <div className={cn('relative px-4 py-4 text-white min-h-[126px]', theme.headerClass)} style={theme.headerStyle}>
                 <div className="absolute inset-0 bg-black/5" />
                 <div className="relative flex items-start justify-between">
@@ -110,6 +122,7 @@ function CourseCard({ course, index }) {
                 ) : (
                     <Link
                         href={`/learning/${course.id}`}
+                        onClick={(event) => event.stopPropagation()}
                         className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
                     >
                         <Play className="w-4 h-4" />
