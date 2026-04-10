@@ -58,6 +58,7 @@ const navByRole = {
         { title: 'Kuis', url: '/quizzes', icon: Award },
         { title: 'Nilai', url: '/grades', icon: BarChart3 },
         { title: 'Diskusi', url: '/discussions', icon: MessageSquare },
+        { title: 'Absensi', url: '/attendance', icon: CalendarDays },
         { title: 'Notifikasi', url: '/notifications', icon: Bell },
         { title: 'Jadwal', url: '/schedule', icon: CalendarDays },
         { title: 'Sertifikat', url: '/certificates', icon: Award },
