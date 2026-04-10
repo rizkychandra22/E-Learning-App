@@ -182,6 +182,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/students', [LecturerController::class, 'students']);
     Route::get('/attendance', [LecturerController::class, 'attendance']);
+    Route::post('/attendance/{session}/check-in', [LecturerController::class, 'checkInAttendance']);
     Route::post('/students', [LecturerController::class, 'storeStudentNote']);
     Route::put('/students/{note}', [LecturerController::class, 'updateStudentNote']);
     Route::delete('/students/{note}', [LecturerController::class, 'destroyStudentNote']);
