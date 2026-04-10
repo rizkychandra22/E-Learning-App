@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { BookOpen, Download, FileText, Layers3, Search, Trash2, Upload } from 'lucide-react';
+import { BookOpen, CalendarCheck2, Download, FileText, Layers3, Search, Trash2, Upload } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
@@ -10,6 +10,9 @@ const emptyForm = {
     course_id: '',
     title: '',
     meeting_number: '',
+    enable_attendance: true,
+    attendance_open_at: '',
+    attendance_close_at: '',
     file: null,
 };
 
@@ -45,11 +48,16 @@ export default function Materials({ materials, courses, migrationRequired, filte
     };
 
     const openUpload = () => {
+        const openAt = new Date();
+        const closeAt = new Date(openAt.getTime() + (2 * 60 * 60 * 1000));
         setShowForm(true);
         form.clearErrors();
         form.setData((current) => ({
             ...current,
             course_id: courseFilter || current.course_id || '',
+            enable_attendance: current.enable_attendance ?? true,
+            attendance_open_at: current.attendance_open_at || toInputDateTimeLocal(openAt),
+            attendance_close_at: current.attendance_close_at || toInputDateTimeLocal(closeAt),
         }));
     };
 
@@ -190,6 +198,41 @@ export default function Materials({ materials, courses, migrationRequired, filte
                             <Field label="Judul Materi" value={form.data.title} onChange={(value) => form.setData('title', value)} error={form.errors.title} />
                             <Field label="Pertemuan Ke-" type="number" value={form.data.meeting_number} onChange={(value) => form.setData('meeting_number', value)} error={form.errors.meeting_number} />
                         </div>
+                        <label className="flex items-start gap-2 rounded-lg border border-border p-3 bg-secondary/40">
+                            <input
+                                type="checkbox"
+                                checked={Boolean(form.data.enable_attendance)}
+                                onChange={(event) => form.setData('enable_attendance', event.target.checked)}
+                                className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary/30"
+                            />
+                            <span className="text-sm">
+                                <span className="font-medium inline-flex items-center gap-1">
+                                    <CalendarCheck2 className="w-4 h-4 text-primary" />
+                                    Aktifkan absensi mahasiswa
+                                </span>
+                                <span className="block text-xs text-muted-foreground mt-0.5">
+                                    Saat aktif, mahasiswa dapat check-in hadir sesuai rentang jadwal yang Anda tentukan.
+                                </span>
+                            </span>
+                        </label>
+                        {form.data.enable_attendance && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <Field
+                                    label="Absensi Dibuka"
+                                    type="datetime-local"
+                                    value={form.data.attendance_open_at}
+                                    onChange={(value) => form.setData('attendance_open_at', value)}
+                                    error={form.errors.attendance_open_at}
+                                />
+                                <Field
+                                    label="Absensi Ditutup"
+                                    type="datetime-local"
+                                    value={form.data.attendance_close_at}
+                                    onChange={(value) => form.setData('attendance_close_at', value)}
+                                    error={form.errors.attendance_close_at}
+                                />
+                            </div>
+                        )}
                         <label className="block">
                             <span className="text-sm font-medium">File Materi</span>
                             <input type="file" onChange={(event) => form.setData('file', event.target.files?.[0] ?? null)} className="mt-1 w-full text-sm rounded-lg border border-border bg-background px-3 py-2 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-primary/15 file:text-primary" />
@@ -255,6 +298,17 @@ function formatDate(dateString) {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID');
+}
+
+function toInputDateTimeLocal(date) {
+    const value = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(value.getTime())) return '';
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    const hour = String(value.getHours()).padStart(2, '0');
+    const minute = String(value.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
 
