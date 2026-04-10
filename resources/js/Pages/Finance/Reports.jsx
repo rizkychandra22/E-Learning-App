@@ -382,3 +382,4 @@ function polar(cx, cy, r, angle) {
 function toDateInput(dateObj) {
     return dateObj.toISOString().slice(0, 10);
 }
+

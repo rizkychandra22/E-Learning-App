@@ -108,7 +108,7 @@ export default function Assignments({ assignments, courses, filters, migrationRe
                                     <option value="closed">Ditutup</option>
                                 </select>
                                 <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm">
-                                    <option value="">Semua kursus</option>
+                                    <option value="">Semua mata kuliah</option>
                                     {courses.map((course) => (<option key={course.id} value={course.id}>{course.title}</option>))}
                                 </select>
                                 <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
@@ -148,7 +148,7 @@ export default function Assignments({ assignments, courses, filters, migrationRe
                     <div className="space-y-3">
                         <Field label="Judul Tugas" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
                         <label className="block"><span className="text-sm font-medium">Deskripsi</span><textarea value={form.data.description} onChange={(event) => form.setData('description', event.target.value)} rows={3} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}</label>
-                        <SelectField label="Kursus" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <SelectField label="Mata Kuliah" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Mata Kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
                         <div className="grid grid-cols-2 gap-3">
                             <Field label="Tenggat Waktu" type="datetime-local" value={form.data.due_at} error={form.errors.due_at} onChange={(value) => form.setData('due_at', value)} />
                             <Field label="Skor Maksimum" type="number" value={form.data.max_score} error={form.errors.max_score} onChange={(value) => form.setData('max_score', value)} />
@@ -189,4 +189,6 @@ function mapStatus(value) {
     if (value === 'closed') return 'Ditutup';
     return 'Draft';
 }
+
+
 

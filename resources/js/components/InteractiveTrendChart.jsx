@@ -450,3 +450,4 @@ export function InteractiveTrendChart({
         </div>
     );
 }
+

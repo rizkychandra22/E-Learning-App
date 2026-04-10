@@ -189,7 +189,7 @@ export default function AcademicReport({
                                 onChange={(event) => setCourseId(event.target.value)}
                                 className="px-3 py-2 rounded-lg border border-border bg-background text-sm"
                             >
-                                <option value="">Semua Kursus</option>
+                                <option value="">Semua Mata Kuliah</option>
                                 {available_courses.map((course) => (
                                     <option key={course.id} value={course.id}>
                                         {course.title}
@@ -216,8 +216,8 @@ export default function AcademicReport({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                     <StatCard title="Total Pendaftar" value={summary?.total_enrollment ?? 0} change={summary_changes?.total_enrollment ?? '0% dari periode sebelumnya'} icon={Users} gradient="primary" />
-                    <StatCard title="Kursus Selesai" value={summary?.completed_courses ?? 0} change={summary_changes?.completed_courses ?? '0% dari periode sebelumnya'} icon={GraduationCap} gradient="success" />
-                    <StatCard title="Kursus Aktif" value={summary?.active_courses ?? 0} change={summary_changes?.active_courses ?? '0% dari periode sebelumnya'} icon={BookOpen} gradient="warm" />
+                    <StatCard title="Mata Kuliah Selesai" value={summary?.completed_courses ?? 0} change={summary_changes?.completed_courses ?? '0% dari periode sebelumnya'} icon={GraduationCap} gradient="success" />
+                    <StatCard title="Mata Kuliah Aktif" value={summary?.active_courses ?? 0} change={summary_changes?.active_courses ?? '0% dari periode sebelumnya'} icon={BookOpen} gradient="warm" />
                     <StatCard title="Rata-rata Nilai" value={summary?.average_score ?? 0} change={summary_changes?.average_score ?? '0 poin dari periode sebelumnya'} icon={Trophy} gradient="accent" />
                 </div>
 
@@ -245,7 +245,7 @@ export default function AcademicReport({
                 <section className="panel-card p-4">
                     <h3 className="font-semibold text-xl flex items-center gap-2 mb-4">
                         <BookOpen className="w-5 h-5 text-primary" />
-                        Kursus Terpopuler
+                        Mata Kuliah Terpopuler
                     </h3>
 
                     <div className="space-y-3">
@@ -266,7 +266,7 @@ export default function AcademicReport({
                         ))}
 
                         {top_courses.length === 0 && (
-                            <p className="text-sm text-muted-foreground">Belum ada data kursus untuk periode ini.</p>
+                            <p className="text-sm text-muted-foreground">Belum ada data mata kuliah untuk periode ini.</p>
                         )}
                     </div>
                 </section>
@@ -274,3 +274,4 @@ export default function AcademicReport({
         </ProtectedLayout>
     );
 }
+

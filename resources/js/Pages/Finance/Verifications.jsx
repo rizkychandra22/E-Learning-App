@@ -229,3 +229,4 @@ function formatDateTime(value) {
         minute: '2-digit',
     });
 }
+

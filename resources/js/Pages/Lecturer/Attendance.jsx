@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { CalendarCheck2, Search, Users } from 'lucide-react';
+import { Clock3, Search, Users } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 
@@ -10,12 +10,12 @@ export default function Attendance({ courses, records, summary, filters, migrati
 
     const cards = useMemo(() => ([
         { title: 'Total Mahasiswa', value: summary?.total_students ?? 0, tone: 'gradient-primary' },
-        { title: 'Total Pertemuan', value: summary?.total_meetings ?? 0, tone: 'gradient-success' },
+        { title: 'Sesi Absensi', value: summary?.total_meetings ?? 0, tone: 'gradient-success' },
         { title: 'Rata-rata Kehadiran', value: `${summary?.average_attendance_percent ?? 0}%`, tone: 'gradient-warm' },
-        { title: 'Rata-rata Selesai', value: `${summary?.average_completion_percent ?? 0}%`, tone: 'bg-gradient-to-r from-sky-500 to-blue-600' },
-    ]), [summary]);
+        { title: 'Sesi Aktif', value: records.filter((item) => item.is_active).length, tone: 'bg-gradient-to-r from-sky-500 to-blue-600' },
+    ]), [summary, records]);
 
-    const hasMigrationIssue = Boolean(migrationRequired?.modules || migrationRequired?.progress || migrationRequired?.enrollments);
+    const hasMigrationIssue = Boolean(migrationRequired?.sessions || migrationRequired?.records || migrationRequired?.enrollments);
 
     const submitFilter = (event) => {
         event.preventDefault();
@@ -54,7 +54,7 @@ export default function Attendance({ courses, records, summary, filters, migrati
                                 />
                             </div>
                             <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm lg:w-64">
-                                <option value="">Pilih kursus</option>
+                                <option value="">Pilih mata kuliah</option>
                                 {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
                             </select>
                             <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
@@ -64,15 +64,15 @@ export default function Attendance({ courses, records, summary, filters, migrati
 
                     {hasMigrationIssue && (
                         <div className="mx-4 mt-4 rounded-xl border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">
-                            Fitur absensi membutuhkan tabel learning modules, lesson progress, dan enrollment. Jalankan migrasi terlebih dahulu.
+                            Fitur absensi membutuhkan tabel attendance sessions, attendance records, dan enrollment. Jalankan migrasi terlebih dahulu.
                         </div>
                     )}
 
                     <div className="p-4">
-                        {!courseFilter && <p className="text-sm text-muted-foreground text-center py-8">Pilih kursus untuk melihat rekap absensi per pertemuan.</p>}
+                        {!courseFilter && <p className="text-sm text-muted-foreground text-center py-8">Pilih mata kuliah untuk melihat rekap absensi per pertemuan.</p>}
 
                         {courseFilter && records.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-8">Belum ada data absensi untuk kursus ini.</p>
+                            <p className="text-sm text-muted-foreground text-center py-8">Belum ada data absensi untuk mata kuliah ini.</p>
                         )}
 
                         {courseFilter && records.length > 0 && (
@@ -81,27 +81,26 @@ export default function Attendance({ courses, records, summary, filters, migrati
                                     <thead>
                                         <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wide">
                                             <th className="text-left py-3 px-2">Pertemuan</th>
-                                            <th className="text-left py-3 px-2">Modul</th>
                                             <th className="text-left py-3 px-2">Materi</th>
+                                            <th className="text-left py-3 px-2">Jadwal</th>
                                             <th className="text-right py-3 px-2">Hadir</th>
-                                            <th className="text-right py-3 px-2">Selesai</th>
                                             <th className="text-right py-3 px-2">Persentase Hadir</th>
-                                            <th className="text-right py-3 px-2">Persentase Selesai</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {records.map((item) => (
-                                            <tr key={item.lesson_id} className="border-b border-border/70 last:border-0">
-                                                <td className="py-3 px-2 font-medium">Pertemuan {item.meeting_number}</td>
-                                                <td className="py-3 px-2">{item.module_title}</td>
-                                                <td className="py-3 px-2">{item.lesson_title}</td>
+                                            <tr key={item.session_id} className="border-b border-border/70 last:border-0">
+                                                <td className="py-3 px-2 font-medium">Pertemuan {item.meeting_number || '-'}</td>
+                                                <td className="py-3 px-2">{item.material_title}</td>
+                                                <td className="py-3 px-2 text-xs text-muted-foreground">
+                                                    <div className="inline-flex items-center gap-1">
+                                                        <Clock3 className="w-3.5 h-3.5" />
+                                                        {formatDate(item.opens_at)} - {formatDate(item.closes_at)}
+                                                    </div>
+                                                </td>
                                                 <td className="py-3 px-2 text-right">{item.attended_count}/{item.students_total}</td>
-                                                <td className="py-3 px-2 text-right">{item.completed_count}/{item.students_total}</td>
                                                 <td className="py-3 px-2 text-right">
                                                     <Badge value={item.attendance_percent} icon={<Users className="w-3.5 h-3.5" />} />
-                                                </td>
-                                                <td className="py-3 px-2 text-right">
-                                                    <Badge value={item.completion_percent} icon={<CalendarCheck2 className="w-3.5 h-3.5" />} />
                                                 </td>
                                             </tr>
                                         ))}
@@ -134,3 +133,18 @@ function Badge({ value, icon }) {
         </span>
     );
 }
+
+function formatDate(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+

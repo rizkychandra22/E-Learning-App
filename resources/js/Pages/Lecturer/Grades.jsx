@@ -245,7 +245,7 @@ export default function Grades({ assignmentSubmissions = [], quizAttempts = [], 
     };
 
     const exportScores = () => {
-        const header = ['Tipe', 'Judul', 'Kursus', 'Mahasiswa', 'Skor', 'Status', 'Tanggal'];
+        const header = ['Tipe', 'Judul', 'Mata Kuliah', 'Mahasiswa', 'Skor', 'Status', 'Tanggal'];
         const rows = mergedRecords.map((item) => [
             item.type === 'assignment' ? 'Tugas' : 'Kuis',
             item.title,
@@ -301,7 +301,7 @@ export default function Grades({ assignmentSubmissions = [], quizAttempts = [], 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
                     <div className="xl:col-span-8 panel-card p-4">
                         <h3 className="font-semibold flex items-center gap-2 text-foreground mb-3">
-                            <BarChart3 className="w-4 h-4 text-primary" /> Rata-rata Nilai per Kursus
+                            <BarChart3 className="w-4 h-4 text-primary" /> Rata-rata Nilai per Mata Kuliah
                         </h3>
                         <CourseAverageChart data={courseAverages} />
                     </div>
@@ -380,7 +380,7 @@ export default function Grades({ assignmentSubmissions = [], quizAttempts = [], 
                                     <option value="graded">Dinilai</option>
                                 </select>
                                 <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm min-w-[170px]">
-                                    <option value="">Semua Kursus</option>
+                                    <option value="">Semua Mata Kuliah</option>
                                     {courses.map((course) => (
                                         <option key={course.id} value={course.id}>{course.title}</option>
                                     ))}
@@ -398,7 +398,7 @@ export default function Grades({ assignmentSubmissions = [], quizAttempts = [], 
                                     <th className="py-2 px-2 font-medium">Mahasiswa</th>
                                     <th className="py-2 px-2 font-medium">Jenis</th>
                                     <th className="py-2 px-2 font-medium">Judul</th>
-                                    <th className="py-2 px-2 font-medium">Kursus</th>
+                                    <th className="py-2 px-2 font-medium">Mata Kuliah</th>
                                     <th className="py-2 px-2 font-medium">Skor</th>
                                     <th className="py-2 px-2 font-medium">Status</th>
                                     <th className="py-2 px-2 font-medium">Aksi</th>
@@ -576,5 +576,7 @@ function formatDate(value) {
     if (Number.isNaN(date.getTime())) return '-';
     return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
+
+
 
 

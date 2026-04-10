@@ -18,9 +18,9 @@ const gradients = ['gradient-primary', 'gradient-accent', 'gradient-warm', 'grad
 export default function Courses() {
     return (
         <ProtectedLayout>
-            <Head title="Kursus" />
+            <Head title="Mata Kuliah" />
             <div className="space-y-6 max-w-7xl">
-                <PageHeroBanner title="Kursus" description="Jelajahi dan kelola kursus yang tersedia" />
+                <PageHeroBanner title="Mata Kuliah" description="Jelajahi dan kelola mata kuliah yang tersedia" />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                     {courses.map((course, index) => (
@@ -47,3 +47,4 @@ export default function Courses() {
         </ProtectedLayout>
     );
 }
+

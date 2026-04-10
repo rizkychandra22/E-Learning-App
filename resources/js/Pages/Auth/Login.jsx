@@ -55,8 +55,8 @@ const Login = () => {
                                     <div className="position-absolute bottom-0 start-0 rounded-circle" style={{ width: '10rem', height: '10rem', background: 'hsl(var(--info) / 0.3)', filter: 'blur(34px)', transform: 'translate(-20%, 24%)' }} />
                                     <div className="text-center">
                                         <i className="bi bi-mortarboard-fill" style={{ fontSize: '5rem' }}></i>
-                                        <h2 className="fw-bold mt-3">{platformName}</h2>
-                                        <p className="opacity-75">
+                                        <h2 className="fw-bold mt-3 mb-3" style={{ fontSize: '2.1rem', lineHeight: 1.2 }}>{platformName}</h2>
+                                        <p className="opacity-75 mb-0" style={{ fontSize: '1.1rem', lineHeight: 1.45 }}>
                                             {isEnglish
                                                 ? 'Integrated digital learning platform for a better future.'
                                                 : 'Platform pembelajaran digital terpadu untuk masa depan yang lebih cerah.'}
@@ -65,8 +65,8 @@ const Login = () => {
                                 </div>
 
                                 <div className="col-md-6 bg-white p-4 p-lg-5">
-                                    <h3 className="fw-bold text-dark mb-2">{isEnglish ? 'Welcome Back' : 'Selamat Datang'}</h3>
-                                    <p className="text-muted mb-4">{isEnglish ? 'Please sign in to continue' : 'Silakan masuk ke akun Anda'}</p>
+                                    <h3 className="fw-bold text-dark mb-2" style={{ fontSize: '2rem', lineHeight: 1.2 }}>{isEnglish ? 'Welcome Back' : 'Selamat Datang'}</h3>
+                                    <p className="text-muted mb-4" style={{ fontSize: '1.15rem' }}>{isEnglish ? 'Please sign in to continue' : 'Silakan masuk ke akun Anda'}</p>
 
                                     {maintenanceMode && (
                                         <div className="alert alert-warning small py-2" role="alert">
@@ -88,30 +88,32 @@ const Login = () => {
 
                                     <form onSubmit={handleSubmit} className="text-start">
                                         <div className="mb-3">
-                                            <label className="form-label fw-semibold">{isEnglish ? 'Email / Username / Code' : 'Email / NIM'}</label>
+                                            <label className="form-label fw-semibold mb-2" style={{ fontSize: '1rem' }}>{isEnglish ? 'Email / Username / Code' : 'Email / NIM'}</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-person text-muted"></i></span>
+                                                <span className="input-group-text bg-light border-end-0 py-2.5"><i className="bi bi-person text-muted" style={{ fontSize: '1rem' }}></i></span>
                                                 <input
                                                     type="text"
-                                                    className={`form-control bg-light border-start-0 ${errors.email ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-light border-start-0 py-2.5 ${errors.email ? 'is-invalid' : ''}`}
                                                     placeholder="nama@kampus.ac.id"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
+                                                    style={{ fontSize: '1rem' }}
                                                 />
                                                 {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                                             </div>
                                         </div>
 
                                         <div className="mb-3">
-                                            <label className="form-label fw-semibold">Password</label>
+                                            <label className="form-label fw-semibold mb-2" style={{ fontSize: '1rem' }}>Password</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-lock text-muted"></i></span>
+                                                <span className="input-group-text bg-light border-end-0 py-2.5"><i className="bi bi-lock text-muted" style={{ fontSize: '1rem' }}></i></span>
                                                 <input
                                                     type="password"
-                                                    className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-light border-start-0 py-2.5 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
+                                                    style={{ fontSize: '1rem' }}
                                                 />
                                                 {errors.password && <div className="invalid-feedback">{errors.password}</div>}
                                             </div>
@@ -126,9 +128,9 @@ const Login = () => {
                                                     checked={data.remember}
                                                     onChange={e => setData('remember', e.target.checked)}
                                                 />
-                                                <label className="form-check-label small" htmlFor="remember">Ingat Saya</label>
+                                                <label className="form-check-label" style={{ fontSize: '0.95rem' }} htmlFor="remember">Ingat Saya</label>
                                             </div>
-                                            <Link href="/forgot-password" className="small text-decoration-none">Lupa Password?</Link>
+                                            <Link href="/forgot-password" className="text-decoration-none" style={{ fontSize: '0.95rem' }}>Lupa Password?</Link>
                                         </div>
 
                                         <button
@@ -138,12 +140,14 @@ const Login = () => {
                                             disabled={processing}
                                         >
                                             {processing && <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>}
-                                            {processing ? (isEnglish ? 'Signing in...' : 'Logging in...') : (isEnglish ? 'Sign In' : 'Masuk')}
+                                            <span style={{ fontSize: '1rem', lineHeight: 1.1 }}>
+                                                {processing ? (isEnglish ? 'Signing in...' : 'Logging in...') : (isEnglish ? 'Sign In' : 'Masuk')}
+                                            </span>
                                         </button>
                                     </form>
 
                                     {allowRegistration && !maintenanceMode && (
-                                        <div className="text-center mt-3 text-muted small">
+                                        <div className="text-center mt-3 text-muted" style={{ fontSize: '0.95rem' }}>
                                             {isEnglish ? "Don't have an account?" : 'Belum punya akun?'}{' '}
                                             <Link href="/register" className="fw-bold text-primary text-decoration-none">
                                                 {isEnglish ? 'Register' : 'Daftar'}
@@ -162,3 +166,4 @@ const Login = () => {
 };
 
 export default Login;
+

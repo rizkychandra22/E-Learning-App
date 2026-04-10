@@ -72,7 +72,7 @@ export default function StudentHome() {
     const migrationRequired = props?.migrationRequired ?? {};
 
     const statItems = [
-        { title: 'Kursus Aktif', value: stats.active_courses, icon: BookOpen, tone: 'primary' },
+        { title: 'Mata Kuliah Aktif', value: stats.active_courses, icon: BookOpen, tone: 'primary' },
         { title: 'Tugas Selesai', value: stats.completed_assignments, icon: CheckCircle2, tone: 'accent' },
         { title: 'Nilai Dinilai', value: stats.graded_items, icon: GraduationCap, tone: 'warm' },
         { title: 'Jadwal Hari Ini', value: stats.today_schedule, icon: CalendarDays, tone: 'success' },
@@ -118,12 +118,12 @@ export default function StudentHome() {
                         <div className="flex items-center justify-between gap-3">
                             <h3 className="font-semibold flex items-center gap-2">
                                 <ListChecks className="w-4 h-4 text-primary" />
-                                Progress Kursus
+                                Progress Mata Kuliah
                             </h3>
                             <Link href="/my-courses" className="text-sm text-primary hover:opacity-80 transition-opacity">Lihat Semua</Link>
                         </div>
                         <div className="mt-4 space-y-5">
-                            {!courses.length && <p className="text-sm text-muted-foreground">Belum ada kursus aktif.</p>}
+                            {!courses.length && <p className="text-sm text-muted-foreground">Belum ada mata kuliah aktif.</p>}
                             {courses.map((course) => (
                                 <div key={course.id}>
                                     <div className="flex items-center justify-between gap-3">
@@ -215,3 +215,4 @@ export default function StudentHome() {
         </ProtectedLayout>
     );
 }
+

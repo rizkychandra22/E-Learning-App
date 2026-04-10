@@ -65,7 +65,7 @@ export default function ActivityLogs({ logs, filters, mocked }) {
         const createCount = logs.filter((item) => item.type === 'create').length;
         const updateCount = logs.filter((item) => item.type === 'update').length;
         const deleteCount = logs.filter((item) => item.type === 'delete').length;
-        const enrollCount = logs.filter((item) => String(item.message ?? '').toLowerCase().includes('kursus')).length;
+        const enrollCount = logs.filter((item) => String(item.message ?? '').toLowerCase().includes('mata kuliah')).length;
         const adminCount = logs.filter((item) => String(item.module ?? '').toLowerCase().includes('users')).length;
 
         return { loginCount, createCount, updateCount, deleteCount, enrollCount, adminCount };
@@ -151,3 +151,4 @@ export default function ActivityLogs({ logs, filters, mocked }) {
         </ProtectedLayout>
     );
 }
+

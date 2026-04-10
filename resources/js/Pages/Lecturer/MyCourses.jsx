@@ -103,18 +103,18 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
     };
 
     const destroyCourse = (course) => {
-        if (!window.confirm(`Hapus kursus "${course.title}"?`)) return;
+        if (!window.confirm(`Hapus mata kuliah "${course.title}"?`)) return;
         router.delete(`/my-courses/${course.id}`, { preserveScroll: true });
     };
 
     return (
         <ProtectedLayout>
-            <Head title="Kursus Saya" />
+            <Head title="Mata Kuliah Saya" />
             <div className="space-y-6 w-full max-w-none">
-                <PageHeroBanner title="Kursus Saya" description="Kelola semua kelas dan materi yang Anda ampu" />
+                <PageHeroBanner title="Mata Kuliah Saya" description="Kelola semua kelas dan materi yang Anda ampu" />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <StatCard title="Total Kursus" value={summary.total} tone="gradient-primary" />
+                    <StatCard title="Total Mata Kuliah" value={summary.total} tone="gradient-primary" />
                     <StatCard title="Kelas Aktif" value={summary.active} tone="gradient-success" />
                     <StatCard title="Draft" value={summary.draft} tone="gradient-warm" />
                     <StatCard title="Total Jam" value={`${summary.students}j`} tone="bg-gradient-to-r from-sky-500 to-blue-600" />
@@ -126,7 +126,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                             <form onSubmit={submitFilter} className="flex flex-col lg:flex-row gap-2 flex-1">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari kursus..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
+                                    <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari mata kuliah..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
                                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm">
                                     <option value="all">Semua</option>
@@ -141,26 +141,21 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                                 <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
                                 <button type="button" onClick={resetFilter} className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Reset</button>
                             </form>
-                            <div className="flex items-center gap-2">
-                                <Link href="/learning-modules" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium">
-                                    <Layers3 className="w-4 h-4" /> Kelola Modules
-                                </Link>
-                                <button type="button" onClick={beginCreate} disabled={migrationRequired || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">
-                                    <Plus className="w-4 h-4" /> Buat Kursus
-                                </button>
-                            </div>
+                            <button type="button" onClick={beginCreate} disabled={migrationRequired || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">
+                                <Plus className="w-4 h-4" /> Buat Mata Kuliah
+                            </button>
                         </div>
                     </div>
 
                     <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                        {courses.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-10">Belum ada kursus untuk Anda.</div>}
+                        {courses.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-10">Belum ada mata kuliah untuk Anda.</div>}
                         {courses.map((course, index) => {
                             const meta = statusMeta[course.status] ?? statusMeta.draft;
                             return (
                                 <div key={course.id} className="panel-subcard p-4 space-y-3">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0">
-                                            <p className="text-sm text-muted-foreground">{course.category || 'Kursus'}</p>
+                                            <p className="text-sm text-muted-foreground">{course.category || 'Mata Kuliah'}</p>
                                             <h3 className="font-semibold truncate">{course.title}</h3>
                                             <p className="text-xs text-muted-foreground truncate">{course.code}</p>
                                         </div>
@@ -185,6 +180,20 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                                     </div>
 
                                     <div className="flex items-center gap-2 pt-1">
+                                        <Link
+                                            href={`/learning-modules?course=${course.id}`}
+                                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-background text-xs font-medium hover:bg-secondary"
+                                        >
+                                            <Layers3 className="w-3.5 h-3.5" />
+                                            Kelola Modul
+                                        </Link>
+                                        <Link
+                                            href={`/materials?course=${course.id}`}
+                                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-background text-xs font-medium hover:bg-secondary"
+                                        >
+                                            <BookOpen className="w-3.5 h-3.5" />
+                                            Kelola Materi
+                                        </Link>
                                         <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(course)} disabled={course.is_mock || mocked} />
                                         <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyCourse(course)} disabled={course.is_mock || mocked} />
                                     </div>
@@ -196,7 +205,7 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
 
                 <CreateFormModal
                     open={showForm}
-                    title={isEditing ? 'Edit Kursus' : 'Tambah Kursus'}
+                    title={isEditing ? 'Edit Mata Kuliah' : 'Tambah Mata Kuliah'}
                     onClose={closeForm}
                     onSubmit={submitForm}
                     submitLabel={isEditing ? 'Simpan' : 'Tambah'}
@@ -205,8 +214,8 @@ export default function MyCourses({ courses, jurusans, categories, filters, migr
                     maxWidthClass="max-w-4xl"
                 >
                     <div className="space-y-3">
-                        <Field label="Judul Kursus" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
-                        <Field label="Kode Kursus" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
+                        <Field label="Judul Mata Kuliah" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
+                        <Field label="Kode Mata Kuliah" value={form.data.code} error={form.errors.code} onChange={(value) => form.setData('code', value)} />
                         <Field label="Kategori" value={form.data.category} error={form.errors.category} onChange={(value) => form.setData('category', value)} placeholder="Contoh: Pemrograman Web" />
                         <Field label="Tags" value={form.data.tags} error={form.errors.tags} onChange={(value) => form.setData('tags', value)} placeholder="react, laravel" />
                         <label className="block">
@@ -263,4 +272,8 @@ function parseTags(raw) {
     if (!raw) return [];
     return [...new Set(String(raw).split(',').map((item) => item.trim()).filter((item) => item !== ''))];
 }
+
+
+
+
 

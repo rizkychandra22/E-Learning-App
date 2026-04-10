@@ -81,7 +81,7 @@ export default function StudentCertificates() {
         <ProtectedLayout>
             <Head title="Sertifikat" />
             <div className="space-y-6">
-                <PageHeroBanner title="Sertifikat" description="Kumpulkan sertifikat dari setiap kursus yang sudah diselesaikan dengan nilai terbaik." />
+                <PageHeroBanner title="Sertifikat" description="Kumpulkan sertifikat dari setiap mata kuliah yang sudah diselesaikan dengan nilai terbaik." />
 
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium">
@@ -98,7 +98,7 @@ export default function StudentCertificates() {
                 </div>
 
                 <section className="panel-card p-4">
-                    <h3 className="font-semibold">Kursus Dalam Progress</h3>
+                    <h3 className="font-semibold">Mata Kuliah Dalam Progress</h3>
                     <div className="mt-4 space-y-3">
                         {IN_PROGRESS.map((item) => (
                             <div key={item.course} className="panel-subcard p-3">
@@ -106,7 +106,7 @@ export default function StudentCertificates() {
                                     <span className="font-medium">{item.course}</span>
                                     <span className="font-semibold">{item.progress}%</span>
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-1">Selesaikan kursus untuk mendapatkan sertifikat</p>
+                                <p className="text-xs text-muted-foreground mt-1">Selesaikan mata kuliah untuk mendapatkan sertifikat</p>
                                 <div className="mt-2 h-2.5 rounded-full bg-secondary overflow-hidden">
                                     <div className={cn('h-full rounded-full', barToneClass[item.tone] ?? barToneClass.primary)} style={{ width: `${item.progress}%` }} />
                                 </div>
@@ -118,3 +118,4 @@ export default function StudentCertificates() {
         </ProtectedLayout>
     );
 }
+

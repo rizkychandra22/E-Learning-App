@@ -19,7 +19,7 @@ const navByRole = {
     admin: [
         { title: 'Dashboard', url: '/dashboard' },
         { title: 'Kelola User', url: '/manage-users' },
-        { title: 'Kelola Kursus', url: '/manage-courses' },
+        { title: 'Kelola Mata Kuliah', url: '/manage-courses' },
         { title: 'Persetujuan Akun', url: '/approvals' },
         { title: 'Kategori', url: '/categories' },
         { title: 'Pengaturan', url: '/settings' },
@@ -36,7 +36,7 @@ const navByRole = {
     ],
     dosen: [
         { title: 'Dashboard', url: '/dashboard' },
-        { title: 'Kursus Saya', url: '/my-courses' },
+        { title: 'Mata Kuliah Saya', url: '/my-courses' },
         { title: 'Materi', url: '/materials' },
         { title: 'Tugas', url: '/assignments' },
         { title: 'Kuis', url: '/quizzes' },
@@ -48,7 +48,7 @@ const navByRole = {
     ],
     mahasiswa: [
         { title: 'Dashboard', url: '/dashboard' },
-        { title: 'Kursus Saya', url: '/my-courses' },
+        { title: 'Mata Kuliah Saya', url: '/my-courses' },
         { title: 'Materi', url: '/materials' },
         { title: 'Tugas', url: '/assignments' },
         { title: 'Kuis', url: '/quizzes' },
@@ -149,7 +149,7 @@ export function TopNavbar({ onOpenMobileSidebar }) {
                         type="text"
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="Cari menu, contoh: kursus, tugas, nilai..."
+                        placeholder="Cari menu, contoh: mata kuliah, tugas, nilai..."
                         className="w-full pl-10 pr-4 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 transition-all"
                     />
                 </form>
@@ -278,4 +278,5 @@ export function TopNavbar({ onOpenMobileSidebar }) {
         </header>
     );
 }
+
 

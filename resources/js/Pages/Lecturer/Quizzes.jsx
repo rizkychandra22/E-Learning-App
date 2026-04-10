@@ -168,7 +168,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                     <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari kuis..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
                                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="all">Semua</option><option value="active">Aktif</option><option value="draft">Draft</option><option value="closed">Ditutup</option></select>
-                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
+                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua mata kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
                                 <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
                             </form>
                             <button type="button" onClick={beginCreate} disabled={migrationRequired || mocked} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-primary text-primary-foreground text-sm font-semibold disabled:opacity-60"><Plus className="w-4 h-4" /> Buat Kuis</button>
@@ -208,7 +208,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                     <div className="space-y-3">
                         <Field label="Judul Kuis" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
                         <label className="block"><span className="text-sm font-medium">Deskripsi</span><textarea value={form.data.description} onChange={(event) => form.setData('description', event.target.value)} rows={3} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}</label>
-                        <SelectField label="Kursus" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <SelectField label="Mata Kuliah" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Mata Kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
                         <div className="grid grid-cols-2 gap-3">
                             <Field label="Durasi (menit)" type="number" value={form.data.duration_minutes} error={form.errors.duration_minutes} onChange={(value) => form.setData('duration_minutes', value)} />
                             <Field label="Jumlah Soal" type="number" value={form.data.total_questions || form.data.questions.length} error={form.errors.total_questions} onChange={(value) => form.setData('total_questions', value)} />
@@ -275,4 +275,6 @@ function SelectField({ label, value, onChange, error, children }) { return <labe
 function mapStatus(value) { if (value === 'active') return 'Aktif'; if (value === 'closed') return 'Ditutup'; return 'Draft'; }
 function formatDate(value) { if (!value) return '-'; return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
 function toInputDateTime(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return ''; const offset = date.getTimezoneOffset(); const local = new Date(date.getTime() - offset * 60000); return local.toISOString().slice(0, 16); }
+
+
 

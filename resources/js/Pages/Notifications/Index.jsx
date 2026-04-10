@@ -224,3 +224,4 @@ export default function NotificationIndex({ notifications = [], summary = { tota
         </ProtectedLayout>
     );
 }
+

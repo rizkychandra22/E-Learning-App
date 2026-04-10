@@ -110,3 +110,4 @@ const ResetPassword = ({ token, email }) => {
 };
 
 export default ResetPassword;
+

@@ -320,10 +320,10 @@ export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
                 </div>
 
                 <section className="panel-card p-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 mb-4">
                         <h3 className="font-semibold text-2xl">Daftar Pengguna</h3>
-                        <div className="flex flex-col md:flex-row gap-2 w-full lg:w-auto">
-                            <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 overflow-x-auto">
+                        <div className="w-full xl:w-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[auto_14rem_auto_auto_auto] gap-2 items-stretch">
+                            <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 md:col-span-2 xl:col-span-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                                 {roleTabs.map((tab) => (
                                     <button
                                         key={tab.value}
@@ -332,14 +332,14 @@ export default function ManageUsers({ users, jurusans = [], filters, mocked }) {
                                             setRoleFilter(tab.value);
                                             router.get('/manage-users', { search, role: tab.value }, { preserveScroll: true, preserveState: true, replace: true });
                                         }}
-                                        className={`px-2.5 py-1.5 whitespace-nowrap rounded-md text-xs font-medium transition-colors ${roleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`px-2.5 py-1.5 whitespace-nowrap shrink-0 rounded-md text-xs font-medium transition-colors ${roleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         {tab.label}
                                     </button>
                                 ))}
                             </div>
 
-                            <form onSubmit={submitFilter} className="relative w-full md:w-56">
+                            <form onSubmit={submitFilter} className="relative w-full">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <input
                                     type="text"
@@ -645,3 +645,4 @@ function SelectField({ label, value, onChange, error, children }) {
         </label>
     );
 }
+

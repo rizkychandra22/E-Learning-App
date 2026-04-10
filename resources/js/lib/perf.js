@@ -145,3 +145,4 @@ export const initPerformanceProfiling = () => {
 
     window.addEventListener('pagehide', onPageHide);
 };
+

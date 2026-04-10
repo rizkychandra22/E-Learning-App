@@ -83,7 +83,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
     const removeEnrollment = (student) => {
         const courseId = courseFilter || student.course?.id;
         if (!courseId) return;
-        if (!window.confirm(`Keluarkan ${student.name} dari kursus?`)) return;
+        if (!window.confirm(`Keluarkan ${student.name} dari mata kuliah?`)) return;
         router.delete(`/students/enrollments/${courseId}/${student.id}`, { preserveScroll: true });
     };
 
@@ -113,7 +113,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari mahasiswa..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm" />
                                 </div>
-                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
+                                <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="px-3 py-2 rounded-lg border border-border bg-background text-sm"><option value="">Semua mata kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select>
                                 <button type="submit" className="px-4 py-2 rounded-lg border border-border bg-background text-sm">Filter</button>
                             </form>
                             <div className="flex items-center gap-2">
@@ -124,7 +124,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
                     </div>
 
                     <div className="p-4 space-y-3">
-                        {roster.length === 0 && <div className="text-sm text-muted-foreground text-center py-10">Belum ada mahasiswa pada kursus ini.</div>}
+                        {roster.length === 0 && <div className="text-sm text-muted-foreground text-center py-10">Belum ada mahasiswa pada mata kuliah ini.</div>}
                         {roster.map((student) => {
                             const progress = Number(student.progress_percent) || 64;
                             const score = Number(student.avg_score) || 80;
@@ -183,7 +183,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
 
                 <CreateFormModal open={showEnrollModal} title="Tambah Mahasiswa" onClose={() => setShowEnrollModal(false)} onSubmit={submitEnrollForm} submitLabel="Simpan" processing={enrollForm.processing} disableSubmit={mocked || migrationRequired?.enrollments} maxWidthClass="max-w-2xl">
                     <div className="space-y-3">
-                        <SelectField label="Kursus" value={enrollForm.data.course_id} onChange={(value) => enrollForm.setData('course_id', value)} error={enrollForm.errors.course_id}><option value="">Pilih Kursus</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <SelectField label="Mata Kuliah" value={enrollForm.data.course_id} onChange={(value) => enrollForm.setData('course_id', value)} error={enrollForm.errors.course_id}><option value="">Pilih Mata Kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
                         <SelectField label="Mahasiswa" value={enrollForm.data.student_id} onChange={(value) => enrollForm.setData('student_id', value)} error={enrollForm.errors.student_id}><option value="">Pilih Mahasiswa</option>{students.map((student) => <option key={student.id} value={student.id}>{student.name} ({student.code})</option>)}</SelectField>
                     </div>
                 </CreateFormModal>
@@ -206,4 +206,6 @@ function StatCard({ title, value, tone }) {
 }
 function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
+
+
 

@@ -66,3 +66,4 @@ export default function Statistics({ summary, monthly_users, role_distribution, 
         </ProtectedLayout>
     );
 }
+

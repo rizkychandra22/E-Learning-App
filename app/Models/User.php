@@ -87,6 +87,11 @@ class User extends Authenticatable
         return $this->hasMany(InAppNotification::class);
     }
 
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class, 'student_id');
+    }
+
     public function jurusan(): BelongsTo
     {
         return $this->belongsTo(Jurusan::class);
