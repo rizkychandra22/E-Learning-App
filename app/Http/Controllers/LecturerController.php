@@ -16,6 +16,7 @@ use App\Http\Requests\Lecturer\UpdateDiscussionRequest;
 use App\Http\Requests\Lecturer\UpdateQuizRequest;
 use App\Http\Requests\Lecturer\UpdateStudentNoteRequest;
 use App\Http\Requests\Lecturer\EnrollStudentRequest;
+use App\Models\AttendanceSession;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use App\Models\Course;
@@ -245,7 +246,10 @@ class LecturerController extends Controller
     {
         $user = $request->user();
         if ($user && $user->role === 'student') {
-            return Inertia::render('Student/Materials');
+            $search = trim((string) $request->query('search', ''));
+            $courseId = trim((string) $request->query('course', ''));
+
+            return Inertia::render('Student/Materials', $this->service->getStudentMaterialsData((int) $user->id, $search, $courseId));
         }
         if (!$user || $user->role !== 'teacher') {
             return $this->placeholder('Materi', 'Kelola dan akses materi pembelajaran');
@@ -289,13 +293,26 @@ class LecturerController extends Controller
 
     public function downloadMaterial(CourseMaterial $material): StreamedResponse
     {
-        $user = $this->requireLecturer();
+        $user = auth()->user();
+        abort_if(!$user, 403);
 
-        if (!$this->service->canManageCourseMaterials()) {
-            abort(404);
+        if ($user->role === 'teacher') {
+            if (!$this->service->canManageCourseMaterials()) {
+                abort(404);
+            }
+
+            return $this->service->downloadMaterialForLecturer((int) $user->id, $material);
         }
 
-        return $this->service->downloadMaterialForLecturer((int) $user->id, $material);
+        if ($user->role === 'student') {
+            if (!$this->service->canManageCourseMaterials()) {
+                abort(404);
+            }
+
+            return $this->service->downloadMaterialForStudent((int) $user->id, $material);
+        }
+
+        abort(403);
     }
 
     public function assignments(Request $request): Response
@@ -551,14 +568,32 @@ class LecturerController extends Controller
     public function attendance(Request $request): Response
     {
         $user = $request->user();
-        if (!$user || $user->role !== 'teacher') {
+        if (!$user) {
             return $this->placeholder('Absensi', 'Rekap kehadiran mahasiswa per pertemuan');
         }
 
         $search = trim((string) $request->query('search', ''));
         $courseId = trim((string) $request->query('course', ''));
 
+        if ($user->role === 'student') {
+            return Inertia::render('Student/Attendance', $this->service->getStudentAttendanceData((int) $user->id, $search, $courseId));
+        }
+
+        if ($user->role !== 'teacher') {
+            return $this->placeholder('Absensi', 'Rekap kehadiran mahasiswa per pertemuan');
+        }
+
         return Inertia::render('Lecturer/Attendance', $this->service->getAttendanceData((int) $user->id, $search, $courseId));
+    }
+
+    public function checkInAttendance(Request $request, AttendanceSession $session): RedirectResponse
+    {
+        $user = $request->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+
+        $this->service->checkInStudentAttendance((int) $user->id, (int) $session->id);
+
+        return back()->with('success', 'Absensi berhasil direkam.');
     }
 
     public function storeStudentNote(StoreStudentNoteRequest $request): RedirectResponse

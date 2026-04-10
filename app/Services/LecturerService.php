@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\AttendanceRecord;
+use App\Models\AttendanceSession;
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use App\Models\Course;
@@ -1085,6 +1087,56 @@ class LecturerService
         ];
     }
 
+    public function getStudentMaterialsData(int $studentId, string $search, string $courseId): array
+    {
+        $migrationRequired = !Schema::hasTable('courses') || !Schema::hasTable('course_materials') || !Schema::hasTable('course_student');
+        $selectedCourseId = trim($courseId) !== '' ? (int) $courseId : null;
+
+        $materials = collect();
+        $courses = collect();
+        if (!$migrationRequired) {
+            $student = User::query()->findOrFail($studentId);
+
+            $courses = $student
+                ->enrolledCourses()
+                ->with(['lecturer:id,name'])
+                ->withCount('materials')
+                ->withMax('materials', 'created_at')
+                ->orderBy('title')
+                ->get(['courses.id', 'courses.title', 'courses.code', 'courses.category', 'courses.semester', 'courses.credit_hours', 'courses.lecturer_id']);
+
+            $enrolledCourseIds = $courses->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+            if ($selectedCourseId && !in_array($selectedCourseId, $enrolledCourseIds, true)) {
+                abort(403);
+            }
+
+            $materials = CourseMaterial::query()
+                ->whereIn('course_id', $enrolledCourseIds)
+                ->with(['course:id,title,code,lecturer_id', 'course.lecturer:id,name', 'uploader:id,name'])
+                ->when($selectedCourseId, fn ($query) => $query->where('course_id', $selectedCourseId))
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($subQuery) use ($search) {
+                        $subQuery
+                            ->where('title', 'like', '%' . $search . '%')
+                            ->orWhere('file_name', 'like', '%' . $search . '%');
+                    });
+                })
+                ->latest('id')
+                ->get();
+        }
+
+        return [
+            'materials' => $materials,
+            'courses' => $courses,
+            'migrationRequired' => $migrationRequired,
+            'filters' => [
+                'search' => $search,
+                'course' => $selectedCourseId,
+            ],
+        ];
+    }
+
     public function storeMaterialForLecturer(int $lecturerId, array $payload): void
     {
         $course = $this->findLecturerCourse($lecturerId, (int) $payload['course_id']);
@@ -1106,7 +1158,24 @@ class LecturerService
                 : null;
         }
 
-        $course->materials()->create($materialPayload);
+        $material = $course->materials()->create($materialPayload);
+
+        $enableAttendance = (bool) ($payload['enable_attendance'] ?? false);
+        if ($enableAttendance && $this->canManageAttendanceSessions()) {
+            $opensAt = now()->parse((string) ($payload['attendance_open_at'] ?? now()->toDateTimeString()));
+            $closesAt = now()->parse((string) ($payload['attendance_close_at'] ?? now()->addHours(2)->toDateTimeString()));
+
+            AttendanceSession::create([
+                'course_id' => (int) $course->id,
+                'course_material_id' => (int) $material->id,
+                'created_by' => $lecturerId,
+                'title' => 'Absensi ' . $material->title,
+                'meeting_number' => $material->meeting_number,
+                'opens_at' => $opensAt,
+                'closes_at' => $closesAt,
+                'is_active' => true,
+            ]);
+        }
     }
 
     public function deleteMaterialForLecturer(int $lecturerId, CourseMaterial $material): void
@@ -1123,6 +1192,13 @@ class LecturerService
     public function downloadMaterialForLecturer(int $lecturerId, CourseMaterial $material): StreamedResponse
     {
         $this->ensureMaterialOwner($lecturerId, $material);
+
+        return Storage::disk('public')->download($material->file_path, $material->file_name);
+    }
+
+    public function downloadMaterialForStudent(int $studentId, CourseMaterial $material): StreamedResponse
+    {
+        $this->ensureStudentCanAccessMaterial($studentId, $material);
 
         return Storage::disk('public')->download($material->file_path, $material->file_name);
     }
@@ -1628,8 +1704,8 @@ class LecturerService
         $trimmedSearch = trim($search);
 
         $migrationRequired = [
-            'modules' => !Schema::hasTable('course_modules') || !Schema::hasTable('course_lessons'),
-            'progress' => !Schema::hasTable('lesson_progress'),
+            'sessions' => !Schema::hasTable('attendance_sessions'),
+            'records' => !Schema::hasTable('attendance_records'),
             'enrollments' => !Schema::hasTable('course_student'),
         ];
 
@@ -1637,89 +1713,49 @@ class LecturerService
         $records = collect();
         $totalStudents = 0;
 
-        if (
-            $selectedCourseId
-            && !$migrationRequired['modules']
-            && !$migrationRequired['progress']
-            && !$migrationRequired['enrollments']
-        ) {
+        if ($selectedCourseId && !$migrationRequired['sessions'] && !$migrationRequired['records'] && !$migrationRequired['enrollments']) {
             $course = $this->findLecturerCourse($lecturerId, $selectedCourseId);
             $totalStudents = (int) $course->students()->count();
 
-            $lessonsQuery = DB::table('course_lessons')
-                ->join('course_modules', 'course_modules.id', '=', 'course_lessons.course_module_id')
-                ->where('course_modules.course_id', $course->id)
-                ->select([
-                    'course_lessons.id as lesson_id',
-                    'course_lessons.title as lesson_title',
-                    'course_lessons.sort_order as lesson_sort_order',
-                    'course_modules.title as module_title',
-                    'course_modules.sort_order as module_sort_order',
-                ]);
-
-            if ($trimmedSearch !== '') {
-                $lessonsQuery->where(function ($query) use ($trimmedSearch) {
-                    $query
-                        ->where('course_lessons.title', 'like', '%' . $trimmedSearch . '%')
-                        ->orWhere('course_modules.title', 'like', '%' . $trimmedSearch . '%');
-                });
-            }
-
-            $lessons = $lessonsQuery
-                ->orderBy('course_modules.sort_order')
-                ->orderBy('course_lessons.sort_order')
+            $sessions = AttendanceSession::query()
+                ->where('course_id', $course->id)
+                ->with(['material:id,title,meeting_number'])
+                ->withCount('records')
+                ->when($trimmedSearch !== '', function ($query) use ($trimmedSearch) {
+                    $query->where(function ($subQuery) use ($trimmedSearch) {
+                        $subQuery
+                            ->where('title', 'like', '%' . $trimmedSearch . '%')
+                            ->orWhereHas('material', fn ($materialQuery) => $materialQuery->where('title', 'like', '%' . $trimmedSearch . '%'));
+                    });
+                })
+                ->orderBy('meeting_number')
+                ->orderBy('opens_at')
                 ->get();
 
-            $lessonIds = collect($lessons)->pluck('lesson_id')->map(fn ($id) => (int) $id)->all();
+            $records = $sessions->map(function (AttendanceSession $session) use ($totalStudents): array {
+                $attendedCount = (int) ($session->records_count ?? 0);
+                $attendancePercent = $totalStudents > 0 ? (int) round(($attendedCount / $totalStudents) * 100) : 0;
 
-            $progressByLesson = collect();
-            if ($lessonIds !== []) {
-                $progressByLesson = DB::table('lesson_progress')
-                    ->whereIn('lesson_id', $lessonIds)
-                    ->selectRaw('lesson_id')
-                    ->selectRaw('COUNT(DISTINCT CASE WHEN progress_percent > 0 OR last_accessed_at IS NOT NULL THEN student_id END) as attended_count')
-                    ->selectRaw('COUNT(DISTINCT CASE WHEN is_completed = 1 THEN student_id END) as completed_count')
-                    ->selectRaw('MAX(last_accessed_at) as last_accessed_at')
-                    ->groupBy('lesson_id')
-                    ->get()
-                    ->mapWithKeys(fn ($row) => [
-                        (int) $row->lesson_id => [
-                            'attended_count' => (int) ($row->attended_count ?? 0),
-                            'completed_count' => (int) ($row->completed_count ?? 0),
-                            'last_accessed_at' => $row->last_accessed_at,
-                        ],
-                    ]);
-            }
-
-            $records = collect($lessons)
-                ->values()
-                ->map(function ($lesson, int $index) use ($progressByLesson, $totalStudents): array {
-                    $progress = $progressByLesson->get((int) $lesson->lesson_id, []);
-                    $attendedCount = (int) ($progress['attended_count'] ?? 0);
-                    $completedCount = (int) ($progress['completed_count'] ?? 0);
-                    $attendancePercent = $totalStudents > 0 ? (int) round(($attendedCount / $totalStudents) * 100) : 0;
-                    $completionPercent = $totalStudents > 0 ? (int) round(($completedCount / $totalStudents) * 100) : 0;
-
-                    return [
-                        'lesson_id' => (int) $lesson->lesson_id,
-                        'meeting_number' => $index + 1,
-                        'module_title' => (string) $lesson->module_title,
-                        'lesson_title' => (string) $lesson->lesson_title,
-                        'attended_count' => $attendedCount,
-                        'completed_count' => $completedCount,
-                        'students_total' => $totalStudents,
-                        'attendance_percent' => max(0, min(100, $attendancePercent)),
-                        'completion_percent' => max(0, min(100, $completionPercent)),
-                        'last_accessed_at' => !empty($progress['last_accessed_at']) ? now()->parse((string) $progress['last_accessed_at'])->toISOString() : null,
-                    ];
-                });
+                return [
+                    'session_id' => (int) $session->id,
+                    'meeting_number' => (int) ($session->meeting_number ?? 0),
+                    'material_title' => (string) ($session->material?->title ?? $session->title),
+                    'session_title' => (string) $session->title,
+                    'attended_count' => $attendedCount,
+                    'students_total' => $totalStudents,
+                    'attendance_percent' => max(0, min(100, $attendancePercent)),
+                    'opens_at' => $session->opens_at?->toISOString(),
+                    'closes_at' => $session->closes_at?->toISOString(),
+                    'is_active' => (bool) $session->is_active,
+                ];
+            })->values();
         }
 
         $summary = [
             'total_students' => $totalStudents,
             'total_meetings' => $records->count(),
             'average_attendance_percent' => (int) round((float) ($records->avg('attendance_percent') ?? 0)),
-            'average_completion_percent' => (int) round((float) ($records->avg('completion_percent') ?? 0)),
+            'average_completion_percent' => 0,
         ];
 
         return [
@@ -1735,6 +1771,137 @@ class LecturerService
         ];
     }
 
+    public function getStudentAttendanceData(int $studentId, string $search, string $courseId): array
+    {
+        $selectedCourseId = trim($courseId) !== '' ? (int) $courseId : null;
+        $trimmedSearch = trim($search);
+
+        $migrationRequired = [
+            'sessions' => !Schema::hasTable('attendance_sessions'),
+            'records' => !Schema::hasTable('attendance_records'),
+            'enrollments' => !Schema::hasTable('course_student'),
+        ];
+
+        $courses = collect();
+        $records = collect();
+        $summary = [
+            'total_sessions' => 0,
+            'attended_sessions' => 0,
+            'open_sessions' => 0,
+            'missed_sessions' => 0,
+        ];
+
+        if (!$migrationRequired['sessions'] && !$migrationRequired['records'] && !$migrationRequired['enrollments']) {
+            $student = User::query()->findOrFail($studentId);
+
+            $courses = $student->enrolledCourses()
+                ->orderBy('title')
+                ->get(['courses.id', 'courses.title', 'courses.code']);
+
+            $enrolledCourseIds = $courses->pluck('id')->map(fn ($id) => (int) $id)->all();
+            if ($selectedCourseId && !in_array($selectedCourseId, $enrolledCourseIds, true)) {
+                abort(403);
+            }
+
+            $sessions = AttendanceSession::query()
+                ->whereIn('course_id', $enrolledCourseIds)
+                ->with([
+                    'course:id,title,code',
+                    'material:id,title,meeting_number',
+                    'records' => fn ($query) => $query->where('student_id', $studentId),
+                ])
+                ->when($selectedCourseId, fn ($query) => $query->where('course_id', $selectedCourseId))
+                ->when($trimmedSearch !== '', function ($query) use ($trimmedSearch) {
+                    $query->where(function ($subQuery) use ($trimmedSearch) {
+                        $subQuery
+                            ->where('title', 'like', '%' . $trimmedSearch . '%')
+                            ->orWhereHas('material', fn ($materialQuery) => $materialQuery->where('title', 'like', '%' . $trimmedSearch . '%'));
+                    });
+                })
+                ->orderBy('opens_at')
+                ->get();
+
+            $now = now();
+            $records = $sessions->map(function (AttendanceSession $session) use ($now): array {
+                $record = $session->records->first();
+                $opensAt = $session->opens_at;
+                $closesAt = $session->closes_at;
+
+                $status = 'upcoming';
+                if ($record) {
+                    $status = 'attended';
+                } elseif ($opensAt && $closesAt && $now->between($opensAt, $closesAt) && $session->is_active) {
+                    $status = 'open';
+                } elseif ($closesAt && $now->gt($closesAt)) {
+                    $status = 'missed';
+                }
+
+                return [
+                    'session_id' => (int) $session->id,
+                    'course_id' => (int) $session->course_id,
+                    'course_title' => (string) ($session->course?->title ?? '-'),
+                    'meeting_number' => (int) ($session->meeting_number ?? 0),
+                    'material_title' => (string) ($session->material?->title ?? $session->title),
+                    'session_title' => (string) $session->title,
+                    'opens_at' => $opensAt?->toISOString(),
+                    'closes_at' => $closesAt?->toISOString(),
+                    'checked_in_at' => $record?->checked_in_at?->toISOString(),
+                    'status' => $status,
+                    'can_check_in' => !$record && $status === 'open',
+                ];
+            })->values();
+
+            $summary = [
+                'total_sessions' => (int) $records->count(),
+                'attended_sessions' => (int) $records->where('status', 'attended')->count(),
+                'open_sessions' => (int) $records->where('status', 'open')->count(),
+                'missed_sessions' => (int) $records->where('status', 'missed')->count(),
+            ];
+        }
+
+        return [
+            'courses' => $courses,
+            'records' => $records,
+            'summary' => $summary,
+            'filters' => [
+                'search' => $trimmedSearch,
+                'course' => $selectedCourseId,
+            ],
+            'migrationRequired' => $migrationRequired,
+        ];
+    }
+
+    public function checkInStudentAttendance(int $studentId, int $sessionId): void
+    {
+        abort_if(!$this->canManageAttendanceSessions() || !Schema::hasTable('attendance_records') || !Schema::hasTable('course_student'), 404);
+
+        $session = AttendanceSession::query()
+            ->with('course:id,lecturer_id')
+            ->findOrFail($sessionId);
+
+        $isEnrolled = DB::table('course_student')
+            ->where('course_id', (int) $session->course_id)
+            ->where('student_id', $studentId)
+            ->exists();
+        abort_if(!$isEnrolled, 403);
+
+        $now = now();
+        abort_if(!$session->is_active, 422, 'Sesi absensi tidak aktif.');
+        abort_if($session->opens_at && $now->lt($session->opens_at), 422, 'Sesi absensi belum dibuka.');
+        abort_if($session->closes_at && $now->gt($session->closes_at), 422, 'Sesi absensi sudah ditutup.');
+
+        AttendanceRecord::query()->updateOrCreate(
+            [
+                'attendance_session_id' => (int) $session->id,
+                'student_id' => $studentId,
+            ],
+            [
+                'status' => 'present',
+                'checked_in_at' => $now,
+            ]
+        );
+    }
+
     public function canManageStudentNotes(): bool
     {
         return Schema::hasTable('student_notes');
@@ -1743,6 +1910,11 @@ class LecturerService
     public function canManageEnrollments(): bool
     {
         return Schema::hasTable('course_student');
+    }
+
+    public function canManageAttendanceSessions(): bool
+    {
+        return Schema::hasTable('attendance_sessions');
     }
 
     public function enrollStudent(int $lecturerId, array $payload): void
@@ -2108,6 +2280,13 @@ class LecturerService
         $quiz->loadMissing('course.students:id');
         abort_if(!$quiz->course, 404);
         abort_if(!$quiz->course->students->contains('id', $studentId), 403);
+    }
+
+    private function ensureStudentCanAccessMaterial(int $studentId, CourseMaterial $material): void
+    {
+        $material->loadMissing('course.students:id');
+        abort_if(!$material->course, 404);
+        abort_if(!$material->course->students->contains('id', $studentId), 403);
     }
 
     private function findLecturerCourse(int $lecturerId, int $courseId): Course
