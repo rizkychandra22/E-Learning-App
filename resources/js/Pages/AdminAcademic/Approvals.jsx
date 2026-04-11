@@ -132,10 +132,10 @@ export default function Approvals({ pendingUsers, filters, mocked, roleSummary: 
                 </div>
 
                 <section className="panel-card p-4">
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 mb-4">
+                    <div className="mb-4 space-y-3">
                         <h3 className="font-semibold text-2xl">Menunggu Persetujuan <span className="ml-2 text-sm px-2 py-0.5 rounded-full bg-primary/15 text-primary">{pendingUsers.length}</span></h3>
-                        <div className="w-full xl:w-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[auto_18rem_auto] gap-2 items-stretch">
-                            <div className="inline-flex flex-wrap items-center rounded-lg border border-border bg-background p-1 md:col-span-2 xl:col-span-1">
+                        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_22rem_auto] gap-2 items-stretch">
+                            <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:col-span-2 xl:col-span-1">
                                 {roleTabs.map((tab) => (
                                     <button
                                         key={tab.value}
@@ -144,7 +144,7 @@ export default function Approvals({ pendingUsers, filters, mocked, roleSummary: 
                                             setRoleFilter(tab.value);
                                             router.get('/approvals', { search, role: tab.value }, { preserveState: true, preserveScroll: true, replace: true });
                                         }}
-                                        className={`px-2.5 py-1.5 whitespace-nowrap rounded-md text-xs font-medium transition-colors ${roleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                                        className={`px-2.5 py-1.5 whitespace-nowrap shrink-0 rounded-md text-xs font-medium transition-colors ${roleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
                                     >
                                         {tab.label}
                                     </button>
@@ -164,7 +164,7 @@ export default function Approvals({ pendingUsers, filters, mocked, roleSummary: 
                                 type="button"
                                 onClick={approveAllByRole}
                                 disabled={mocked || pendingUsers.length === 0}
-                                className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-success text-white text-xs font-semibold disabled:opacity-60"
+                                className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg bg-success text-white text-xs font-semibold whitespace-nowrap disabled:opacity-60"
                             >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 ACC Semua Role Ini

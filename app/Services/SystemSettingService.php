@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
 class SystemSettingService
 {
     private const CACHE_KEY = 'system_settings:all';
+    private static ?bool $hasSystemSettingsTable = null;
 
     public function getPublicSettings(): array
     {
@@ -62,14 +63,25 @@ class SystemSettingService
      */
     private function all(): array
     {
-        if (!Schema::hasTable('system_settings')) {
+        if (!$this->hasSystemSettingsTable()) {
             return [];
         }
 
-        return Cache::remember(self::CACHE_KEY, now()->addMinutes(1), function () {
+        return Cache::remember(self::CACHE_KEY, now()->addMinutes(5), function () {
             /** @var array<string, string|null> $settings */
             $settings = SystemSetting::query()->pluck('value', 'key')->toArray();
             return $settings;
         });
+    }
+
+    private function hasSystemSettingsTable(): bool
+    {
+        if (self::$hasSystemSettingsTable !== null) {
+            return self::$hasSystemSettingsTable;
+        }
+
+        self::$hasSystemSettingsTable = Schema::hasTable('system_settings');
+
+        return self::$hasSystemSettingsTable;
     }
 }

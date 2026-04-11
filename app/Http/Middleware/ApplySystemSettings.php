@@ -14,6 +14,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApplySystemSettings
 {
+    private const REQUEST_SETTINGS_ATTRIBUTE = 'system.public_settings';
+    private static ?string $appliedLocale = null;
+
     public function __construct(
         private readonly SystemSettingService $settings
     ) {
@@ -22,6 +25,7 @@ class ApplySystemSettings
     public function handle(Request $request, Closure $next): Response
     {
         $system = $this->settings->getPublicSettings();
+        $request->attributes->set(self::REQUEST_SETTINGS_ATTRIBUTE, $system);
         $this->applyLocale($system['default_language']);
 
         if ($timeoutResponse = $this->enforceSessionTimeout($request, (int) $system['session_timeout_minutes'])) {
@@ -42,9 +46,15 @@ class ApplySystemSettings
     private function applyLocale(string $language): void
     {
         $locale = $language === 'en' ? 'en' : 'id';
+
+        if (self::$appliedLocale === $locale) {
+            return;
+        }
+
         App::setLocale($locale);
         Carbon::setLocale($locale);
         setlocale(LC_TIME, $locale === 'en' ? 'en_US.UTF-8' : 'id_ID.UTF-8');
+        self::$appliedLocale = $locale;
     }
 
     private function enforceSessionTimeout(Request $request, int $minutes): ?RedirectResponse

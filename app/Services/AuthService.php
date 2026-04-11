@@ -31,6 +31,11 @@ class AuthService
             return false;
         }
 
+        return $this->loginWithUser($user, $password, $remember);
+    }
+
+    public function loginWithUser(User $user, string $password, bool $remember = false): bool
+    {
         return Auth::attempt(
             ['email' => $user->email, 'password' => $password],
             $remember

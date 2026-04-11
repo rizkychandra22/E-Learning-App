@@ -198,7 +198,6 @@ export default function StudentMyCourses({ courses = [], available_courses = [],
                 <div className="flex flex-wrap gap-3 text-sm">
                     <span className={UI.chip}><CalendarDays className="w-3.5 h-3.5" />{today}</span>
                     <span className={UI.chip}>Semester Genap 2025/2026</span>
-                    <span className={UI.chip}>Learning modules Sprint 3</span>
                 </div>
 
                 <div className="grid grid-cols-1 min-[540px]:grid-cols-2 xl:grid-cols-4 gap-3">

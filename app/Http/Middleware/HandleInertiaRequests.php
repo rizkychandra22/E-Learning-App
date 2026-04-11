@@ -11,6 +11,9 @@ use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
 {
+    private const REQUEST_SETTINGS_ATTRIBUTE = 'system.public_settings';
+    private static ?bool $hasNotificationsTable = null;
+
     /**
      * The root template that's loaded on the first page visit.
      *
@@ -40,8 +43,12 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $system = app(SystemSettingService::class)->getPublicSettings();
+        $system = $request->attributes->get(self::REQUEST_SETTINGS_ATTRIBUTE);
+        if (!is_array($system)) {
+            $system = app(SystemSettingService::class)->getPublicSettings();
+        }
         $defaultLanguage = $system['default_language'] ?? 'id';
+        $canLoadNotifications = $user && $this->hasNotificationsTable();
 
         return [
             ...parent::share($request),
@@ -64,14 +71,14 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
             ],
             'notifications' => [
-                'items' => fn () => $user && Schema::hasTable('in_app_notifications')
+                'items' => fn () => $canLoadNotifications
                     ? InAppNotification::query()
                         ->where('user_id', $user->id)
                         ->latest('id')
                         ->limit(10)
                         ->get()
                     : [],
-                'unread_count' => fn () => $user && Schema::hasTable('in_app_notifications')
+                'unread_count' => fn () => $canLoadNotifications
                     ? InAppNotification::query()
                         ->where('user_id', $user->id)
                         ->whereNull('read_at')
@@ -79,6 +86,17 @@ class HandleInertiaRequests extends Middleware
                     : 0,
             ],
         ];
+    }
+
+    private function hasNotificationsTable(): bool
+    {
+        if (self::$hasNotificationsTable !== null) {
+            return self::$hasNotificationsTable;
+        }
+
+        self::$hasNotificationsTable = Schema::hasTable('in_app_notifications');
+
+        return self::$hasNotificationsTable;
     }
 
     private function mapDashboardRole(string $backendRole): string

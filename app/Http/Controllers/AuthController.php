@@ -77,8 +77,8 @@ class AuthController extends Controller
             ])->onlyInput('email');
         }
 
-        $authenticated = $this->authService->login(
-            $user->email,
+        $authenticated = $this->authService->loginWithUser(
+            $user,
             $credentials['password'],
             (bool) ($credentials['remember'] ?? false)
         );

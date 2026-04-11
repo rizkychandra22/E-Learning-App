@@ -1016,6 +1016,11 @@ class AdminAcademicService
     public function getSettings(int $adminId): array
     {
         $defaults = [
+            'university_name' => 'Universitas Nusantara',
+            'university_code' => 'UNNUS',
+            'university_website' => 'https://unnus.ac.id',
+            'university_phone' => '+62 21-1234-5678',
+            'university_address' => 'Jl. Pendidikan No. 1, Jakarta',
             'dashboard_refresh_seconds' => 60,
             'show_pending_first' => true,
             'enable_user_email_notification' => false,
@@ -1032,6 +1037,11 @@ class AdminAcademicService
             ->pluck('value', 'key');
 
         return [
+            'university_name' => (string) ($stored[$prefix . 'university_name'] ?? $defaults['university_name']),
+            'university_code' => (string) ($stored[$prefix . 'university_code'] ?? $defaults['university_code']),
+            'university_website' => (string) ($stored[$prefix . 'university_website'] ?? $defaults['university_website']),
+            'university_phone' => (string) ($stored[$prefix . 'university_phone'] ?? $defaults['university_phone']),
+            'university_address' => (string) ($stored[$prefix . 'university_address'] ?? $defaults['university_address']),
             'dashboard_refresh_seconds' => (int) ($stored[$prefix . 'dashboard_refresh_seconds'] ?? $defaults['dashboard_refresh_seconds']),
             'show_pending_first' => ($stored[$prefix . 'show_pending_first'] ?? ($defaults['show_pending_first'] ? '1' : '0')) === '1',
             'enable_user_email_notification' => ($stored[$prefix . 'enable_user_email_notification'] ?? ($defaults['enable_user_email_notification'] ? '1' : '0')) === '1',
@@ -1052,6 +1062,9 @@ class AdminAcademicService
                 ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value]
             );
         }
+
+        Cache::forget('dashboard:admin-academic');
+        app(SystemSettingService::class)->clearCache();
 
         return true;
     }
