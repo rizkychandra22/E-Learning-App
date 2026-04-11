@@ -15,6 +15,11 @@ export default function Settings({ settings }) {
     const [activeTab, setActiveTab] = useState('university');
 
     const form = useForm({
+        university_name: settings.university_name ?? 'Universitas Nusantara',
+        university_code: settings.university_code ?? 'UNNUS',
+        university_website: settings.university_website ?? 'https://unnus.ac.id',
+        university_phone: settings.university_phone ?? '+62 21-1234-5678',
+        university_address: settings.university_address ?? 'Jl. Pendidikan No. 1, Jakarta',
         dashboard_refresh_seconds: settings.dashboard_refresh_seconds ?? 60,
         show_pending_first: !!settings.show_pending_first,
         enable_user_email_notification: !!settings.enable_user_email_notification,
@@ -63,12 +68,37 @@ export default function Settings({ settings }) {
 
                         {activeTab === 'university' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <Field label="Nama Universitas" value="Universitas Nusantara" onChange={() => {}} disabled />
-                                <Field label="Kode Universitas" value="UNNUS" onChange={() => {}} disabled />
-                                <Field label="Website" value="https://unnus.ac.id" onChange={() => {}} disabled />
-                                <Field label="Nomor Telepon" value="+62 21-1234-5678" onChange={() => {}} disabled />
+                                <Field
+                                    label="Nama Universitas"
+                                    value={form.data.university_name}
+                                    onChange={(value) => form.setData('university_name', value)}
+                                    error={form.errors.university_name}
+                                />
+                                <Field
+                                    label="Kode Universitas"
+                                    value={form.data.university_code}
+                                    onChange={(value) => form.setData('university_code', value)}
+                                    error={form.errors.university_code}
+                                />
+                                <Field
+                                    label="Website"
+                                    value={form.data.university_website}
+                                    onChange={(value) => form.setData('university_website', value)}
+                                    error={form.errors.university_website}
+                                />
+                                <Field
+                                    label="Nomor Telepon"
+                                    value={form.data.university_phone}
+                                    onChange={(value) => form.setData('university_phone', value)}
+                                    error={form.errors.university_phone}
+                                />
                                 <div className="md:col-span-2">
-                                    <Field label="Alamat" value="Jl. Pendidikan No. 1, Jakarta" onChange={() => {}} disabled />
+                                    <Field
+                                        label="Alamat"
+                                        value={form.data.university_address}
+                                        onChange={(value) => form.setData('university_address', value)}
+                                        error={form.errors.university_address}
+                                    />
                                 </div>
                             </div>
                         )}
