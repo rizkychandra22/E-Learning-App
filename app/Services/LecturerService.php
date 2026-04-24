@@ -97,7 +97,7 @@ class LecturerService
                 ->whereIn('course_modules.course_id', $courseIds)
                 ->selectRaw('course_modules.course_id as course_id')
                 ->selectRaw('COUNT(*) as total')
-                ->selectRaw('SUM(CASE WHEN lesson_progress.is_completed = 1 THEN 1 ELSE 0 END) as completed')
+                ->selectRaw('SUM(CASE WHEN lesson_progress.is_completed THEN 1 ELSE 0 END) as completed')
                 ->groupBy('course_modules.course_id')
                 ->get()
                 ->mapWithKeys(function ($row): array {
