@@ -9,35 +9,6 @@ import { PageHeroBanner } from '@/components/PageHeroBanner';
 
 const FILTERS = ['Semua', 'Kelas', 'Kuis', 'Deadline', 'Ujian'];
 
-const SCHEDULE_GROUPS = [
-    {
-        day: 'Kamis, 26 Maret',
-        items: [
-            { title: 'Kelas React JS Fundamental', course: 'React JS Fundamental', time: '09:00 - 11:00', place: 'Zoom Meeting', type: 'Kelas', tone: 'primary' },
-        ],
-    },
-    {
-        day: 'Jumat, 27 Maret',
-        items: [
-            { title: 'Kuis: React Hooks Dasar', course: 'React JS Fundamental', time: '13:00 - 14:00', place: 'Online Platform', type: 'Kuis', tone: 'info' },
-            { title: 'Kelas Database Design', course: 'Database Design', time: '15:00 - 17:00', place: 'Ruang 301', type: 'Kelas', tone: 'success' },
-        ],
-    },
-    {
-        day: 'Sabtu, 28 Maret',
-        badge: 'Hari Ini',
-        items: [
-            { title: 'Deadline: ERD Database', course: 'Database Design', time: '23:59', place: 'Submission Online', type: 'Deadline', tone: 'destructive' },
-        ],
-    },
-    {
-        day: 'Minggu, 29 Maret',
-        items: [
-            { title: 'Kelas Node.js Advanced', course: 'Node.js Advanced', time: '10:00 - 12:00', place: 'Zoom Meeting', type: 'Kelas', tone: 'info' },
-        ],
-    },
-];
-
 const TYPE_CLASS = {
     primary: 'bg-primary/10 text-primary',
     success: 'bg-success/10 text-success',
@@ -87,7 +58,16 @@ export default function StudentSchedule() {
         [intlLocale]
     );
 
-    const groups = SCHEDULE_GROUPS.map((group) => ({
+    const scheduleGroups = props?.groups ?? [];
+    const migrationRequired = props?.migrationRequired ?? {};
+    const hasMigrationIssue = Boolean(
+        migrationRequired?.enrollments
+        || migrationRequired?.assignments
+        || migrationRequired?.quizzes
+        || migrationRequired?.attendance_sessions
+    );
+
+    const groups = scheduleGroups.map((group) => ({
         ...group,
         items: activeFilter === 'Semua' ? group.items : group.items.filter((item) => item.type === activeFilter),
     })).filter((group) => group.items.length > 0);
@@ -97,6 +77,12 @@ export default function StudentSchedule() {
             <Head title="Jadwal" />
             <div className="space-y-6">
                 <PageHeroBanner title="Jadwal" description="Pantau jadwal kelas, kuis, deadline, dan ujian agar semua agenda belajar tetap teratur." />
+
+                {hasMigrationIssue && (
+                    <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                        Sebagian data jadwal belum siap karena migrasi belum lengkap.
+                    </div>
+                )}
 
                 <div className="flex flex-wrap items-center gap-2">
                     {FILTERS.map((filter) => (
@@ -132,9 +118,11 @@ export default function StudentSchedule() {
                             </div>
                         </section>
                     ))}
+                    {groups.length === 0 && (
+                        <div className="panel-card p-4 text-sm text-muted-foreground">Belum ada jadwal untuk mata kuliah yang Anda ikuti.</div>
+                    )}
                 </div>
             </div>
         </ProtectedLayout>
     );
 }
-

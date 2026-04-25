@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Award, CalendarDays, CheckCircle2, Clock, Send, Timer, Trophy } from 'lucide-react';
+import { AlertCircle, Award, CalendarDays, CheckCircle2, Clock, PlayCircle, Save, Send, Timer, Trophy } from 'lucide-react';
 import { Head, router, usePage } from '@inertiajs/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
@@ -20,14 +20,25 @@ function normalizeAnswersForQuiz(quiz) {
     return {};
 }
 
-function QuizCard({ quiz, draft, onChangeAnswer, onSubmit }) {
+function QuizCard({ quiz, draft, expanded, onStart, onClose, onChangeAnswer, onSubmit, onSave, isSubmitting }) {
     const statusTone = {
         active: 'bg-primary/10 text-primary',
         closed: 'bg-secondary text-secondary-foreground',
         graded: 'bg-success/10 text-success',
+        reset: 'bg-warning/10 text-warning',
     };
 
     const attemptStatus = quiz?.attempt?.status ?? 'belum';
+    const isExpired = quiz?.due_at ? new Date() > new Date(quiz.due_at) : false;
+    const isStarted = quiz?.scheduled_at ? new Date() >= new Date(quiz.scheduled_at) : true;
+    
+    const canWork = quiz?.status === 'active' && 
+                    !['submitted', 'graded'].includes(attemptStatus) && 
+                    !isExpired && 
+                    isStarted;
+    const isSubmitted = ['submitted', 'graded'].includes(attemptStatus);
+
+    const isReadOnly = !canWork || !expanded;
 
     return (
         <div className={cn(UI.panel, 'space-y-3')}>
@@ -36,17 +47,32 @@ function QuizCard({ quiz, draft, onChangeAnswer, onSubmit }) {
                     <p className="text-xs text-muted-foreground">{quiz?.course?.title ?? 'Tanpa mata kuliah'}</p>
                     <h3 className="font-semibold">{quiz?.title}</h3>
                 </div>
-                <span className={cn(UI.chip, statusTone[quiz?.status] ?? 'bg-secondary text-secondary-foreground')}>{quiz?.status?.toUpperCase()}</span>
+                <span className={cn(UI.chip, statusTone[quiz?.status] ?? 'bg-secondary text-secondary-foreground')}>
+                    {quiz?.status?.toUpperCase()}
+                </span>
             </div>
 
+            {/* Alert jika kuis di-reset */}
+            {attemptStatus === 'reset' && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/10 text-warning border border-warning/20 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <p>Pengerjaan kuis ini telah dihapus oleh dosen. Silakan kerjakan ulang.</p>
+                </div>
+            )}
+
+            {/* Info Badge */}
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span className={UI.chip}>
-                    <Clock className="w-3.5 h-3.5" />
-                    {quiz?.duration_minutes ? `${quiz.duration_minutes} menit` : 'Durasi fleksibel'}
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Dibuat: {quiz?.created_at ? new Date(quiz.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-'}
                 </span>
                 <span className={UI.chip}>
                     <Timer className="w-3.5 h-3.5" />
-                    {quiz?.scheduled_at ? new Date(quiz.scheduled_at).toLocaleString('id-ID') : 'Tanpa jadwal'}
+                    Mulai: {quiz?.scheduled_at ? new Date(quiz.scheduled_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Tanpa jadwal'}
+                </span>
+                <span className={UI.chip}>
+                    <Clock className="w-3.5 h-3.5" />
+                    Berakhir: {quiz?.due_at ? new Date(quiz.due_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Tanpa batas'}
                 </span>
                 <span className={cn(UI.chip, attemptStatus === 'graded' ? 'text-success' : attemptStatus === 'submitted' ? 'text-primary' : 'text-muted-foreground')}>
                     {attemptStatus}
@@ -59,56 +85,100 @@ function QuizCard({ quiz, draft, onChangeAnswer, onSubmit }) {
                 )}
             </div>
 
-            <div className="space-y-4">
-                {(quiz?.questions ?? []).map((question, index) => {
-                    const key = String(question.id ?? question.sort_order ?? index + 1);
-                    const value = draft?.[key] ?? '';
+            {!expanded ? (
+                <button
+                    type="button"
+                    onClick={onStart}
+                    disabled={(!canWork && !isSubmitted) || isSubmitting}
+                    className={cn(
+                        "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all",
+                        (canWork || isSubmitted)
+                            ? "gradient-primary text-primary-foreground shadow-md active:scale-95" 
+                            : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    )}
+                >
+                    <PlayCircle className="w-4 h-4" />
+                    {isSubmitted ? 'Lihat Jawaban Anda' :
+                     isExpired ? 'Waktu Habis' : !isStarted ? 'Belum Dibuka' : 
+                     attemptStatus === 'in_progress' ? 'Lanjutkan' : 
+                     attemptStatus === 'reset' ? 'Kerjakan Ulang' : 'Kerjakan Sekarang'}
+                </button>
+            ) : (
+                <div className="space-y-4 pt-4 border-t border-border animate-in fade-in slide-in-from-top-2">
+                    {(quiz?.questions ?? []).map((question, index) => {
+                        const key = String(question.id ?? index + 1);
+                        const value = draft?.[key] ?? '';
 
-                    return (
-                        <div key={`q-${quiz.id}-${key}`} className="rounded-xl border border-border p-3 space-y-2">
-                            <p className="text-xs text-muted-foreground">Soal #{index + 1} ({question.question_type === 'essay' ? 'Essay' : 'Objective'})</p>
-                            <p className="text-sm font-medium">{question.question_text}</p>
-
-                            {question.question_type === 'objective' ? (
-                                <div className="space-y-2">
-                                    {(question.options ?? []).map((option, optionIndex) => (
-                                        <label key={`opt-${key}-${optionIndex}`} className="flex items-center gap-2 text-sm">
-                                            <input
-                                                type="radio"
-                                                name={`quiz-${quiz.id}-q-${key}`}
-                                                value={option}
-                                                checked={value === option}
-                                                onChange={(event) => onChangeAnswer(key, event.target.value)}
-                                                disabled={quiz?.status !== 'active'}
-                                            />
-                                            <span>{option}</span>
-                                        </label>
-                                    ))}
+                        return (
+                            <div key={key} className="rounded-xl border border-border p-4 space-y-3 bg-secondary/20">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pertanyaan {index + 1}</span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-border text-foreground uppercase">{question.question_type}</span>
                                 </div>
-                            ) : (
-                                <textarea
-                                    rows={3}
-                                    value={value}
-                                    onChange={(event) => onChangeAnswer(key, event.target.value)}
-                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    placeholder="Tulis jawaban essay..."
-                                    disabled={quiz?.status !== 'active'}
-                                />
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                                <p className="text-sm font-medium leading-relaxed">{question.question_text}</p>
 
-            <button
-                type="button"
-                onClick={onSubmit}
-                disabled={quiz?.status !== 'active'}
-                className="inline-flex items-center gap-1 rounded-lg gradient-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60"
-            >
-                <Send className="w-3.5 h-3.5" />
-                Kirim Jawaban
-            </button>
+                                {question.question_type === 'objective' ? (
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {(question.options ?? []).map((option, optIdx) => (
+                                            <label key={optIdx} className={cn(
+                                                "flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-colors text-sm",
+                                                value === option ? "bg-blue-50 border-blue-200 text-blue-700" : "hover:bg-background"
+                                            )}>
+                                                <input
+                                                    type="radio"
+                                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                                                    name={`q-${quiz.id}-${key}`}
+                                                    value={option}
+                                                    checked={value === option}
+                                                    onChange={(e) => onChangeAnswer(key, e.target.value)}
+                                                    disabled={isReadOnly}
+                                                />
+                                                {option}
+                                            </label>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <textarea
+                                        rows={4}
+                                        value={value}
+                                        onChange={(e) => onChangeAnswer(key, e.target.value)}
+                                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500/20"
+                                        placeholder="Ketik jawaban kamu di sini..."
+                                        disabled={isReadOnly}
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                        {!isSubmitted && (
+                            <>
+                                <button
+                                    onClick={onSubmit}
+                                    disabled={isSubmitting}
+                                    className="gradient-primary text-primary-foreground shadow-md active:scale-95 hover:bg-primary/10 hover:text-primary-foreground px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    <Send className="w-3.5 h-3.5" /> Kirim Jawaban
+                                </button>
+                                <button
+                                    onClick={onSave}
+                                    disabled={isSubmitting}
+                                    className="bg-white border border-border hover:bg-gray-50 text-foreground px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    <Save className="w-3.5 h-3.5" /> Simpan Draft
+                                </button>
+                            </>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="text-muted-foreground hover:text-foreground px-4 py-2 text-xs font-medium"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -134,6 +204,8 @@ export default function StudentQuizzes() {
     const summary = props?.summary ?? { active_count: 0, submitted_count: 0, graded_count: 0 };
     const migrationRequired = props?.migrationRequired ?? { quizzes: false, attempts: false };
     const [draftAnswers, setDraftAnswers] = useState(() => Object.fromEntries(quizzes.map((quiz) => [quiz.id, normalizeAnswersForQuiz(quiz)])));
+    const [expandedQuizId, setExpandedQuizId] = useState(null);
+    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
 
     const setAnswer = (quizId, questionKey, value) => {
         setDraftAnswers((prev) => ({
@@ -143,6 +215,32 @@ export default function StudentQuizzes() {
                 [questionKey]: value,
             },
         }));
+    };
+
+    const startQuiz = (quiz) => {
+        // Langsung tampilkan soal di bawah (instan)
+        setExpandedQuizId(quiz.id);
+
+        // Jika sudah pernah dimulai atau selesai, tidak perlu kirim request start lagi
+        if (['in_progress', 'submitted', 'graded'].includes(quiz.attempt?.status)) {
+            return;
+        }
+
+        setIsSubmittingQuiz(true);
+        router.post(`/quizzes/${quiz.id}/start`, {}, {
+            preserveScroll: true,
+            onFinish: () => setIsSubmittingQuiz(false),
+            onError: (errors) => console.error("Gagal mencatat waktu mulai kuis:", errors)
+        });
+    };
+
+    const saveProgress = (quiz) => {
+        const answers = draftAnswers[quiz.id] ?? {};
+        setIsSubmittingQuiz(true);
+        router.post(`/quizzes/${quiz.id}/save-progress`, { answers }, { 
+            preserveScroll: true,
+            onFinish: () => setIsSubmittingQuiz(false),
+        });
     };
 
     const submitQuiz = (quiz) => {
@@ -159,7 +257,15 @@ export default function StudentQuizzes() {
             return;
         }
 
-        router.post(`/quizzes/${quiz.id}/submit`, { answers: cleaned }, { preserveScroll: true });
+        setIsSubmittingQuiz(true);
+        router.post(`/quizzes/${quiz.id}/submit`, { answers: cleaned }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setExpandedQuizId(null);
+                setIsSubmittingQuiz(false);
+            },
+            onError: () => setIsSubmittingQuiz(false),
+        });
     };
 
     return (
@@ -168,7 +274,7 @@ export default function StudentQuizzes() {
             <div className="space-y-6">
                 <PageHeroBanner
                     title="Kuis"
-                    description="Kerjakan kuis per soal, kirim jawaban, dan cek skor saat sudah dinilai."
+                    description="Klik Kerjakan untuk mulai mengisi soal, lalu kirim jawaban setelah semua soal selesai."
                 />
 
                 {(migrationRequired.quizzes || migrationRequired.attempts) && (
@@ -198,14 +304,19 @@ export default function StudentQuizzes() {
                     </span>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-1 gap-4">
                     {quizzes.map((quiz) => (
                         <QuizCard
                             key={`${quiz.id}-${quiz.title}`}
                             quiz={quiz}
                             draft={draftAnswers[quiz.id] ?? {}}
+                            expanded={expandedQuizId === quiz.id}
+                            onStart={() => startQuiz(quiz)}
+                            onClose={() => setExpandedQuizId(null)}
                             onChangeAnswer={(questionKey, value) => setAnswer(quiz.id, questionKey, value)}
                             onSubmit={() => submitQuiz(quiz)}
+                            onSave={() => saveProgress(quiz)}
+                            isSubmitting={isSubmittingQuiz}
                         />
                     ))}
                     {quizzes.length === 0 && (
@@ -216,4 +327,3 @@ export default function StudentQuizzes() {
         </ProtectedLayout>
     );
 }
-

@@ -11,6 +11,7 @@ use App\Models\CourseLesson;
 use App\Models\CourseMaterial;
 use App\Models\CourseModule;
 use App\Models\Discussion;
+use App\Models\DiscussionMessage;
 use App\Models\LessonProgress;
 use App\Models\Question;
 use App\Models\Quiz;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LecturerService
@@ -566,6 +568,315 @@ class LecturerService
         ];
     }
 
+    public function getStudentDiscussionsData(int $studentId): array
+    {
+        $migrationRequired = [
+            'discussions' => !Schema::hasTable('discussions'),
+            'enrollments' => !Schema::hasTable('course_student'),
+            'messages' => !Schema::hasTable('discussion_messages'),
+        ];
+
+        if ($migrationRequired['discussions'] || $migrationRequired['enrollments']) {
+            return [
+                'discussions' => collect(),
+                'courses' => collect(),
+                'migrationRequired' => $migrationRequired,
+            ];
+        }
+
+        $student = User::query()->findOrFail($studentId);
+        $courses = $student->enrolledCourses()
+            ->orderBy('title')
+            ->get(['courses.id', 'courses.title', 'courses.code']);
+        $courseIds = $courses->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $discussions = collect();
+        if ($courseIds !== []) {
+            $discussionQuery = Discussion::query()
+                ->whereIn('course_id', $courseIds)
+                ->with(['course:id,title,code', 'lecturer:id,name'])
+                ->latest('updated_at');
+
+            if (!$migrationRequired['messages']) {
+                $discussionQuery->with([
+                    'messages' => fn ($query) => $query
+                        ->with('user:id,name')
+                        ->orderBy('created_at'),
+                ])->withCount('messages');
+            }
+
+            $discussions = $discussionQuery
+                ->get()
+                ->map(function (Discussion $discussion) use ($studentId, $migrationRequired): array {
+                    $authorName = (string) ($discussion->lecturer?->name ?? 'Dosen');
+                    $initials = collect(preg_split('/\s+/', trim($authorName)) ?: [])
+                        ->filter(fn ($item) => trim((string) $item) !== '')
+                        ->take(2)
+                        ->map(fn ($item) => Str::upper(Str::substr((string) $item, 0, 1)))
+                        ->implode('');
+
+                    return [
+                        'id' => (int) $discussion->id,
+                        'initials' => $initials !== '' ? $initials : 'DS',
+                        'title' => (string) $discussion->title,
+                        'body' => (string) $discussion->body,
+                        'course' => (string) ($discussion->course?->title ?? 'Tanpa mata kuliah'),
+                        'author' => $authorName,
+                        'likes' => 0,
+                        'replies' => (int) ($discussion->messages_count ?? 0),
+                        'time' => $discussion->updated_at?->diffForHumans() ?? '-',
+                        'tags' => [],
+                        'solved' => (string) $discussion->status === 'closed',
+                        'status' => (string) $discussion->status,
+                        'can_reply' => (string) $discussion->status === 'open',
+                        'messages' => $migrationRequired['messages']
+                            ? collect()
+                            : collect($discussion->messages ?? [])
+                                ->map(function (DiscussionMessage $message) use ($studentId): array {
+                                    $authorName = (string) ($message->user?->name ?? 'Pengguna');
+                                    $authorInitials = collect(preg_split('/\s+/', trim($authorName)) ?: [])
+                                        ->filter(fn ($item) => trim((string) $item) !== '')
+                                        ->take(2)
+                                        ->map(fn ($item) => Str::upper(Str::substr((string) $item, 0, 1)))
+                                        ->implode('');
+
+                                    return [
+                                        'id' => (int) $message->id,
+                                        'message' => (string) $message->message,
+                                        'parent_id' => $message->parent_id ? (int) $message->parent_id : null,
+                                        'author' => $authorName,
+                                        'author_initials' => $authorInitials !== '' ? $authorInitials : 'U',
+                                        'user_id' => (int) $message->user_id,
+                                        'is_mine' => (int) $message->user_id === $studentId,
+                                        'created_at' => $message->created_at?->toISOString(),
+                                        'created_label' => $message->created_at?->diffForHumans() ?? '-',
+                                    ];
+                                })
+                                ->values(),
+                    ];
+                })
+                ->values();
+        }
+
+        return [
+            'discussions' => $discussions,
+            'courses' => $courses,
+            'migrationRequired' => $migrationRequired,
+        ];
+    }
+
+    public function getStudentScheduleData(int $studentId): array
+    {
+        $migrationRequired = [
+            'enrollments' => !Schema::hasTable('course_student'),
+            'assignments' => !Schema::hasTable('assignments'),
+            'quizzes' => !Schema::hasTable('quizzes'),
+            'attendance_sessions' => !Schema::hasTable('attendance_sessions'),
+        ];
+
+        $courses = collect();
+        $groups = collect();
+        if ($migrationRequired['enrollments']) {
+            return [
+                'courses' => $courses,
+                'groups' => $groups,
+                'migrationRequired' => $migrationRequired,
+            ];
+        }
+
+        $student = User::query()->findOrFail($studentId);
+        $courses = $student->enrolledCourses()
+            ->orderBy('title')
+            ->get(['courses.id', 'courses.title', 'courses.code']);
+        $courseIds = $courses->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $events = collect();
+        if ($courseIds === []) {
+            return [
+                'courses' => $courses,
+                'groups' => $groups,
+                'migrationRequired' => $migrationRequired,
+            ];
+        }
+
+        if (!$migrationRequired['attendance_sessions']) {
+            $events = $events->concat(
+                AttendanceSession::query()
+                    ->whereIn('course_id', $courseIds)
+                    ->with('course:id,title')
+                    ->whereNotNull('opens_at')
+                    ->orderBy('opens_at')
+                    ->limit(120)
+                    ->get()
+                    ->map(function (AttendanceSession $session): array {
+                        $opensAt = $session->opens_at;
+                        $closesAt = $session->closes_at;
+                        $timeLabel = $opensAt?->translatedFormat('H:i') ?? '-';
+                        if ($opensAt && $closesAt) {
+                            $timeLabel = $opensAt->translatedFormat('H:i') . ' - ' . $closesAt->translatedFormat('H:i');
+                        }
+
+                        return [
+                            'title' => (string) $session->title,
+                            'course' => (string) ($session->course?->title ?? 'Tanpa mata kuliah'),
+                            'time' => $timeLabel,
+                            'place' => 'Kelas / Online',
+                            'type' => 'Kelas',
+                            'tone' => 'primary',
+                            'sort_at' => $opensAt?->toISOString() ?? now()->toISOString(),
+                        ];
+                    })
+            );
+        }
+
+        if (!$migrationRequired['quizzes']) {
+            $events = $events->concat(
+                Quiz::query()
+                    ->whereIn('course_id', $courseIds)
+                    ->where('status', '!=', 'draft')
+                    ->with('course:id,title')
+                    ->whereNotNull('scheduled_at')
+                    ->orderBy('scheduled_at')
+                    ->limit(120)
+                    ->get()
+                    ->map(function (Quiz $quiz): array {
+                        $scheduledAt = $quiz->scheduled_at;
+
+                        return [
+                            'title' => 'Kuis: ' . (string) $quiz->title,
+                            'course' => (string) ($quiz->course?->title ?? 'Tanpa mata kuliah'),
+                            'time' => $scheduledAt?->translatedFormat('H:i') ?? '-',
+                            'place' => 'Online Platform',
+                            'type' => 'Kuis',
+                            'tone' => 'info',
+                            'sort_at' => $scheduledAt?->toISOString() ?? now()->toISOString(),
+                        ];
+                    })
+            );
+        }
+
+        if (!$migrationRequired['assignments']) {
+            $events = $events->concat(
+                Assignment::query()
+                    ->whereIn('course_id', $courseIds)
+                    ->where('status', '!=', 'draft')
+                    ->with('course:id,title')
+                    ->whereNotNull('due_at')
+                    ->orderBy('due_at')
+                    ->limit(120)
+                    ->get()
+                    ->map(function (Assignment $assignment): array {
+                        $dueAt = $assignment->due_at;
+
+                        return [
+                            'title' => 'Deadline: ' . (string) $assignment->title,
+                            'course' => (string) ($assignment->course?->title ?? 'Tanpa mata kuliah'),
+                            'time' => $dueAt?->translatedFormat('H:i') ?? '-',
+                            'place' => 'Submission Online',
+                            'type' => 'Deadline',
+                            'tone' => 'destructive',
+                            'sort_at' => $dueAt?->toISOString() ?? now()->toISOString(),
+                        ];
+                    })
+            );
+        }
+
+        $groups = $events
+            ->sortBy('sort_at')
+            ->groupBy(function (array $item): string {
+                return now()->parse((string) $item['sort_at'])->toDateString();
+            })
+            ->map(function (Collection $items, string $date): array {
+                $day = now()->parse($date);
+                $mappedItems = $items
+                    ->values()
+                    ->map(function (array $item): array {
+                        return [
+                            'title' => $item['title'],
+                            'course' => $item['course'],
+                            'time' => $item['time'],
+                            'place' => $item['place'],
+                            'type' => $item['type'],
+                            'tone' => $item['tone'],
+                        ];
+                    })
+                    ->all();
+
+                return [
+                    'day' => $day->translatedFormat('l, d F'),
+                    'badge' => $day->isToday() ? 'Hari Ini' : null,
+                    'items' => $mappedItems,
+                ];
+            })
+            ->values();
+
+        return [
+            'courses' => $courses,
+            'groups' => $groups,
+            'migrationRequired' => $migrationRequired,
+        ];
+    }
+
+    public function getStudentCertificatesData(int $studentId): array
+    {
+        $learning = $this->getStudentLearningDashboard($studentId);
+        $grades = $this->getStudentGradesData($studentId);
+
+        $courses = collect($learning['courses'] ?? []);
+        $records = collect($grades['records'] ?? []);
+
+        $completedCourses = $courses
+            ->filter(fn ($course) => (int) ($course['progress_percent'] ?? 0) >= 100)
+            ->values();
+        $inProgress = $courses
+            ->filter(fn ($course) => (int) ($course['progress_percent'] ?? 0) < 100)
+            ->values();
+
+        $tones = ['primary', 'warm', 'success', 'info'];
+        $certificates = $completedCourses->values()->map(function (array $course, int $index) use ($records, $tones): array {
+            $courseId = (int) ($course['id'] ?? 0);
+            $courseRecords = $records->filter(
+                fn ($record) => (int) ($record['course']['id'] ?? 0) === $courseId
+            );
+            $score = (int) round($courseRecords->avg('score') ?? 0);
+            $issuedAt = $courseRecords
+                ->pluck('graded_at')
+                ->filter(fn ($value) => !empty($value))
+                ->sortDesc()
+                ->first();
+
+            return [
+                'id' => $courseId,
+                'code' => sprintf('#CERT-%s-%03d', now()->format('Y'), max(1, $courseId)),
+                'course' => (string) ($course['title'] ?? '-'),
+                'instructor' => (string) ($course['lecturer']['name'] ?? '-'),
+                'date' => $issuedAt
+                    ? now()->parse((string) $issuedAt)->translatedFormat('d F Y')
+                    : now()->translatedFormat('d F Y'),
+                'score' => $score,
+                'tone' => $tones[$index % count($tones)],
+            ];
+        });
+
+        return [
+            'certificates' => $certificates->values(),
+            'in_progress' => $inProgress->values()->map(function (array $course, int $index) use ($tones): array {
+                return [
+                    'course' => (string) ($course['title'] ?? '-'),
+                    'progress' => (int) ($course['progress_percent'] ?? 0),
+                    'tone' => $tones[$index % count($tones)],
+                ];
+            }),
+            'summary' => [
+                'earned_count' => (int) $certificates->count(),
+            ],
+            'migrationRequired' => [
+                'learning' => (bool) ($learning['migrationRequired'] ?? false),
+                'grades' => (bool) ($grades['migrationRequired'] ?? false),
+            ],
+        ];
+    }
+
     public function getStudentLearningPlayer(int $studentId, int $courseId, ?int $requestedLessonId = null): array
     {
         $course = Course::query()
@@ -832,8 +1143,9 @@ class LecturerService
                     'description' => $quiz->description,
                     'status' => $quiz->status,
                     'duration_minutes' => $quiz->duration_minutes,
-                    'total_questions' => $quiz->total_questions,
+                    'total_questions' => $quiz->questions->count(),
                     'scheduled_at' => $quiz->scheduled_at?->toISOString(),
+                    'created_at' => $quiz->created_at?->toISOString(),
                     'due_at' => $quiz->due_at?->toISOString(),
                     'questions' => $quiz->questions->map(fn (Question $question) => [
                         'id' => $question->id,
@@ -899,21 +1211,25 @@ class LecturerService
         }
         abort_if($normalizedAnswers === [], 422, 'Jawaban kuis tidak boleh kosong.');
 
-        QuizAttempt::updateOrCreate(
-            [
-                'quiz_id' => $quiz->id,
-                'student_id' => $studentId,
-            ],
-            [
-                'answers' => $normalizedAnswers,
-                'status' => 'submitted',
-                'started_at' => now(),
-                'submitted_at' => now(),
-                'score' => null,
-                'feedback' => null,
-                'graded_at' => null,
-            ]
-        );
+        $attempt = QuizAttempt::firstOrNew([
+            'quiz_id' => $quiz->id,
+            'student_id' => $studentId,
+        ]);
+
+        $attempt->fill([
+            'answers' => $normalizedAnswers,
+            'status' => 'submitted',
+            'submitted_at' => now(),
+            'score' => null,
+            'feedback' => null,
+            'graded_at' => null,
+        ]);
+
+        if (!$attempt->started_at) {
+            $attempt->started_at = now();
+        }
+
+        $attempt->save();
     }
 
     public function getStudentGradesData(int $studentId): array
@@ -1298,6 +1614,8 @@ class LecturerService
                 ->where('lecturer_id', $lecturerId)
                 ->with(['course:id,title,code', 'questions:id,quiz_id,question_text,question_type,options,correct_answer,points,sort_order'])
                 ->withCount('attempts')
+                ->withCount(['attempts', 'questions'])
+                ->withAvg(['attempts as attempts_avg_score' => fn ($query) => $query->where('status', 'graded')], 'score')
                 ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
                 ->when($selectedCourseId, fn ($query) => $query->where('course_id', $selectedCourseId))
                 ->when($search !== '', function ($query) use ($search) {
@@ -1310,19 +1628,18 @@ class LecturerService
                 ->latest('id')
                 ->get()
                 ->map(function (Quiz $quiz): array {
-                    $avgScore = (int) round((float) ($quiz->attempts()->where('status', 'graded')->avg('score') ?? 0));
                     return [
                         'id' => $quiz->id,
                         'course_id' => $quiz->course_id,
                         'title' => $quiz->title,
                         'description' => $quiz->description,
                         'duration_minutes' => $quiz->duration_minutes,
-                        'total_questions' => $quiz->total_questions,
+                        'total_questions' => (int) ($quiz->questions_count ?? 0),
                         'scheduled_at' => $quiz->scheduled_at?->toISOString(),
                         'due_at' => $quiz->due_at?->toISOString(),
                         'status' => $quiz->status,
                         'participants_count' => (int) ($quiz->attempts_count ?? 0),
-                        'avg_score' => $avgScore,
+                        'avg_score' => (int) round((float) ($quiz->attempts_avg_score ?? 0)),
                         'course' => $quiz->course ? [
                             'id' => $quiz->course->id,
                             'title' => $quiz->course->title,
@@ -1356,6 +1673,98 @@ class LecturerService
                 'course' => $selectedCourseId,
             ],
         ];
+    }
+
+    public function startQuiz(int $studentId, Quiz $quiz): void
+    {
+        $this->ensureStudentCanAccessQuiz($studentId, $quiz);
+        abort_if($quiz->status !== 'active', 422, 'Kuis tidak aktif.');
+
+        if ($quiz->due_at && now()->isAfter($quiz->due_at)) {
+            throw ValidationException::withMessages(['quiz' => 'Batas pengerjaan kuis ini sudah berakhir.']);
+        }
+
+        QuizAttempt::firstOrCreate(
+            [
+                'quiz_id' => $quiz->id,
+                'student_id' => $studentId,
+            ],
+            [
+                'status' => 'in_progress',
+                'started_at' => now(),
+            ]
+        );
+    }
+
+    public function saveQuizProgress(int $studentId, Quiz $quiz, array $payload): void
+    {
+        $this->ensureStudentCanAccessQuiz($studentId, $quiz);
+        $answers = $payload['answers'] ?? [];
+
+        $attempt = QuizAttempt::firstOrNew([
+            'quiz_id' => $quiz->id, 
+            'student_id' => $studentId
+        ]);
+
+        $attempt->answers = $answers;
+        $attempt->status = 'in_progress';
+
+        if (!$attempt->started_at) {
+            $attempt->started_at = now();
+        }
+
+        $attempt->save();
+    }
+
+    public function getQuizAttempts(int $lecturerId, int $quizId): array
+    {
+        $quiz = Quiz::query()
+            ->where('id', $quizId)
+            ->where('lecturer_id', $lecturerId)
+            ->with('course')
+            ->firstOrFail();
+
+        // Ambil semua mahasiswa yang terdaftar di kursus ini
+        $students = DB::table('course_student')
+            ->join('users', 'users.id', '=', 'course_student.student_id')
+            ->leftJoin('quiz_attempts', function ($join) use ($quizId) {
+                $join->on('quiz_attempts.student_id', '=', 'users.id')
+                    ->where('quiz_attempts.quiz_id', '=', $quizId);
+            })
+            ->where('course_student.course_id', $quiz->course_id)
+            ->select([
+                'users.id',
+                'users.name',
+                'users.code as nim',
+                'quiz_attempts.id as attempt_id',
+                'quiz_attempts.status',
+                'quiz_attempts.score',
+                'quiz_attempts.submitted_at',
+            ])
+            ->orderByRaw("CASE 
+                WHEN quiz_attempts.status IN ('submitted', 'graded') THEN 1 
+                WHEN quiz_attempts.status = 'in_progress' THEN 2 
+                ELSE 3 
+            END")
+            ->orderBy('users.name')
+            ->get();
+
+        return [
+            'quiz' => $quiz,
+            'attempts' => $students,
+        ];
+    }
+
+    public function resetQuizAttempt(int $lecturerId, int $attemptId): void
+    {
+        $attempt = QuizAttempt::with('quiz', 'student')->findOrFail($attemptId);
+        abort_if((int) $attempt->quiz->lecturer_id !== $lecturerId, 403);
+
+        $attempt->update([
+            'status' => 'reset',
+            'score' => null,
+            'graded_at' => null,
+        ]);
     }
 
     public function canManageQuizzes(): bool
@@ -1550,7 +1959,7 @@ class LecturerService
         $migrationRequired = !Schema::hasTable('discussions');
         $discussions = collect();
         if (!$migrationRequired) {
-            $discussions = Discussion::query()
+            $discussionQuery = Discussion::query()
                 ->where('lecturer_id', $lecturerId)
                 ->with('course:id,title,code')
                 ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
@@ -1562,8 +1971,13 @@ class LecturerService
                             ->orWhere('body', 'like', '%' . $search . '%');
                     });
                 })
-                ->latest('id')
-                ->get();
+                ->latest('id');
+
+            if (Schema::hasTable('discussion_messages')) {
+                $discussionQuery->withCount('messages');
+            }
+
+            $discussions = $discussionQuery->get();
         }
 
         $courses = Schema::hasTable('courses') ? $this->getLecturerCoursesSimple($lecturerId) : collect();
@@ -1580,6 +1994,31 @@ class LecturerService
                 'course' => $selectedCourseId,
             ],
         ];
+    }
+
+    public function storeStudentDiscussionMessage(int $studentId, Discussion $discussion, array $payload): void
+    {
+        abort_if(!Schema::hasTable('discussion_messages'), 404);
+
+        $this->ensureStudentCanAccessDiscussion($studentId, $discussion);
+        abort_if((string) $discussion->status !== 'open', 422, 'Diskusi ini sudah ditutup.');
+
+        $parentId = isset($payload['parent_id']) && $payload['parent_id'] !== '' ? (int) $payload['parent_id'] : null;
+        if ($parentId !== null) {
+            $parentMessage = DiscussionMessage::query()
+                ->where('id', $parentId)
+                ->where('discussion_id', (int) $discussion->id)
+                ->first();
+            abort_if(!$parentMessage, 422, 'Balasan tidak valid.');
+            abort_if($parentMessage->parent_id !== null, 422, 'Balasan hanya bisa dilakukan ke pertanyaan utama.');
+        }
+
+        DiscussionMessage::create([
+            'discussion_id' => (int) $discussion->id,
+            'user_id' => $studentId,
+            'parent_id' => $parentId,
+            'message' => trim((string) ($payload['message'] ?? '')),
+        ]);
     }
 
     public function canManageDiscussions(): bool
@@ -1627,11 +2066,74 @@ class LecturerService
         $notesMigrationRequired = !Schema::hasTable('student_notes');
         $enrollmentsMigrationRequired = !Schema::hasTable('course_student');
 
+        $courses = Schema::hasTable('courses')
+            ? Course::query()->where('lecturer_id', $lecturerId)->orderBy('title')->get(['id', 'title', 'code'])
+            : collect();
+        $courseIds = $courses->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $enrolledStudentIds = [];
+        if (!$enrollmentsMigrationRequired && $courseIds !== []) {
+            $enrolledStudentIds = DB::table('course_student')
+                ->whereIn('course_id', $courseIds)
+                ->distinct()
+                ->pluck('student_id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
+        $roster = collect();
+        $rosterStudentIds = [];
+        if ($selectedCourseId && !$enrollmentsMigrationRequired && Schema::hasTable('courses')) {
+            $course = $this->findLecturerCourse($lecturerId, $selectedCourseId);
+            $roster = $course->students()
+                ->when($search !== '', function ($query) use ($search) {
+                    $query->where(function ($studentQuery) use ($search) {
+                        $studentQuery
+                            ->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%')
+                            ->orWhere('code', 'like', '%' . $search . '%');
+                    });
+                })
+                ->orderBy('name')
+                ->get(['users.id', 'users.name', 'users.email', 'users.code']);
+            $rosterStudentIds = $roster->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        $lecturerJurusanId = User::query()->where('id', $lecturerId)->value('jurusan_id');
+
+        $students = User::query()
+            ->where('role', 'student')
+            ->when(!empty($lecturerJurusanId), fn ($query) => $query->where('jurusan_id', (int) $lecturerJurusanId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'code']);
+
+        $noteStudents = collect();
+        if ($selectedCourseId) {
+            $noteStudents = $roster->values();
+        } elseif ($enrolledStudentIds !== []) {
+            $noteStudents = User::query()
+                ->whereIn('id', $enrolledStudentIds)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'code']);
+        }
+
         $notes = collect();
         if (!$notesMigrationRequired) {
-            $notes = StudentNote::query()
+            $allowedStudentIds = $selectedCourseId ? $rosterStudentIds : $enrolledStudentIds;
+            $notesQuery = StudentNote::query()
                 ->where('lecturer_id', $lecturerId)
-                ->with('student:id,name,email,code')
+                ->with('student:id,name,email,code');
+
+            if (!$enrollmentsMigrationRequired) {
+                if ($allowedStudentIds === []) {
+                    $notesQuery->whereRaw('1 = 0');
+                } else {
+                    $notesQuery->whereIn('student_id', $allowedStudentIds);
+                }
+            }
+
+            $notes = $notesQuery
                 ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
                 ->when($search !== '', function ($query) use ($search) {
                     $query->where(function ($subQuery) use ($search) {
@@ -1650,39 +2152,12 @@ class LecturerService
                 ->get();
         }
 
-        $courses = Schema::hasTable('courses')
-            ? Course::query()->where('lecturer_id', $lecturerId)->orderBy('title')->get(['id', 'title', 'code'])
-            : collect();
-
-        $roster = collect();
-        if ($selectedCourseId && !$enrollmentsMigrationRequired && Schema::hasTable('courses')) {
-            $course = $this->findLecturerCourse($lecturerId, $selectedCourseId);
-            $roster = $course->students()
-                ->when($search !== '', function ($query) use ($search) {
-                    $query->where(function ($studentQuery) use ($search) {
-                        $studentQuery
-                            ->where('name', 'like', '%' . $search . '%')
-                            ->orWhere('email', 'like', '%' . $search . '%')
-                            ->orWhere('code', 'like', '%' . $search . '%');
-                    });
-                })
-                ->orderBy('name')
-                ->get(['users.id', 'users.name', 'users.email', 'users.code']);
-        }
-
-        $lecturerJurusanId = User::query()->where('id', $lecturerId)->value('jurusan_id');
-
-        $students = User::query()
-            ->where('role', 'student')
-            ->when(!empty($lecturerJurusanId), fn ($query) => $query->where('jurusan_id', (int) $lecturerJurusanId))
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'code']);
-
         $mocked = false;
 
         return [
             'notes' => $notes,
             'students' => $students,
+            'noteStudents' => $noteStudents,
             'courses' => $courses,
             'roster' => $roster,
             'filters' => [
@@ -2008,6 +2483,8 @@ class LecturerService
 
     public function createStudentNote(int $lecturerId, array $payload): void
     {
+        $this->ensureStudentBelongsToLecturerCourses($lecturerId, (int) $payload['student_id']);
+
         StudentNote::create([
             'lecturer_id' => $lecturerId,
             'student_id' => $payload['student_id'],
@@ -2020,6 +2497,7 @@ class LecturerService
     public function updateStudentNote(int $lecturerId, StudentNote $note, array $payload): void
     {
         $this->ensureOwned($lecturerId, $note);
+        $this->ensureStudentBelongsToLecturerCourses($lecturerId, (int) $payload['student_id']);
 
         $note->update([
             'student_id' => $payload['student_id'],
@@ -2097,7 +2575,7 @@ class LecturerService
     private function resolveCourseId(int $lecturerId, $courseId): ?int
     {
         if ($courseId === null || $courseId === '') {
-            return null;
+            throw new \InvalidArgumentException('Course ID is required for quiz operations.');
         }
 
         abort_if(!Schema::hasTable('courses'), 404);
@@ -2152,6 +2630,8 @@ class LecturerService
         }
 
         $quiz->update(['total_questions' => $normalized->count()]);
+        $quiz->total_questions = $normalized->count();
+        $quiz->save();
     }
 
     private function normalizeAttemptAnswers($answers): array
@@ -2268,6 +2748,27 @@ class LecturerService
         abort_if((int) $model->lecturer_id !== $lecturerId, 404);
     }
 
+    private function ensureStudentBelongsToLecturerCourses(int $lecturerId, int $studentId): void
+    {
+        if (!Schema::hasTable('courses') || !Schema::hasTable('course_student')) {
+            throw ValidationException::withMessages([
+                'student_id' => 'Data enrollment belum tersedia. Jalankan migrasi terlebih dahulu.',
+            ]);
+        }
+
+        $belongsToLecturer = DB::table('course_student')
+            ->join('courses', 'courses.id', '=', 'course_student.course_id')
+            ->where('courses.lecturer_id', $lecturerId)
+            ->where('course_student.student_id', $studentId)
+            ->exists();
+
+        if (!$belongsToLecturer) {
+            throw ValidationException::withMessages([
+                'student_id' => 'Mahasiswa tidak terdaftar pada mata kuliah Anda.',
+            ]);
+        }
+    }
+
     private function ensureStudentCanAccessAssignment(int $studentId, Assignment $assignment): void
     {
         $assignment->loadMissing('course.students:id');
@@ -2287,6 +2788,13 @@ class LecturerService
         $material->loadMissing('course.students:id');
         abort_if(!$material->course, 404);
         abort_if(!$material->course->students->contains('id', $studentId), 403);
+    }
+
+    private function ensureStudentCanAccessDiscussion(int $studentId, Discussion $discussion): void
+    {
+        $discussion->loadMissing('course.students:id');
+        abort_if(!$discussion->course, 404);
+        abort_if(!$discussion->course->students->contains('id', $studentId), 403);
     }
 
     private function findLecturerCourse(int $lecturerId, int $courseId): Course

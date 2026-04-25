@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import { HelpCircle, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { CheckCircle, HelpCircle, Pencil, Plus, Search, Trash2, Users, XCircle } from 'lucide-react';
 import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
@@ -20,7 +20,7 @@ const emptyForm = {
     description: '',
     course_id: '',
     duration_minutes: '',
-    total_questions: '',
+    total_questions: 1,
     scheduled_at: '',
     due_at: '',
     status: 'draft',
@@ -33,6 +33,9 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
     const [courseFilter, setCourseFilter] = useState(filters?.course ? String(filters.course) : '');
     const [editingId, setEditingId] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const [showAttemptsModal, setShowAttemptsModal] = useState(false);
+    const [selectedQuiz, setSelectedQuiz] = useState(null);
+    const [attemptsData, setAttemptsData] = useState([]);
     const form = useForm(emptyForm);
     const isEditing = editingId !== null;
 
@@ -76,7 +79,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
             description: quiz.description ?? '',
             course_id: quiz.course_id ? String(quiz.course_id) : '',
             duration_minutes: quiz.duration_minutes ?? '',
-            total_questions: quiz.total_questions ?? questions.length,
+            total_questions: questions.length,
             scheduled_at: toInputDateTime(quiz.scheduled_at),
             due_at: toInputDateTime(quiz.due_at),
             status: quiz.status ?? 'draft',
@@ -84,6 +87,16 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
         });
         form.clearErrors();
         setShowForm(true);
+    };
+
+    const viewAttempts = async (quiz) => {
+        setSelectedQuiz(quiz);
+        setShowAttemptsModal(true);
+        try {
+            const response = await fetch(`/quizzes/${quiz.id}/attempts`);
+            const data = await response.json();
+            setAttemptsData(data.attempts);
+        } catch (error) { console.error(error); }
     };
 
     const closeForm = () => {
@@ -95,14 +108,23 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
 
     const addQuestion = () => {
         const nextIndex = form.data.questions.length + 1;
-        form.setData('questions', [...form.data.questions, makeEmptyQuestion(nextIndex)]);
+        const nextQuestions = [...form.data.questions, makeEmptyQuestion(nextIndex)];
+        form.setData({
+            ...form.data,
+            questions: nextQuestions,
+            total_questions: nextQuestions.length,
+        });
     };
 
     const removeQuestion = (index) => {
         if (form.data.questions.length <= 1) return;
-        const next = form.data.questions.filter((_, itemIndex) => itemIndex !== index)
+        const nextQuestions = form.data.questions.filter((_, itemIndex) => itemIndex !== index)
             .map((question, itemIndex) => ({ ...question, sort_order: itemIndex + 1 }));
-        form.setData('questions', next);
+        form.setData({
+            ...form.data,
+            questions: nextQuestions,
+            total_questions: nextQuestions.length,
+        });
     };
 
     const setQuestionField = (index, field, value) => {
@@ -130,20 +152,29 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
             ...question,
             sort_order: index + 1,
         }));
-
-        form.setData('questions', normalizedQuestions);
-        form.setData('total_questions', normalizedQuestions.length);
+        const payload = {
+            ...form.data,
+            questions: normalizedQuestions,
+            total_questions: normalizedQuestions.length,
+        };
 
         if (isEditing) {
+            form.transform(() => payload);
             form.put(`/quizzes/${editingId}`, { preserveScroll: true, onSuccess: closeForm });
             return;
         }
+        form.transform(() => payload);
         form.post('/quizzes', { preserveScroll: true, onSuccess: closeForm });
     };
 
     const destroyQuiz = (quiz) => {
         if (!window.confirm(`Hapus kuis "${quiz.title}"?`)) return;
         router.delete(`/quizzes/${quiz.id}`, { preserveScroll: true });
+    };
+
+    const resetAttempt = (attemptId) => {
+        if (!window.confirm('Reset pengerjaan mahasiswa ini? Mahasiswa akan diminta mengerjakan ulang.')) return;
+        router.put(`/quizzes/attempts/${attemptId}/reset`, {}, { preserveScroll: true, onSuccess: () => viewAttempts(selectedQuiz) });
     };
 
     return (
@@ -178,12 +209,12 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                     <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {quizzes.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-10">Belum ada kuis.</div>}
                         {quizzes.map((quiz) => (
-                            <div key={quiz.id} className="panel-subcard p-4 space-y-3">
+                            <div key={quiz.id} className="panel-subcard p-4 space-y-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => viewAttempts(quiz)}>
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="inline-flex h-8 w-8 rounded-xl gradient-primary items-center justify-center text-white"><HelpCircle className="w-4 h-4" /></span>
                                     <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary">{mapStatus(quiz.status)}</span>
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                     <p className="font-semibold">{quiz.title}</p>
                                     <p className="text-xs text-muted-foreground">{quiz.course?.title ?? '-'}</p>
                                 </div>
@@ -194,8 +225,9 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                     <p>Avg: {quiz.avg_score ?? '-'}%</p>
                                 </div>
                                 <p className="text-xs text-muted-foreground">Mulai: {formatDate(quiz.scheduled_at)}</p>
-                                <p className="text-xs text-muted-foreground">Batas pengumpulan: {formatDate(quiz.due_at)}</p>
-                                <div className="flex items-center gap-2">
+                                <p className="text-xs text-muted-foreground">Berakhir: {formatDate(quiz.due_at)}</p>
+                                <div className="flex items-center gap-2 pt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+                                    <ActionIconButton icon={Users} label="Lihat Peserta" tone="info" onClick={() => viewAttempts(quiz)} />
                                     <ActionIconButton icon={Pencil} label="Edit" tone="primary" onClick={() => beginEdit(quiz)} disabled={mocked} />
                                     <ActionIconButton icon={Trash2} label="Hapus" tone="danger" onClick={() => destroyQuiz(quiz)} disabled={mocked} />
                                 </div>
@@ -208,10 +240,10 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                     <div className="space-y-3">
                         <Field label="Judul Kuis" value={form.data.title} error={form.errors.title} onChange={(value) => form.setData('title', value)} />
                         <label className="block"><span className="text-sm font-medium">Deskripsi</span><textarea value={form.data.description} onChange={(event) => form.setData('description', event.target.value)} rows={3} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{form.errors.description && <span className="text-xs text-destructive mt-1 block">{form.errors.description}</span>}</label>
-                        <SelectField label="Mata Kuliah" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Tanpa Mata Kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
+                        <SelectField label="Mata Kuliah" value={form.data.course_id} onChange={(value) => form.setData('course_id', value)} error={form.errors.course_id}><option value="">Pilih Mata Kuliah</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</SelectField>
                         <div className="grid grid-cols-2 gap-3">
                             <Field label="Durasi (menit)" type="number" value={form.data.duration_minutes} error={form.errors.duration_minutes} onChange={(value) => form.setData('duration_minutes', value)} />
-                            <Field label="Jumlah Soal" type="number" value={form.data.total_questions || form.data.questions.length} error={form.errors.total_questions} onChange={(value) => form.setData('total_questions', value)} />
+                            <Field label="Jumlah Soal" type="number" value={form.data.questions.length} error={form.errors.total_questions} onChange={() => {}} readOnly />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <Field label="Jadwal Mulai" type="datetime-local" value={form.data.scheduled_at} error={form.errors.scheduled_at} onChange={(value) => form.setData('scheduled_at', value)} />
@@ -262,6 +294,48 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                         </div>
                     </div>
                 </CreateFormModal>
+
+                <CreateFormModal open={showAttemptsModal} title={`Hasil: ${selectedQuiz?.title}`} onClose={() => setShowAttemptsModal(false)} maxWidthClass="max-w-4xl" hideSubmit>
+                    <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-border text-muted-foreground text-left">
+                                        <th className="py-2 px-1">Mahasiswa</th>
+                                        <th className="py-2 px-1">Status</th>
+                                        <th className="py-2 px-1">Nilai</th>
+                                        <th className="py-2 px-1">Waktu Selesai</th>
+                                        <th className="py-2 px-1 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {attemptsData.map((row) => (
+                                        <tr key={row.id} className="border-b border-border/50">
+                                            <td className="py-3 px-1"><div><p className="font-medium">{row.name}</p><p className="text-[10px] text-muted-foreground">{row.nim}</p></div></td>
+                                            <td className="py-3 px-1">
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded-full text-[10px]", 
+                                                    row.status === 'graded' ? "bg-success/10 text-success" : 
+                                                    row.status === 'submitted' ? "bg-info/10 text-info" : 
+                                                    row.status === 'in_progress' ? "bg-warning/10 text-warning" :
+                                                    row.status === 'reset' ? "bg-warning/10 text-warning" : 
+                                                    "bg-secondary text-muted-foreground"
+                                                )}>
+                                                    {row.status === 'reset' ? 'DI-RESET' : 
+                                                     row.status === 'in_progress' ? 'DRAF' : 
+                                                     row.status?.toUpperCase() ?? 'BELUM'}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-1 font-bold">{row.score ?? '-'}</td>
+                                            <td className="py-3 px-1 text-muted-foreground text-xs">{row.submitted_at ? new Date(row.submitted_at).toLocaleString('id-ID') : '-'}</td>
+                                            <td className="py-3 px-1 text-right">{row.attempt_id && <ActionIconButton icon={Trash2} label="Reset Pengerjaan" tone="danger" onClick={() => resetAttempt(row.attempt_id)} />}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </CreateFormModal>
             </div>
         </ProtectedLayout>
     );
@@ -270,11 +344,20 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
 function StatCard({ title, value, tone }) {
     return <div className={`relative overflow-hidden rounded-2xl p-4 text-white shadow-card ${tone}`}><div className="absolute -right-6 -top-7 h-20 w-20 rounded-full bg-white/10" /><p className="text-sm text-white/85">{title}</p><p className="mt-1 text-[42px] leading-none font-bold">{value}</p></div>;
 }
-function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
+function Field({ label, value, onChange, error, type = 'text', readOnly = false }) { 
+    return <label className="block">
+        <span className="text-sm font-medium">{label}</span>
+        <input type={type} value={value ?? ''} onChange={(event) => onChange(event.target.value)} readOnly={readOnly} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm read-only:bg-secondary/50" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value ?? ''} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function mapStatus(value) { if (value === 'active') return 'Aktif'; if (value === 'closed') return 'Ditutup'; return 'Draft'; }
-function formatDate(value) { if (!value) return '-'; return new Date(value).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); }
+function formatDate(value) { 
+    if (!value) return '-'; 
+    return new Date(value).toLocaleString('id-ID', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    }); 
+}
 function toInputDateTime(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return ''; const offset = date.getTimezoneOffset(); const local = new Date(date.getTime() - offset * 60000); return local.toISOString().slice(0, 16); }
-
-
-

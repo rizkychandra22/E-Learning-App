@@ -428,12 +428,33 @@ class LecturerController extends Controller
         abort_if(!$user || $user->role !== 'student', 403);
 
         $payload = $request->validate([
-            'answers' => ['required'],
+            'answers' => ['required', 'array'],
         ]);
 
         $this->service->submitQuiz((int) $user->id, $quiz, $payload);
 
         return back()->with('success', 'Jawaban kuis berhasil dikirim.');
+    }
+
+    public function startQuiz(Quiz $quiz): RedirectResponse
+    {
+        $user = auth()->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+        $this->service->startQuiz((int) $user->id, $quiz);
+        return back()->with('success', 'Kuis dimulai. Silahkan kerjakan.');
+    }
+
+    public function saveQuizProgress(Request $request, Quiz $quiz): RedirectResponse
+    {
+        $user = auth()->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+
+        $payload = $request->validate([
+            'answers' => ['required', 'array'],
+        ]);
+
+        $this->service->saveQuizProgress((int) $user->id, $quiz, $payload);
+        return back()->with('success', 'Draft jawaban berhasil disimpan.');
     }
 
     public function storeQuiz(StoreQuizRequest $request): RedirectResponse
@@ -475,11 +496,24 @@ class LecturerController extends Controller
         return back()->with('success', 'Kuis berhasil dihapus.');
     }
 
+    public function quizAttempts(Quiz $quiz): \Illuminate\Http\JsonResponse
+    {
+        $user = $this->requireLecturer();
+        return response()->json($this->service->getQuizAttempts((int) $user->id, (int) $quiz->id));
+    }
+
+    public function resetQuizAttempt(QuizAttempt $attempt): RedirectResponse
+    {
+        $user = $this->requireLecturer();
+        $this->service->resetQuizAttempt((int) $user->id, (int) $attempt->id);
+        return back()->with('success', 'Pengerjaan kuis mahasiswa berhasil di-reset.');
+    }
+
     public function discussions(Request $request): Response
     {
         $user = $request->user();
         if ($user && $user->role === 'student') {
-            return Inertia::render('Student/Discussions');
+            return Inertia::render('Student/Discussions', $this->service->getStudentDiscussionsData((int) $user->id));
         }
         if (!$user || $user->role !== 'teacher') {
             return $this->placeholder('Diskusi', 'Forum diskusi antar mahasiswa dan dosen');
@@ -496,7 +530,7 @@ class LecturerController extends Controller
     {
         $user = $request->user();
         if ($user && $user->role === 'student') {
-            return Inertia::render('Student/Schedule');
+            return Inertia::render('Student/Schedule', $this->service->getStudentScheduleData((int) $user->id));
         }
 
         return $this->placeholder('Jadwal', 'Kelola jadwal kelas, kuis, dan deadline');
@@ -506,10 +540,25 @@ class LecturerController extends Controller
     {
         $user = $request->user();
         if ($user && $user->role === 'student') {
-            return Inertia::render('Student/Certificates');
+            return Inertia::render('Student/Certificates', $this->service->getStudentCertificatesData((int) $user->id));
         }
 
         return $this->placeholder('Sertifikat', 'Lihat daftar sertifikat yang telah diperoleh');
+    }
+
+    public function storeDiscussionMessage(Request $request, Discussion $discussion): RedirectResponse
+    {
+        $user = $request->user();
+        abort_if(!$user || $user->role !== 'student', 403);
+
+        $payload = $request->validate([
+            'message' => ['required', 'string', 'max:4000'],
+            'parent_id' => ['nullable', 'integer'],
+        ]);
+
+        $this->service->storeStudentDiscussionMessage((int) $user->id, $discussion, $payload);
+
+        return back()->with('success', 'Pesan diskusi berhasil dikirim.');
     }
 
     public function storeDiscussion(StoreDiscussionRequest $request): RedirectResponse
