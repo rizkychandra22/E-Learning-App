@@ -1154,6 +1154,8 @@ class LecturerService
                         'options' => $question->question_type === 'objective' ? array_values(array_filter($question->options ?? [], fn ($value) => trim((string) $value) !== '')) : [],
                         'points' => $question->points,
                         'sort_order' => $question->sort_order,
+                        'correct_answer' => in_array($attempt?->status, ['submitted', 'graded']) 
+                            ? $question->correct_answer : null,
                     ])->values(),
                     'course' => $quiz->course ? [
                         'id' => $quiz->course->id,
@@ -1612,8 +1614,7 @@ class LecturerService
         if (!$migrationRequired) {
             $quizzes = Quiz::query()
                 ->where('lecturer_id', $lecturerId)
-                ->with(['course:id,title,code', 'questions:id,quiz_id,question_text,question_type,options,correct_answer,points,sort_order'])
-                ->withCount('attempts')
+                ->with(['course:id,title,code'])
                 ->withCount(['attempts', 'questions'])
                 ->withAvg(['attempts as attempts_avg_score' => fn ($query) => $query->where('status', 'graded')], 'score')
                 ->when($normalizedStatus !== 'all', fn ($query) => $query->where('status', $normalizedStatus))
@@ -1635,14 +1636,14 @@ class LecturerService
                         'description' => $quiz->description,
                         'duration_minutes' => $quiz->duration_minutes,
                         'total_questions' => (int) ($quiz->questions_count ?? 0),
-                        'scheduled_at' => $quiz->scheduled_at?->toISOString(),
-                        'due_at' => $quiz->due_at?->toISOString(),
+                        'scheduled_at' => $quiz->scheduled_at ? $quiz->scheduled_at->toISOString() : null,
+                        'due_at' => $quiz->due_at ? $quiz->due_at->toISOString() : null,
                         'status' => $quiz->status,
                         'participants_count' => (int) ($quiz->attempts_count ?? 0),
                         'avg_score' => (int) round((float) ($quiz->attempts_avg_score ?? 0)),
                         'course' => $quiz->course ? [
                             'id' => $quiz->course->id,
-                            'title' => $quiz->course->title,
+                            'title' => (string) $quiz->course->title,
                             'code' => $quiz->course->code,
                         ] : null,
                         'questions' => $quiz->questions->map(fn (Question $question) => [
@@ -2596,12 +2597,14 @@ class LecturerService
             return;
         }
 
-        $normalized = collect($questions)
-            ->map(function ($item, int $index): ?array {
+        $incomingIds = collect($questions)->pluck('id')->filter()->all();
+        
+        // Hapus soal yang tidak ada lagi di input (soal yang dihapus dosen saat edit)
+        $quiz->questions()->whereNotIn('id', $incomingIds)->delete();
+
+        collect($questions)->each(function ($item, int $index) use ($quiz) {
                 $text = trim((string) ($item['question_text'] ?? ''));
-                if ($text === '') {
-                    return null;
-                }
+            if ($text === '') return;
 
                 $questionType = in_array(($item['question_type'] ?? 'objective'), ['objective', 'essay'], true)
                     ? $item['question_type']
@@ -2611,27 +2614,24 @@ class LecturerService
                     ->filter(fn ($value) => $value !== '')
                     ->values()
                     ->all();
+            
+            $data = [
+                'question_text' => $text,
+                'question_type' => $questionType,
+                'options' => $questionType === 'objective' ? $options : [],
+                'correct_answer' => isset($item['correct_answer']) ? trim((string) $item['correct_answer']) : null,
+                'points' => max(1, (int) ($item['points'] ?? 10)),
+                'sort_order' => max(1, (int) ($item['sort_order'] ?? ($index + 1))),
+            ];
 
-                return [
-                    'question_text' => $text,
-                    'question_type' => $questionType,
-                    'options' => $questionType === 'objective' ? $options : [],
-                    'correct_answer' => isset($item['correct_answer']) ? trim((string) $item['correct_answer']) : null,
-                    'points' => max(1, (int) ($item['points'] ?? 10)),
-                    'sort_order' => max(1, (int) ($item['sort_order'] ?? ($index + 1))),
-                ];
-            })
-            ->filter()
-            ->values();
+            if (!empty($item['id'])) {
+                $quiz->questions()->where('id', $item['id'])->update($data);
+            } else {
+                $quiz->questions()->create($data);
+            }
+        });
 
-        $quiz->questions()->delete();
-        foreach ($normalized as $row) {
-            $quiz->questions()->create($row);
-        }
-
-        $quiz->update(['total_questions' => $normalized->count()]);
-        $quiz->total_questions = $normalized->count();
-        $quiz->save();
+        $quiz->update(['total_questions' => $quiz->questions()->count()]);
     }
 
     private function normalizeAttemptAnswers($answers): array

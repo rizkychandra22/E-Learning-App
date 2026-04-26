@@ -107,35 +107,71 @@ function QuizCard({ quiz, draft, expanded, onStart, onClose, onChangeAnswer, onS
                 <div className="space-y-4 pt-4 border-t border-border animate-in fade-in slide-in-from-top-2">
                     {(quiz?.questions ?? []).map((question, index) => {
                         const key = String(question.id ?? index + 1);
-                        const value = draft?.[key] ?? '';
+                        // Fallback: Jika ID tidak ketemu (karena dosen edit kuis), coba cari berdasarkan urutan di objek jawaban
+                        const value = draft?.[key] ?? (
+                            isSubmitted ? Object.values(draft)[index] : ''
+                        ) ?? '';
+                        
+                        const correctAnswer = question.correct_answer ?? null;
+                        const hasCorrectAnswer = isSubmitted && correctAnswer !== null;
+                        const isCorrect = hasCorrectAnswer && value === correctAnswer;
 
                         return (
                             <div key={key} className="rounded-xl border border-border p-4 space-y-3 bg-secondary/20">
                                 <div className="flex justify-between items-center">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pertanyaan {index + 1}</span>
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-border text-foreground uppercase">{question.question_type}</span>
+                                    <div className="flex items-center gap-2">
+                                        {hasCorrectAnswer && (
+                                            <span className={cn(
+                                                "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                                                isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                            )}>
+                                                {isCorrect ? '✓ Benar' : '✗ Salah'}
+                                            </span>
+                                        )}
+                                        {isSubmitted && !hasCorrectAnswer && question.question_type === 'essay' && (
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">
+                                                Sudah Dijawab
+                                            </span>
+                                        )}
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-border text-foreground uppercase">{question.question_type}</span>
+                                    </div>
                                 </div>
                                 <p className="text-sm font-medium leading-relaxed">{question.question_text}</p>
 
                                 {question.question_type === 'objective' ? (
                                     <div className="grid grid-cols-1 gap-2">
-                                        {(question.options ?? []).map((option, optIdx) => (
-                                            <label key={optIdx} className={cn(
-                                                "flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-colors text-sm",
-                                                value === option ? "bg-blue-50 border-blue-200 text-blue-700" : "hover:bg-background"
-                                            )}>
-                                                <input
-                                                    type="radio"
-                                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                                                    name={`q-${quiz.id}-${key}`}
-                                                    value={option}
-                                                    checked={value === option}
-                                                    onChange={(e) => onChangeAnswer(key, e.target.value)}
-                                                    disabled={isReadOnly}
-                                                />
-                                                {option}
-                                            </label>
-                                        ))}
+                                        {(question.options ?? []).map((option, optIdx) => {
+                                            const isSelected = value === option;
+                                            const isCorrectOption = hasCorrectAnswer && correctAnswer === option;
+                                            let optionStyle = "hover:bg-background";
+                                            if (isSubmitted && hasCorrectAnswer) {
+                                                if (isCorrectOption) optionStyle = "bg-green-50 border-green-300 text-green-800";
+                                                else if (isSelected && !isCorrect) optionStyle = "bg-red-50 border-red-300 text-red-700";
+                                            } else if (isSelected) {
+                                                optionStyle = "bg-blue-50 border-blue-200 text-blue-700";
+                                            }
+                                            return (
+                                                <label key={optIdx} className={cn(
+                                                    "flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-colors text-sm",
+                                                    optionStyle
+                                                )}>
+                                                    <input
+                                                        type="radio"
+                                                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                                                        name={`q-${quiz.id}-${key}`}
+                                                        value={option}
+                                                        checked={isSelected}
+                                                        onChange={(e) => onChangeAnswer(key, e.target.value)}
+                                                        disabled={isReadOnly}
+                                                    />
+                                                    {option}
+                                                    {isSubmitted && hasCorrectAnswer && isCorrectOption && (
+                                                        <span className="ml-auto text-green-600 text-xs font-bold">✓ Jawaban Benar</span>
+                                                    )}
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <textarea

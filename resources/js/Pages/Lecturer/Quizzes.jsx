@@ -7,6 +7,7 @@ import { CreateFormModal } from '@/components/CreateFormModal';
 import { ActionIconButton } from '@/components/ActionIconButton';
 
 const makeEmptyQuestion = (index = 1) => ({
+    id: null,
     question_text: '',
     question_type: 'objective',
     options: ['', '', '', ''],
@@ -62,6 +63,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
     const beginEdit = (quiz) => {
         const questions = Array.isArray(quiz.questions) && quiz.questions.length
             ? quiz.questions.map((question, index) => ({
+                id: question.id,
                 question_text: question.question_text ?? '',
                 question_type: question.question_type ?? 'objective',
                 options: question.question_type === 'objective'
@@ -92,11 +94,23 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
     const viewAttempts = async (quiz) => {
         setSelectedQuiz(quiz);
         setShowAttemptsModal(true);
+        setAttemptsData([]); // Reset data lama agar tidak muncul data kuis sebelumnya
         try {
             const response = await fetch(`/quizzes/${quiz.id}/attempts`);
-            const data = await response.json();
-            setAttemptsData(data.attempts);
-        } catch (error) { console.error(error); }
+            if (!response.ok) throw new Error('Gagal mengambil data peserta');
+            
+            const result = await response.json();
+            // Pastikan data yang di-set adalah array
+            setAttemptsData(Array.isArray(result.attempts) ? result.attempts : []);
+        } catch (error) { 
+            console.error('Error fetching attempts:', error);
+            setAttemptsData([]);
+        }
+    };
+
+    const closeAttemptsModal = () => {
+        setShowAttemptsModal(false);
+        // Jangan reset selectedQuiz langsung untuk menghindari crash saat modal transisi menutup
     };
 
     const closeForm = () => {
@@ -209,7 +223,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                     <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {quizzes.length === 0 && <div className="col-span-full text-sm text-muted-foreground text-center py-10">Belum ada kuis.</div>}
                         {quizzes.map((quiz) => (
-                            <div key={quiz.id} className="panel-subcard p-4 space-y-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => viewAttempts(quiz)}>
+                            <div key={quiz.id} className="panel-subcard p-4 space-y-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => viewAttempts(quiz)} role="button" tabIndex={0}>
                                 <div className="flex items-center justify-between gap-2">
                                     <span className="inline-flex h-8 w-8 rounded-xl gradient-primary items-center justify-center text-white"><HelpCircle className="w-4 h-4" /></span>
                                     <span className="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary">{mapStatus(quiz.status)}</span>
@@ -295,7 +309,7 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                     </div>
                 </CreateFormModal>
 
-                <CreateFormModal open={showAttemptsModal} title={`Hasil: ${selectedQuiz?.title}`} onClose={() => setShowAttemptsModal(false)} maxWidthClass="max-w-4xl" hideSubmit>
+                <CreateFormModal open={showAttemptsModal} title={`Hasil: ${selectedQuiz?.title || 'Memuat...'}`} onClose={closeAttemptsModal} maxWidthClass="max-w-4xl" hideSubmit>
                     <div className="space-y-4">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
@@ -309,7 +323,12 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {attemptsData.map((row) => (
+                                    {attemptsData.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-muted-foreground">Belum ada data pengerjaan atau mahasiswa terdaftar.</td>
+                                        </tr>
+                                    )}
+                                    {(attemptsData || []).map((row) => (
                                         <tr key={row.id} className="border-b border-border/50">
                                             <td className="py-3 px-1"><div><p className="font-medium">{row.name}</p><p className="text-[10px] text-muted-foreground">{row.nim}</p></div></td>
                                             <td className="py-3 px-1">
@@ -321,13 +340,16 @@ export default function Quizzes({ quizzes, courses, filters, migrationRequired, 
                                                     row.status === 'reset' ? "bg-warning/10 text-warning" : 
                                                     "bg-secondary text-muted-foreground"
                                                 )}>
-                                                    {row.status === 'reset' ? 'DI-RESET' : 
-                                                     row.status === 'in_progress' ? 'DRAF' : 
-                                                     row.status?.toUpperCase() ?? 'BELUM'}
+                                                    {row.status === 'reset' 
+                                                        ? 'DI-RESET' 
+                                                        : row.status === 'in_progress' 
+                                                            ? 'DRAF' 
+                                                            : (row.status ? row.status.toUpperCase() : 'BELUM')
+                                                    }
                                                 </span>
                                             </td>
                                             <td className="py-3 px-1 font-bold">{row.score ?? '-'}</td>
-                                            <td className="py-3 px-1 text-muted-foreground text-xs">{row.submitted_at ? new Date(row.submitted_at).toLocaleString('id-ID') : '-'}</td>
+                                            <td className="py-3 px-1 text-muted-foreground text-xs">{formatDate(row.submitted_at)}</td>
                                             <td className="py-3 px-1 text-right">{row.attempt_id && <ActionIconButton icon={Trash2} label="Reset Pengerjaan" tone="danger" onClick={() => resetAttempt(row.attempt_id)} />}</td>
                                         </tr>
                                     ))}
@@ -351,8 +373,10 @@ function Field({ label, value, onChange, error, type = 'text', readOnly = false 
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value ?? ''} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function mapStatus(value) { if (value === 'active') return 'Aktif'; if (value === 'closed') return 'Ditutup'; return 'Draft'; }
 function formatDate(value) { 
-    if (!value) return '-'; 
-    return new Date(value).toLocaleString('id-ID', { 
+    if (!value) return '-';
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleString('id-ID', { 
         day: '2-digit', 
         month: 'short', 
         year: 'numeric',
