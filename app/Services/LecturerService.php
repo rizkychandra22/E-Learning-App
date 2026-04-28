@@ -1141,7 +1141,7 @@ class LecturerService
                     'id' => $quiz->id,
                     'title' => $quiz->title,
                     'description' => $quiz->description,
-                    'status' => $quiz->status,
+                    'status' => $quiz->getEffectiveStatus(),
                     'duration_minutes' => $quiz->duration_minutes,
                     'total_questions' => $quiz->questions->count(),
                     'scheduled_at' => $quiz->scheduled_at?->toISOString(),
@@ -1192,7 +1192,14 @@ class LecturerService
     public function submitQuiz(int $studentId, Quiz $quiz, array $payload): void
     {
         $this->ensureStudentCanAccessQuiz($studentId, $quiz);
-        abort_if($quiz->status !== 'active', 422, 'Kuis belum dapat dikerjakan.');
+        
+        // Check if quiz is active (not draft, closed, or other inactive statuses)
+        abort_if($quiz->status !== 'active', 422, 'Kuis tidak aktif.');
+        
+        // Check if deadline has passed
+        if ($quiz->due_at && now()->isAfter($quiz->due_at)) {
+            throw ValidationException::withMessages(['quiz' => 'Batas pengerjaan kuis ini sudah berakhir.']);
+        }
         abort_if(!Schema::hasTable('quiz_attempts'), 404);
 
         $rawAnswers = $payload['answers'] ?? null;
@@ -1638,7 +1645,7 @@ class LecturerService
                         'total_questions' => (int) ($quiz->questions_count ?? 0),
                         'scheduled_at' => $quiz->scheduled_at ? $quiz->scheduled_at->toISOString() : null,
                         'due_at' => $quiz->due_at ? $quiz->due_at->toISOString() : null,
-                        'status' => $quiz->status,
+                        'status' => $quiz->getEffectiveStatus(),
                         'participants_count' => (int) ($quiz->attempts_count ?? 0),
                         'avg_score' => (int) round((float) ($quiz->attempts_avg_score ?? 0)),
                         'course' => $quiz->course ? [
@@ -1815,7 +1822,17 @@ class LecturerService
         ];
 
         if (Schema::hasColumn('quizzes', 'due_at')) {
-            $quizPayload['due_at'] = $payload['due_at'] ?? null;
+            $newDueAtString = $payload['due_at'] ?? null;
+            $quizPayload['due_at'] = $newDueAtString;
+            
+            // If new deadline is in the future, auto-reactivate the quiz
+            if ($newDueAtString) {
+                $newDueAt = \Carbon\Carbon::parse($newDueAtString);
+                if (now()->isBefore($newDueAt)) {
+                    // New deadline is in the future - set status to active
+                    $quizPayload['status'] = 'active';
+                }
+            }
         }
 
         $quiz->update($quizPayload);

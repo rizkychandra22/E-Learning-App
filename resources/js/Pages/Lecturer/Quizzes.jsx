@@ -5,6 +5,7 @@ import { ProtectedLayout } from '@/layouts/ProtectedLayout';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 import { CreateFormModal } from '@/components/CreateFormModal';
 import { ActionIconButton } from '@/components/ActionIconButton';
+import { cn } from '@/lib/cn';
 
 const makeEmptyQuestion = (index = 1) => ({
     id: null,
