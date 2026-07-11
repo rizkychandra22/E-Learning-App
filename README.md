@@ -1,60 +1,85 @@
-# E-Learning App (My-Campus Core System)
+<div align="center">
+  <img src="https://laravel.com/img/logomark.min.svg" width="80" alt="Laravel Logo">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" width="80" alt="React Logo" style="margin-left: 20px;">
+  
+  <h1 align="center">My-Campus: E-Learning System (Core IAM)</h1>
+  
+  <p align="center">
+    <strong>Master Node & Centralized Identity Management untuk Ekosistem My-Campus</strong>
+    <br/>
+    <em>Dibangun dengan Laravel 11, Inertia.js, React, dan Supabase PostgreSQL</em>
+  </p>
 
-![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vue.js&logoColor=4FC08D)
-![Laravel](https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-181818?style=for-the-badge&logo=supabase&logoColor=white)
-
-E-Learning App adalah sistem inti (*Core System*) dari ekosistem digital **My-Campus**. Aplikasi ini bertindak sebagai **Centralized Identity Provider** sekaligus **Learning Management System (LMS)** untuk kegiatan akademik kampus.
-
-## 🎯 Peran & Tanggung Jawab
-Dalam ekosistem *micro-services* sederhana ini (bersama dengan [E-Book App](../E-Book_App)), **E-Learning App bertindak sebagai sistem utama (Master)** yang memiliki tanggung jawab:
-1. **Pusat Migrasi Database**: Struktur tabel fundamental, khususnya tabel `users`, dikendalikan sepenuhnya dari project ini.
-2. **Manajemen Identitas**: Mengelola data mahasiswa (NIM), dosen (NIDN), dan berbagai role admin lainnya.
-3. **Pusat Seeder**: *Dummy data* awal untuk *role* disuntikkan dari sistem ini.
-4. **Fungsi Akademik**: Manajemen mata kuliah, kelas, tugas, dan nilai.
-
-## 👥 Struktur Role (Hak Akses)
-Sistem ini menggunakan struktur autentikasi terpusat. Akun yang dibuat di sini dapat digunakan untuk login ke sistem cabang (seperti perpustakaan).
-* `root`: Super Admin yang memiliki akses tanpa batas.
-* `admin`: Admin akademik untuk mengelola data perkuliahan.
-* `finance`: Admin keuangan.
-* `teacher`: Dosen yang mengajar dan mengelola materi kuliah.
-* `student`: Mahasiswa yang mengikuti kelas.
-* `admin_perpustakaan`: Role khusus yang dibuat di sini agar bisa digunakan untuk mengelola modul perpustakaan di aplikasi sebelah (E-Book App).
-
-## 🚀 Alur Database & Migrasi
-Aplikasi ini terhubung ke *database* terpusat (Supabase PostgreSQL). 
-
-**PENTING:** Jika Anda ingin melakukan reset *database*, Anda **wajib** melakukannya dari sistem E-Learning ini terlebih dahulu, karena sistem ini yang memegang kunci skema tabel pengguna.
-
-```bash
-# Lakukan migrasi beserta seeder HANYA dari direktori E-Learning_App
-php artisan migrate:fresh --seed
-```
-
-## 🛠️ Instalasi & Setup
-
-1. Clone repositori dan masuk ke direktori `E-Learning_App`
-2. Install dependensi PHP & Node.js:
-   ```bash
-   composer install
-   npm install
-   ```
-3. Salin `.env.example` ke `.env` dan sesuaikan koneksi database (Supabase).
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
-4. Jalankan Migrasi & Seeder (Untuk inisialisasi Master Data):
-   ```bash
-   php artisan migrate:fresh --seed
-   ```
-5. Jalankan server lokal:
-   ```bash
-   php artisan serve
-   npm run dev
-   ```
+  <p align="center">
+    <a href="#-arsitektur--peran-sistem"><img src="https://img.shields.io/badge/Architecture-Core_System-blue?style=for-the-badge" alt="Core System"></a>
+    <a href="#-tech-stack"><img src="https://img.shields.io/badge/Frontend-React.js-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React"></a>
+    <a href="#-tech-stack"><img src="https://img.shields.io/badge/Backend-Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel"></a>
+    <a href="#-tech-stack"><img src="https://img.shields.io/badge/Database-Supabase-181818?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"></a>
+  </p>
+</div>
 
 ---
-*Dikembangkan untuk ekosistem My-Campus Terpadu.*
+
+## 🎯 Arsitektur & Peran Sistem
+
+Dalam arsitektur *micro-services* My-Campus, **E-Learning App** adalah tulang punggung (*Master Node*). Sistem ini tidak hanya menangani proses belajar mengajar, tetapi juga bertindak sebagai **Identity and Access Management (IAM)** untuk seluruh ekosistem kampus (termasuk [E-Book App](../E-Book_App)).
+
+### Mengapa E-Learning Menjadi Master Node?
+1. **Single Source of Truth (Database)**: Sistem ini adalah pemilik penuh atas skema tabel `users`.
+2. **Centralized Authentication**: Semua akun login mahasiswa, dosen, dan staf kampus dibuat dan diverifikasi oleh sistem ini.
+3. **Master Migrations**: Semua migrasi *database* utama (*fresh migration* dan reset *database*) wajib dieksekusi dari proyek ini untuk menghindari *data collision*.
+
+## 👥 Manajemen Hak Akses (Roles)
+
+Karena menggunakan *Single Database*, role dari subsistem lain juga didefinisikan di sini agar saling terintegrasi:
+
+| Role | Deskripsi & Hak Akses | Lingkup Sistem |
+| :--- | :--- | :--- |
+| 👑 **`root`** | Super Admin. Mengontrol seluruh *platform*. | Global |
+| 🎓 **`admin`** | Admin Akademik. Mengelola fakultas, jurusan, dan kurikulum. | E-Learning |
+| 💰 **`finance`** | Admin Keuangan. Mengelola transaksi pembayaran kuliah. | E-Learning |
+| 👨‍🏫 **`teacher`** | Dosen. Mengelola kelas, materi, dan nilai. | E-Learning |
+| 📚 **`admin_perpustakaan`** | Admin Perpustakaan (Didelegasikan ke modul e-Library). | E-Book App |
+| 🧑‍🎓 **`student`** | Mahasiswa (Pemilik NIM). Akun Universal (Kelas & Peminjaman Buku). | Global |
+
+## 💻 Tech Stack Utama
+
+* **Backend**: Laravel 11.x
+* **Frontend**: React.js 19 + Inertia.js
+* **Styling**: Tailwind CSS + Bootstrap Icons
+* **Database**: PostgreSQL (Supabase)
+* **Build Tool**: Vite
+
+## 🚀 Alur Bisnis E-Learning
+1. **Pendaftaran Akademik**: Admin akademik mendaftarkan dosen (NIDN) dan mahasiswa (NIM).
+2. **Manajemen Kelas**: Dosen membuat kelas dan mengunggah modul/materi pembelajaran.
+3. **KBM (Kegiatan Belajar Mengajar)**: Mahasiswa mengikuti kelas, mengerjakan kuis, dan mengumpulkan tugas via portal ini.
+
+## 🛠️ Instalasi & Persiapan (*Deployment*)
+
+> ⚠️ **PERHATIAN**: Jika Anda baru pertama kali meng-*install* ekosistem My-Campus, Anda **WAJIB** melakukan instalasi dan migrasi pada proyek E-Learning ini terlebih dahulu sebelum menyentuh proyek E-Book.
+
+```bash
+# 1. Masuk ke direktori
+cd E-Learning_App
+
+# 2. Install Dependensi
+composer install
+npm install
+
+# 3. Setup Environment (Koneksikan ke Supabase PostgreSQL)
+cp .env.example .env
+php artisan key:generate
+
+# 4. Inisialisasi Database (Hanya dijalankan di proyek ini!)
+php artisan migrate:fresh --seed
+
+# 5. Jalankan Development Server
+php artisan serve
+npm run dev
+```
+
+---
+<div align="center">
+  <sub>Dibangun dengan ❤️ untuk Ekosistem My-Campus</sub>
+</div>
