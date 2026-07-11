@@ -33,9 +33,9 @@ const Register = () => {
                     <div className="col-md-10 col-lg-9">
                         <div className="card border-0 shadow-lg overflow-hidden position-relative" style={{ borderRadius: '20px', background: 'hsl(var(--card) / 0.94)', backdropFilter: 'blur(6px)' }}>
                             <div className="row g-0">
-                                <div className="col-md-6 bg-white p-4 p-lg-5">
-                                    <h3 className="fw-bold text-dark mb-2 text-start">{isEnglish ? 'Create Account' : 'Mulai Belajar'}</h3>
-                                    <p className="text-muted mb-4 text-start">
+                                <div className="col-md-6 p-4 p-lg-5 bg-card text-card-foreground">
+                                    <h3 className="fw-bold mb-2 text-start">{isEnglish ? 'Create Account' : 'Mulai Belajar'}</h3>
+                                    <p className="text-muted-foreground mb-4 text-start">
                                         {isEnglish
                                             ? 'Complete your profile to create a new account.'
                                             : 'Lengkapi data diri untuk membuat akun baru.'}
@@ -45,10 +45,10 @@ const Register = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">Nama Lengkap</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-person-badge text-muted"></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0"><i className="bi bi-person-badge"></i></span>
                                                 <input
                                                     type="text"
-                                                    className={`form-control bg-light border-start-0 ${errors.name ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 ${errors.name ? 'is-invalid' : ''}`}
                                                     placeholder="Nama sesuai identitas"
                                                     value={data.name}
                                                     onChange={e => setData('name', e.target.value)}
@@ -60,10 +60,10 @@ const Register = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">Username</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-at text-muted"></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0"><i className="bi bi-at"></i></span>
                                                 <input
                                                     type="text"
-                                                    className={`form-control bg-light border-start-0 ${errors.username ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 ${errors.username ? 'is-invalid' : ''}`}
                                                     placeholder="username_anda"
                                                     value={data.username}
                                                     onChange={e => setData('username', e.target.value)}
@@ -75,10 +75,10 @@ const Register = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold">Email Institusi</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-envelope text-muted"></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0"><i className="bi bi-envelope"></i></span>
                                                 <input
                                                     type="email"
-                                                    className={`form-control bg-light border-start-0 ${errors.email ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 ${errors.email ? 'is-invalid' : ''}`}
                                                     placeholder="nama@kampus.ac.id"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
@@ -90,10 +90,10 @@ const Register = () => {
                                         <div className="mb-4">
                                             <label className="form-label fw-semibold">Password</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-shield-lock text-muted"></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0"><i className="bi bi-shield-lock"></i></span>
                                                 <input
                                                     type="password"
-                                                    className={`form-control bg-light border-start-0 ${errors.password ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
@@ -105,10 +105,10 @@ const Register = () => {
                                         <div className="mb-4">
                                             <label className="form-label fw-semibold">Konfirmasi Password</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0"><i className="bi bi-shield-check text-muted"></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0"><i className="bi bi-shield-check"></i></span>
                                                 <input
                                                     type="password"
-                                                    className={`form-control bg-light border-start-0 ${errors.password_confirmation ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 ${errors.password_confirmation ? 'is-invalid' : ''}`}
                                                     placeholder="Ulangi password"
                                                     value={data.password_confirmation}
                                                     onChange={e => setData('password_confirmation', e.target.value)}
@@ -133,9 +133,9 @@ const Register = () => {
                                         </button>
                                     </form>
 
-                                    <div className="text-center mt-4 text-muted small">
+                                    <div className="text-center mt-4 text-muted-foreground small">
                                         {isEnglish ? 'Already have an account?' : 'Sudah punya akun?'}{' '}
-                                        <Link href="/login" className="fw-bold text-success text-decoration-none">
+                                        <Link href="/login" className="fw-bold text-success text-decoration-none hover:opacity-80">
                                             {isEnglish ? 'Sign In' : 'Login Masuk'}
                                         </Link>
                                     </div>
