@@ -166,17 +166,25 @@ Route::middleware('auth')->group(function () {
     Route::post('/assignments', [LecturerController::class, 'storeAssignment']);
     Route::put('/assignments/{assignment}', [LecturerController::class, 'updateAssignment']);
     Route::delete('/assignments/{assignment}', [LecturerController::class, 'destroyAssignment']);
-
+    
     Route::get('/quizzes', [LecturerController::class, 'quizzes']);
-    Route::post('/quizzes/{quiz}/submit', [LecturerController::class, 'submitQuiz']);
     Route::post('/quizzes', [LecturerController::class, 'storeQuiz']);
     Route::put('/quizzes/{quiz}', [LecturerController::class, 'updateQuiz']);
     Route::delete('/quizzes/{quiz}', [LecturerController::class, 'destroyQuiz']);
+    Route::post('/quizzes/{quiz}/start', [LecturerController::class, 'startQuiz']);
+    Route::post('/quizzes/{quiz}/save-progress', [LecturerController::class, 'saveQuizProgress']);
+    Route::post('/quizzes/{quiz}/submit', [LecturerController::class, 'submitQuiz']);
+    Route::get('/quizzes/{quiz}/attempts', [LecturerController::class, 'quizAttempts']);
+    Route::put('/quizzes/attempts/{attempt}/reset', [LecturerController::class, 'resetQuizAttempt']);
 
+    Route::get('/discussions', [LecturerController::class, 'discussions']);
+    Route::get('/discussions/{discussion}', [LecturerController::class, 'discussionDetail']);
+    Route::post('/discussions/{discussion}/reply', [LecturerController::class, 'replyToDiscussion']);   
     Route::get('/discussions', [LecturerController::class, 'discussions']);
     Route::get('/schedule', [LecturerController::class, 'schedule']);
     Route::get('/certificates', [LecturerController::class, 'certificates']);
     Route::post('/discussions', [LecturerController::class, 'storeDiscussion']);
+    Route::post('/discussions/{discussion}/messages', [LecturerController::class, 'storeDiscussionMessage']);
     Route::put('/discussions/{discussion}', [LecturerController::class, 'updateDiscussion']);
     Route::delete('/discussions/{discussion}', [LecturerController::class, 'destroyDiscussion']);
 
@@ -208,10 +216,3 @@ Route::middleware('auth')->group(function () {
         });
     }
 });
-
-
-
-
-
-
-

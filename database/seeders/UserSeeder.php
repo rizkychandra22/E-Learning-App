@@ -66,6 +66,16 @@ class UserSeeder extends Seeder
             'code'     => '0320' . $codeUniv . '20' . '002',
         ]);
 
+        // 3.5. Admin Perpustakaan
+        $seedUser([
+            'name'     => 'Admin Perpustakaan',
+            'email'    => 'perpus@univ.ac.id',
+            'username' => 'adminperpus',
+            'role'     => 'admin_perpustakaan',
+            'type'     => 'nidn',
+            'code'     => '0820' . $codeUniv . '20' . '003',
+        ]);
+
         // 4. Teachers (04) - Teknik Informatika
         $teachers = [
             ['name' => 'Dr. Setyo Nugroho', 'email' => 'setyo@lecturer.ac.id', 'username' => 'setyonugroho', 'seq' => '001'],

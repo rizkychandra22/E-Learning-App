@@ -66,9 +66,9 @@ const Login = () => {
                                     </div>
                                 </div>
 
-                                <div className="col-md-6 bg-white p-4 p-lg-5">
-                                    <h3 className="fw-bold text-dark mb-2" style={{ fontSize: '1.75rem', lineHeight: 1.2 }}>{isEnglish ? 'Welcome Back' : 'Selamat Datang'}</h3>
-                                    <p className="text-muted mb-4" style={{ fontSize: '1rem' }}>{isEnglish ? 'Please sign in to continue' : 'Silakan masuk ke akun Anda'}</p>
+                                <div className="col-md-6 p-4 p-lg-5 bg-card text-card-foreground">
+                                    <h3 className="fw-bold mb-2" style={{ fontSize: '1.75rem', lineHeight: 1.2 }}>{isEnglish ? 'Welcome Back' : 'Selamat Datang'}</h3>
+                                    <p className="text-muted-foreground mb-4" style={{ fontSize: '1rem' }}>{isEnglish ? 'Please sign in to continue' : 'Silakan masuk ke akun Anda'}</p>
 
                                     {maintenanceMode && (
                                         <div className="alert alert-warning small py-2" role="alert">
@@ -92,10 +92,10 @@ const Login = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>{isEnglish ? 'Email / Username / Code' : 'Email / NIM'}</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0 py-2.5"><i className="bi bi-person text-muted" style={{ fontSize: '0.95rem' }}></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0 py-2.5"><i className="bi bi-person" style={{ fontSize: '0.95rem' }}></i></span>
                                                 <input
                                                     type="text"
-                                                    className={`form-control bg-light border-start-0 py-2.5 ${errors.email ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 py-2.5 ${errors.email ? 'is-invalid' : ''}`}
                                                     placeholder="nama@kampus.ac.id"
                                                     value={data.email}
                                                     onChange={e => setData('email', e.target.value)}
@@ -108,10 +108,10 @@ const Login = () => {
                                         <div className="mb-3">
                                             <label className="form-label fw-semibold mb-2" style={{ fontSize: '0.95rem' }}>Password</label>
                                             <div className="input-group">
-                                                <span className="input-group-text bg-light border-end-0 py-2.5"><i className="bi bi-lock text-muted" style={{ fontSize: '0.95rem' }}></i></span>
+                                                <span className="input-group-text bg-background text-muted-foreground border-end-0 py-2.5"><i className="bi bi-lock" style={{ fontSize: '0.95rem' }}></i></span>
                                                 <input
                                                     type="password"
-                                                    className={`form-control bg-light border-start-0 py-2.5 ${errors.password ? 'is-invalid' : ''}`}
+                                                    className={`form-control bg-background text-foreground border-start-0 py-2.5 ${errors.password ? 'is-invalid' : ''}`}
                                                     placeholder="••••••••"
                                                     value={data.password}
                                                     onChange={e => setData('password', e.target.value)}
@@ -130,9 +130,9 @@ const Login = () => {
                                                     checked={data.remember}
                                                     onChange={e => setData('remember', e.target.checked)}
                                                 />
-                                                <label className="form-check-label" style={{ fontSize: '0.9rem' }} htmlFor="remember">Ingat Saya</label>
+                                                <label className="form-check-label text-foreground" style={{ fontSize: '0.9rem' }} htmlFor="remember">Ingat Saya</label>
                                             </div>
-                                            <Link href="/forgot-password" className="text-decoration-none" style={{ fontSize: '0.9rem' }}>Lupa Password?</Link>
+                                            <Link href="/forgot-password" className="text-decoration-none text-muted-foreground hover:text-primary" style={{ fontSize: '0.9rem' }}>Lupa Password?</Link>
                                         </div>
 
                                         <button
@@ -149,9 +149,9 @@ const Login = () => {
                                     </form>
 
                                     {allowRegistration && !maintenanceMode && (
-                                        <div className="text-center mt-3 text-muted" style={{ fontSize: '0.9rem' }}>
+                                        <div className="text-center mt-3 text-muted-foreground" style={{ fontSize: '0.9rem' }}>
                                             {isEnglish ? "Don't have an account?" : 'Belum punya akun?'}{' '}
-                                            <Link href="/register" className="fw-bold text-primary text-decoration-none">
+                                            <Link href="/register" className="fw-bold text-primary text-decoration-none hover:opacity-80">
                                                 {isEnglish ? 'Register' : 'Daftar'}
                                             </Link>
                                         </div>

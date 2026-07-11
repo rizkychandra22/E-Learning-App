@@ -46,4 +46,16 @@ class Quiz extends Model
     {
         return $this->hasMany(Question::class)->orderBy('sort_order');
     }
+
+    /**
+     * Get the effective status of the quiz.
+     * If the quiz status is 'active' but the due_at date has passed, return 'closed'.
+     */
+    public function getEffectiveStatus(): string
+    {
+        if ($this->status === 'active' && $this->due_at && now() > $this->due_at) {
+            return 'closed';
+        }
+        return $this->status;
+    }
 }

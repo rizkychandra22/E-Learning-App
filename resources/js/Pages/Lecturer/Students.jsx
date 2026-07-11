@@ -18,7 +18,7 @@ const emptyEnrollForm = {
     student_id: '',
 };
 
-export default function Students({ notes, students, courses, roster, filters, migrationRequired, mocked }) {
+export default function Students({ notes, students, noteStudents = [], courses, roster, filters, migrationRequired, mocked }) {
     const [search, setSearch] = useState(filters?.search ?? '');
     const [courseFilter, setCourseFilter] = useState(filters?.course ? String(filters.course) : '');
     const [showEnrollModal, setShowEnrollModal] = useState(false);
@@ -190,7 +190,7 @@ export default function Students({ notes, students, courses, roster, filters, mi
 
                 <CreateFormModal open={showNoteModal} title={editingNoteId ? 'Edit Catatan' : 'Tambah Catatan'} onClose={() => setShowNoteModal(false)} onSubmit={submitNoteForm} submitLabel="Simpan" processing={noteForm.processing} disableSubmit={mocked || migrationRequired?.notes} maxWidthClass="max-w-3xl">
                     <div className="space-y-3">
-                        <SelectField label="Mahasiswa" value={noteForm.data.student_id} onChange={(value) => noteForm.setData('student_id', value)} error={noteForm.errors.student_id}><option value="">Pilih Mahasiswa</option>{students.map((student) => <option key={student.id} value={student.id}>{student.name} ({student.code})</option>)}</SelectField>
+                        <SelectField label="Mahasiswa" value={noteForm.data.student_id} onChange={(value) => noteForm.setData('student_id', value)} error={noteForm.errors.student_id}><option value="">Pilih Mahasiswa</option>{noteStudents.map((student) => <option key={student.id} value={student.id}>{student.name} ({student.code})</option>)}</SelectField>
                         <Field label="Judul Catatan" value={noteForm.data.title} onChange={(value) => noteForm.setData('title', value)} error={noteForm.errors.title} />
                         <label className="block"><span className="text-sm font-medium">Catatan</span><textarea value={noteForm.data.note} onChange={(event) => noteForm.setData('note', event.target.value)} rows={4} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{noteForm.errors.note && <span className="text-xs text-destructive mt-1 block">{noteForm.errors.note}</span>}</label>
                         <SelectField label="Status" value={noteForm.data.status} onChange={(value) => noteForm.setData('status', value)} error={noteForm.errors.status}><option value="active">Active</option><option value="resolved">Resolved</option></SelectField>
@@ -206,6 +206,5 @@ function StatCard({ title, value, tone }) {
 }
 function Field({ label, value, onChange, error, type = 'text' }) { return <label className="block"><span className="text-sm font-medium">{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
 function SelectField({ label, value, onChange, error, children }) { return <label className="block"><span className="text-sm font-medium">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">{children}</select>{error && <span className="text-xs text-destructive mt-1 block">{error}</span>}</label>; }
-
 
 

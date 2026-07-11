@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Discussion extends Model
 {
@@ -23,5 +24,10 @@ class Discussion extends Model
     public function lecturer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'lecturer_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(DiscussionMessage::class)->orderBy('created_at');
     }
 }

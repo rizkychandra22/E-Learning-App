@@ -7,17 +7,6 @@ import { cn } from '@/lib/cn';
 import { toIntlLocale } from '@/lib/locale';
 import { PageHeroBanner } from '@/components/PageHeroBanner';
 
-const CERTIFICATES = [
-    { id: 1, code: '#CERT-2026-001', course: 'UI/UX Design Basics', instructor: 'Rina Dewi', date: '10 Maret 2026', score: 91, tone: 'warm' },
-    { id: 2, code: '#CERT-2026-002', course: 'HTML & CSS Fundamentals', instructor: 'Ahmad Fauzi', date: '20 Januari 2026', score: 95, tone: 'primary' },
-];
-
-const IN_PROGRESS = [
-    { course: 'React JS Fundamental', progress: 68, tone: 'primary' },
-    { course: 'Database Design', progress: 85, tone: 'success' },
-    { course: 'Node.js Advanced', progress: 42, tone: 'info' },
-];
-
 const toneClass = {
     primary: 'gradient-primary',
     warm: 'gradient-warm',
@@ -29,6 +18,7 @@ const barToneClass = {
     primary: 'bg-primary',
     success: 'bg-success',
     info: 'bg-info',
+    warm: 'bg-warning',
 };
 
 function CertificateCard({ item }) {
@@ -48,10 +38,10 @@ function CertificateCard({ item }) {
                     <p className="font-semibold text-success">Nilai: {item.score}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                    <button type="button" className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-secondary/60 px-3 py-2 text-sm font-medium">
+                    <button type="button" className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-secondary/60 px-3 py-2 text-sm font-medium" disabled>
                         <Eye className="w-4 h-4" />Lihat
                     </button>
-                    <button type="button" className="inline-flex items-center justify-center gap-1 rounded-lg gradient-primary px-3 py-2 text-sm font-semibold text-primary-foreground">
+                    <button type="button" className="inline-flex items-center justify-center gap-1 rounded-lg gradient-primary px-3 py-2 text-sm font-semibold text-primary-foreground" disabled>
                         <Download className="w-4 h-4" />Unduh
                     </button>
                 </div>
@@ -77,30 +67,43 @@ export default function StudentCertificates() {
         [intlLocale]
     );
 
+    const certificates = props?.certificates ?? [];
+    const inProgress = props?.in_progress ?? [];
+    const migrationRequired = props?.migrationRequired ?? {};
+
     return (
         <ProtectedLayout>
             <Head title="Sertifikat" />
             <div className="space-y-6">
-                <PageHeroBanner title="Sertifikat" description="Kumpulkan sertifikat dari setiap mata kuliah yang sudah diselesaikan dengan nilai terbaik." />
+                <PageHeroBanner title="Sertifikat" description="Sertifikat hanya muncul dari mata kuliah yang benar-benar sudah Anda selesaikan." />
+
+                {(migrationRequired?.learning || migrationRequired?.grades) && (
+                    <div className="rounded-2xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+                        Sebagian data sertifikat belum siap karena migrasi belum lengkap.
+                    </div>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                     <span className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium">
                         <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                        Sertifikat Diperoleh ({CERTIFICATES.length})
+                        Sertifikat Diperoleh ({certificates.length})
                     </span>
                     <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{today}</span>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {CERTIFICATES.map((item) => (
+                    {certificates.map((item) => (
                         <CertificateCard key={item.id} item={item} />
                     ))}
+                    {certificates.length === 0 && (
+                        <div className="panel-card p-4 text-sm text-muted-foreground lg:col-span-2">Belum ada sertifikat yang diterbitkan.</div>
+                    )}
                 </div>
 
                 <section className="panel-card p-4">
                     <h3 className="font-semibold">Mata Kuliah Dalam Progress</h3>
                     <div className="mt-4 space-y-3">
-                        {IN_PROGRESS.map((item) => (
+                        {inProgress.map((item) => (
                             <div key={item.course} className="panel-subcard p-3">
                                 <div className="flex items-center justify-between gap-2 text-sm">
                                     <span className="font-medium">{item.course}</span>
@@ -112,10 +115,12 @@ export default function StudentCertificates() {
                                 </div>
                             </div>
                         ))}
+                        {inProgress.length === 0 && (
+                            <p className="text-sm text-muted-foreground">Semua mata kuliah sudah selesai atau belum ada enrollment.</p>
+                        )}
                     </div>
                 </section>
             </div>
         </ProtectedLayout>
     );
 }
-

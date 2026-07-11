@@ -1,66 +1,85 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
+  <img src="https://laravel.com/img/logomark.min.svg" width="80" alt="Laravel Logo">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" width="80" alt="React Logo" style="margin-left: 20px;">
+  
+  <h1 align="center">My-Campus: E-Learning System (Core IAM)</h1>
+  
+  <p align="center">
+    <strong>Master Node & Centralized Identity Management untuk Ekosistem My-Campus</strong>
+    <br/>
+    <em>Dibangun dengan Laravel 11, Inertia.js, React, dan Supabase PostgreSQL</em>
+  </p>
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+  <p align="center">
+    <a href="#-arsitektur--peran-sistem"><img src="https://img.shields.io/badge/Architecture-Core_System-blue?style=for-the-badge" alt="Core System"></a>
+    <a href="#-tech-stack"><img src="https://img.shields.io/badge/Frontend-React.js-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React"></a>
+    <a href="#-tech-stack"><img src="https://img.shields.io/badge/Backend-Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel"></a>
+    <a href="#-tech-stack"><img src="https://img.shields.io/badge/Database-Supabase-181818?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"></a>
+  </p>
+</div>
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🎯 Arsitektur & Peran Sistem
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Dalam arsitektur *micro-services* My-Campus, **E-Learning App** adalah tulang punggung (*Master Node*). Sistem ini tidak hanya menangani proses belajar mengajar, tetapi juga bertindak sebagai **Identity and Access Management (IAM)** untuk seluruh ekosistem kampus (termasuk [E-Book App](../E-Book_App)).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Mengapa E-Learning Menjadi Master Node?
+1. **Single Source of Truth (Database)**: Sistem ini adalah pemilik penuh atas skema tabel `users`.
+2. **Centralized Authentication**: Semua akun login mahasiswa, dosen, dan staf kampus dibuat dan diverifikasi oleh sistem ini.
+3. **Master Migrations**: Semua migrasi *database* utama (*fresh migration* dan reset *database*) wajib dieksekusi dari proyek ini untuk menghindari *data collision*.
 
-## Learning Laravel
+## 👥 Manajemen Hak Akses (Roles)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Karena menggunakan *Single Database*, role dari subsistem lain juga didefinisikan di sini agar saling terintegrasi:
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+| Role | Deskripsi & Hak Akses | Lingkup Sistem |
+| :--- | :--- | :--- |
+| 👑 **`root`** | Super Admin. Mengontrol seluruh *platform*. | Global |
+| 🎓 **`admin`** | Admin Akademik. Mengelola fakultas, jurusan, dan kurikulum. | E-Learning |
+| 💰 **`finance`** | Admin Keuangan. Mengelola transaksi pembayaran kuliah. | E-Learning |
+| 👨‍🏫 **`teacher`** | Dosen. Mengelola kelas, materi, dan nilai. | E-Learning |
+| 📚 **`admin_perpustakaan`** | Admin Perpustakaan (Didelegasikan ke modul e-Library). | E-Book App |
+| 🧑‍🎓 **`student`** | Mahasiswa (Pemilik NIM). Akun Universal (Kelas & Peminjaman Buku). | Global |
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 💻 Tech Stack Utama
 
-## Laravel Sponsors
+* **Backend**: Laravel 11.x
+* **Frontend**: React.js 19 + Inertia.js
+* **Styling**: Tailwind CSS + Bootstrap Icons
+* **Database**: PostgreSQL (Supabase)
+* **Build Tool**: Vite
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🚀 Alur Bisnis E-Learning
+1. **Pendaftaran Akademik**: Admin akademik mendaftarkan dosen (NIDN) dan mahasiswa (NIM).
+2. **Manajemen Kelas**: Dosen membuat kelas dan mengunggah modul/materi pembelajaran.
+3. **KBM (Kegiatan Belajar Mengajar)**: Mahasiswa mengikuti kelas, mengerjakan kuis, dan mengumpulkan tugas via portal ini.
 
-### Premium Partners
+## 🛠️ Instalasi & Persiapan (*Deployment*)
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+> ⚠️ **PERHATIAN**: Jika Anda baru pertama kali meng-*install* ekosistem My-Campus, Anda **WAJIB** melakukan instalasi dan migrasi pada proyek E-Learning ini terlebih dahulu sebelum menyentuh proyek E-Book.
 
-## Contributing
+```bash
+# 1. Masuk ke direktori
+cd E-Learning_App
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 2. Install Dependensi
+composer install
+npm install
 
-## Code of Conduct
+# 3. Setup Environment (Koneksikan ke Supabase PostgreSQL)
+cp .env.example .env
+php artisan key:generate
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# 4. Inisialisasi Database (Hanya dijalankan di proyek ini!)
+php artisan migrate:fresh --seed
 
-## Security Vulnerabilities
+# 5. Jalankan Development Server
+php artisan serve
+npm run dev
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+---
+<div align="center">
+  <sub>Dibangun dengan ❤️ untuk Ekosistem My-Campus</sub>
+</div>
